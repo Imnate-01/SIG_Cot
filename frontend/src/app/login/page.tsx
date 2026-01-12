@@ -32,12 +32,15 @@ export default function LoginPage() {
       return;
     }
 
+    // --- CORRECCIÓN CLAVE ---
+    // Usamos la variable de entorno. Si no existe (en local), usa localhost.
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
     try {
       setLoading(true);
 
-      // Petición al Backend
-      // Asegúrate de que la URL apunte a tu backend correcto (puerto 3001)
-      const res = await fetch("http://localhost:3001/api/auth/login", {
+      // --- FETCH DINÁMICO ---
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,8 +58,7 @@ export default function LoginPage() {
       // --- ÉXITO ---
       if (typeof window !== "undefined") {
         
-        // 1. NUEVO: Guardar Token en Cookie para el Middleware
-        // Esto permite que el guardia de seguridad (middleware.ts) lea el pase.
+        // 1. Guardar Token en Cookie para el Middleware
         Cookies.set("auth_token", data.token, { 
             expires: 1, // Expira en 1 día
             secure: window.location.protocol === 'https:', // Solo seguro en HTTPS (prod)
@@ -77,9 +79,18 @@ export default function LoginPage() {
         }
       }
 
-      // 5. Redirigir al Dashboard
-      router.push("/cotizaciones");
-      router.refresh(); // Refrescar para que el middleware detecte la cookie nueva
+      // 5. REDIRECCIÓN INTELIGENTE BASADA EN ROL/DEPARTAMENTO
+      const depto = data.usuario.departamento || "";
+      
+      // Si el departamento suena a ingeniero o su rol es ingeniero, va directo a reportes
+      if (depto.toLowerCase().includes("técnico") || depto.toLowerCase().includes("servicio") || data.usuario.rol === 'ingeniero') {
+         router.push("/reportestec");
+      } else {
+         // Si es ventas, admin o cualquier otro, va al dashboard de cotizaciones
+         router.push("/cotizaciones");
+      }
+      
+      router.refresh(); 
 
     } catch (err) {
       console.error(err);
@@ -273,8 +284,8 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

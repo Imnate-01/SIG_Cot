@@ -97,7 +97,7 @@ Moneda: ${condiciones?.moneda || 'USD'}
 Observaciones: ${condiciones?.observaciones || ''}
       `.trim()
 
-      // G. Insertar la Cotización Maestra
+    // G. Insertar la Cotización Maestra
       const { data: cotizacion, error: errorCotizacion } = await supabaseUser
         .from('cotizaciones')
         .insert({
@@ -105,22 +105,30 @@ Observaciones: ${condiciones?.observaciones || ''}
           creado_por: creado_por,
           total: total,
           estado: estado,
-          notas: notas,
+          // Guardamos notas por compatibilidad, pero usaremos 'condiciones' para el PDF nuevo
+          notas: notas, 
           tipo_servicio: tipo_servicio,
-          estatus_po: 'pendiente'
+          estatus_po: 'pendiente',
+          // agregamos esta línea para guardar el objeto condiciones completo
+          condiciones: condiciones || {} 
         })
         .select()
         .single()
 
       if (errorCotizacion) throw errorCotizacion
 
-      // H. Insertar los Items
+     // H. Insertar los Items
       const itemsConCotizacionId = itemsServicio.map((item: any) => ({
         cotizacion_id: cotizacion.id,
         concepto: item.concepto || 'Servicio',
         cantidad: item.cantidad || 1,
         precio_unitario: item.precioUnitario || 0,
-        subtotal: item.total || 0
+        subtotal: item.total || 0,
+        // AQUÍ ESTÁ LA CORRECCIÓN: Guardamos lo que faltaba
+        detalles: item.detalles || null,       
+        desglose: item.desglose || [],          // Guardamos el array de ingenieros
+        //  NUEVO: Guardamos la cantidad de ingenieros explícitamente
+        ingenieros: item.ingenieros || 1
       }))
 
       const { error: errorItems } = await supabaseUser

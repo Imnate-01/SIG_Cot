@@ -13,7 +13,8 @@ import {
   Settings,      
   HelpCircle,
   Menu, // Icono de Hamburguesa
-  X     // Icono de Cerrar
+  X,     // Icono de Cerrar
+  Wrench // Nuevo icono para servicio técnico
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -26,7 +27,8 @@ export default function Sidebar() {
   const [usuario, setUsuario] = useState({
     nombre: "Usuario",
     email: "Cargando...",
-    rol: "" 
+    rol: "",
+    departamento: "" // Agregamos departamento para la lógica
   });
 
   useEffect(() => {
@@ -56,6 +58,14 @@ export default function Sidebar() {
         ? "bg-blue-50 text-blue-600" 
         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
     }`;
+
+  // --- LÓGICA DE ROLES ---
+  // Determinamos si es ingeniero basándonos en su rol o departamento
+  const esIngeniero = usuario.rol === 'ingeniero' || 
+                      (usuario.departamento && (
+                        usuario.departamento.toLowerCase().includes('técnico') || 
+                        usuario.departamento.toLowerCase().includes('servicio')
+                      ));
 
   return (
     <>
@@ -87,7 +97,8 @@ export default function Sidebar() {
         {/* HEADER */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-blue-200 shadow-md">
+            {/* Color distintivo según rol: Azul (Ventas) / Naranja (Técnico) */}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold shadow-md ${esIngeniero ? 'bg-orange-500 shadow-orange-200' : 'bg-blue-600 shadow-blue-200'}`}>
               S
             </div>
             <span className="font-bold text-lg text-gray-800 tracking-tight">SIG System</span>
@@ -104,55 +115,77 @@ export default function Sidebar() {
         {/* NAV SCROLLABLE */}
         <nav className="flex-1 p-4 space-y-6 overflow-y-auto custom-scrollbar">
           
-          {/* SECCIÓN: OPERACIÓN */}
+          {/* --- MENÚ EXCLUSIVO PARA VENTAS / ADMIN --- */}
+          {!esIngeniero && (
+            <>
+              <div>
+                <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Comercial</p>
+                <div className="space-y-1">
+                  <Link href="/cotizaciones" className={linkClass("/cotizaciones")}>
+                    <LayoutDashboard size={18} />
+                    Tablero Principal
+                  </Link>
+                  <Link href="/cotizaciones/nueva" className={linkClass("/cotizaciones/nueva")}>
+                    <FilePlus size={18} />
+                    Nueva Cotización
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Gestión</p>
+                <div className="space-y-1">
+                  <Link href="/clientes" className={linkClass("/clientes")}>
+                    <Users size={18} />
+                    Clientes
+                  </Link>
+                  <Link href="/servicios" className={linkClass("/servicios")}>
+                    <Tags size={18} />
+                    Tarifas y Servicios
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* --- SECCIÓN DE REPORTES TÉCNICOS (Visible para todos, pero prioritaria para Ingenieros) --- */}
           <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Operación</p>
+            <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Servicio Técnico</p>
             <div className="space-y-1">
-              <Link href="/cotizaciones" className={linkClass("/cotizaciones")}>
-                <LayoutDashboard size={18} />
-                Tablero Principal
+              <Link href="/reportestec" className={linkClass("/reportestec")}>
+                <Wrench size={18} />
+                {esIngeniero ? "Mis Reportes" : "Reportes Técnicos"}
               </Link>
-              <Link href="/cotizaciones/nueva" className={linkClass("/cotizaciones/nueva")}>
-                <FilePlus size={18} />
-                Nueva Cotización
-              </Link>
+              
+              {/* Acceso directo a crear reporte (Esencial para ingenieros) */}
+              {esIngeniero && (
+                <Link href="/reportestec/nuevo" className={linkClass("/reportestec/nuevo")}>
+                  <FilePlus size={18} />
+                  Nuevo Reporte
+                </Link>
+              )}
+
+              {/* Si es ventas, también ve métricas aquí, el inge no */}
+              {!esIngeniero && (
+                <Link href="/reportes" className={linkClass("/reportes")}>
+                  <BarChart3 size={18} />
+                  Métricas de Ventas
+                </Link>
+              )}
             </div>
           </div>
 
-          {/* SECCIÓN: GESTIÓN */}
-          <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Gestión</p>
-            <div className="space-y-1">
-              <Link href="/clientes" className={linkClass("/clientes")}>
-                <Users size={18} />
-                Clientes
-              </Link>
-              <Link href="/servicios" className={linkClass("/servicios")}>
-                <Tags size={18} />
-                Tarifas y Servicios
-              </Link>
-            </div>
-          </div>
-
-          {/* SECCIÓN: ANÁLISIS */}
-          <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Reportes</p>
-            <div className="space-y-1">
-              <Link href="/reportes" className={linkClass("/reportes")}>
-                <BarChart3 size={18} />
-                Métricas de Ventas
-              </Link>
-            </div>
-          </div>
-
-          {/* SECCIÓN: SISTEMA */}
+          {/* --- SECCIÓN SISTEMA (Común) --- */}
           <div>
             <p className="px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Sistema</p>
             <div className="space-y-1">
-              <Link href="/configuracion" className={linkClass("/configuracion")}>
-                <Settings size={18} />
-                Configuración
-              </Link>
+              {/* Configuración solo para Admins/Ventas */}
+              {!esIngeniero && (
+                <Link href="/configuracion" className={linkClass("/configuracion")}>
+                  <Settings size={18} />
+                  Configuración
+                </Link>
+              )}
               <Link href="/ayuda" className={linkClass("/ayuda")}>
                 <HelpCircle size={18} />
                 Ayuda y Soporte
@@ -173,7 +206,8 @@ export default function Sidebar() {
                 {usuario.nombre}
               </p>
               <p className="text-[10px] text-gray-500 truncate font-mono">
-                {usuario.email}
+                {/* Mostramos el rol de forma amigable */}
+                {esIngeniero ? "Ingeniero de Campo" : (usuario.rol || "Usuario")}
               </p>
             </div>
           </div>

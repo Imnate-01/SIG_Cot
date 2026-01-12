@@ -37,7 +37,6 @@ import {
 } from "@react-pdf/renderer";
 import dynamic from "next/dynamic";
 
-// --- FIX: Carga dinámica para evitar error de hidratación/SSR ---
 const PDFViewerDynamic = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
   { ssr: false, loading: () => <p>Cargando visor...</p> }
@@ -56,7 +55,19 @@ interface ShipTo { nombre: string; direccion: string; colonia: string; ciudad: s
 interface Contacto { nombre: string; email: string; telefono: string; }
 interface Condiciones { precios: string; moneda: string; maquina: string; observaciones: string; }
 interface CotizacionFormData { proveedor: Proveedor; facturarA: FacturarA; shipTo: ShipTo; shipToMismoQueFacturar: boolean; contactoPrincipal: Contacto; contactoSecundario: Contacto; condiciones: Condiciones; }
-interface ClientePredefinido { id: string | number; nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
+interface ClientePredefinido {
+  id: string | number;
+  nombre: string;
+  empresa?: string;
+  contacto_nombre?: string; // ✅
+  correo?: string;
+  telefono?: string;
+  direccion: string;
+  colonia: string;
+  ciudad: string;
+  cp: string;
+}
+
 interface UsuarioRegistrado { id: string; nombre: string; email: string; telefono: string; puesto?: string; departamento?: string; }
 
 interface Tarifa { 
@@ -72,12 +83,12 @@ interface Tarifa {
 interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
 interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; }
 
-/* ===================== Estilos PDF (BALANCEADO) ===================== */
+/* ===================== Estilos PDF ===================== */
 
 const pdfStyles = StyleSheet.create({
   page: { 
-    padding: 35, // Aumentado de 25 a 35 para que respire mejor
-    fontSize: 10, // Fuente estándar de documentos
+    padding: 35, 
+    fontSize: 10, 
     fontFamily: "Helvetica",
   },
   header: { 
@@ -89,7 +100,7 @@ const pdfStyles = StyleSheet.create({
     alignItems: 'center'
   },
   logo: { 
-    width: 60, // Tamaño estándar
+    width: 60, 
     height: 60, 
     marginBottom: 5, 
     objectFit: "contain" 
@@ -113,7 +124,7 @@ const pdfStyles = StyleSheet.create({
   },
   row: { 
     flexDirection: "row", 
-    marginBottom: 10 // Espacio cómodo entre filas
+    marginBottom: 10 
   },
   column: { 
     flex: 1, 
@@ -129,82 +140,23 @@ const pdfStyles = StyleSheet.create({
     marginBottom: 2,
     lineHeight: 1.3 
   },
-  table: { 
-    marginTop: 10, 
-    marginBottom: 15 
-  },
-  tableHeader: { 
-    flexDirection: "row", 
-    backgroundColor: "#f3f4f6", 
-    borderBottom: "1px solid #d1d5db", 
-    padding: 5, 
-    fontWeight: "bold", 
-    fontSize: 8 
-  },
-  tableRow: { 
-    flexDirection: "row", 
-    borderBottom: "1px solid #e5e7eb", 
-    padding: 5, 
-    fontSize: 8 
-  },
-  tableCell: { 
-    flex: 1 
-  },
-  tableCellSmall: { 
-    width: 55, 
-    textAlign: "center" 
-  },
-  total: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    backgroundColor: "#dbeafe", 
-    padding: 6, 
-    marginTop: 4, 
-    fontWeight: "bold",
-    fontSize: 9
-  },
-  footer: { 
-    position: "absolute", 
-    bottom: 30, 
-    left: 35, 
-    right: 35, 
-    textAlign: "center", 
-    fontSize: 8, 
-    color: "#6b7280", 
-    borderTop: "1px solid #e5e7eb", 
-    paddingTop: 8 
-  },
-  signatureSection: { 
-    marginTop: 20, 
-    marginBottom: 10,
-  },
-  signatureText: { 
-    fontSize: 9, 
-    marginBottom: 5, 
-    color: "#000", 
-    lineHeight: 1.3 
-  },
-  signatureImage: { 
-    width: 100, 
-    height: 50, 
-    objectFit: "contain", 
-    marginLeft: 0, 
-    marginBottom: 0 
-  },
-  signatureLine: { 
-    borderBottom: "1px solid #000", 
-    width: 180, 
-    marginTop: 5, 
-    marginBottom: 4 
-  },
-  signatureName: { 
-    fontSize: 9, 
-    fontWeight: "bold" 
-  },
-  signatureJob: { 
-    fontSize: 9, 
-    fontWeight: "bold" 
-  }
+  // Estilos de Tabla
+  table: { marginTop: 10, marginBottom: 15 },
+  tableHeader: { flexDirection: "row", backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 5, fontWeight: "bold", fontSize: 8 },
+  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb", padding: 5, fontSize: 8 },
+  
+  colDesc: { flex: 2 }, 
+  colTiny: { width: 35, textAlign: "center" }, 
+  colSmall: { width: 55, textAlign: "center" }, 
+
+  total: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#dbeafe", padding: 6, marginTop: 4, fontWeight: "bold", fontSize: 9 },
+  footer: { position: "absolute", bottom: 30, left: 35, right: 35, textAlign: "center", fontSize: 8, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 8 },
+  signatureSection: { marginTop: 20, marginBottom: 10 },
+  signatureText: { fontSize: 9, marginBottom: 5, color: "#000", lineHeight: 1.3 },
+  signatureImage: { width: 100, height: 50, objectFit: "contain", marginLeft: 0, marginBottom: 0 },
+  signatureLine: { borderBottom: "1px solid #000", width: 180, marginTop: 5, marginBottom: 4 },
+  signatureName: { fontSize: 9, fontWeight: "bold" },
+  signatureJob: { fontSize: 9, fontWeight: "bold" }
 });
 
 /* ===================== Componente PDF ===================== */
@@ -227,11 +179,8 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
   const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
   
   const puestoUsuario = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
-
-  // Lógica del Folio: Si hay folio, lo muestra. Si no, muestra "BORRADOR".
   const displayFolio = folio ? folio : "BORRADOR";
 
-  // Datos dinámicos para la firma
   const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
   const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
   const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
@@ -239,7 +188,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
   return (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
-        {/* Header */}
         <View style={pdfStyles.header}>
           <View>
             <Image style={pdfStyles.logo} src="/SIG_logo.png" />
@@ -254,7 +202,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
         </View>
 
-        {/* Datos Proveedor / Facturar */}
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.sectionTitle}>PROVEEDOR:</Text>
@@ -272,7 +219,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
         </View>
 
-        {/* Ship To */}
         <View style={pdfStyles.row}>
              <View style={pdfStyles.column}>
                 <Text style={pdfStyles.sectionTitle}>LUGAR DEL SERVICIO (SHIP TO):</Text>
@@ -283,7 +229,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
              </View>
         </View>
 
-        {/* Contactos */}
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>De:</Text>
@@ -302,34 +247,39 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
         {/* Tabla */}
         <View style={pdfStyles.table}>
           <View style={pdfStyles.tableHeader}>
-            <Text style={{ flex: 2 }}>Detalle</Text>
-            <Text style={pdfStyles.tableCellSmall}>Cant.</Text>
-            <Text style={pdfStyles.tableCellSmall}>P. Unit.</Text>
-            <Text style={pdfStyles.tableCellSmall}>Total</Text>
+            <Text style={pdfStyles.colDesc}>Detalle</Text>
+            <Text style={pdfStyles.colTiny}>Ing.</Text>
+            <Text style={pdfStyles.colSmall}>Cant.</Text>
+            <Text style={pdfStyles.colSmall}>P. Unit.</Text>
+            <Text style={pdfStyles.colSmall}>Total</Text>
           </View>
+          
           {itemsServicio.map((item) => {
             const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
             const precioUnitario = item.conContrato
               ? tarifa?.precio_con_contrato || 0
               : tarifa?.precio_sin_contrato || 0;
 
+            const numIngenieros = tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0 
+                ? item.desglose.length 
+                : (item.ingenieros || 1);
+
             return (
               <View key={item.id} style={pdfStyles.tableRow}>
-                <View style={{ flex: 2 }}>
+                <View style={pdfStyles.colDesc}>
                   <Text>{tarifa?.concepto || "No especificado"}</Text>
-                  {/* Texto secundario */}
+                  
                   {tarifa?.requiere_desglose && item.desglose.length > 0 && item.desglose.map((d, idx) => (
                       <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || `Ing. ${idx + 1}`}: {d.horas}h</Text>
                   ))}
+                  
                   {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>Nota: {item.detalles}</Text>}
                 </View>
-                <Text style={pdfStyles.tableCellSmall}>{item.cantidad}</Text>
-                <Text style={pdfStyles.tableCellSmall}>
-                  ${precioUnitario.toFixed(2)}
-                </Text>
-                <Text style={[pdfStyles.tableCellSmall, { fontWeight: "bold" }]}>
-                  ${item.total.toFixed(2)}
-                </Text>
+                
+                <Text style={pdfStyles.colTiny}>{numIngenieros}</Text>
+                <Text style={pdfStyles.colSmall}>{item.cantidad}</Text>
+                <Text style={pdfStyles.colSmall}>${precioUnitario.toFixed(2)}</Text>
+                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>${item.total.toFixed(2)}</Text>
               </View>
             );
           })}
@@ -352,7 +302,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
         </View>
 
-        {/* Condiciones y Observaciones */}
         <View style={pdfStyles.section}>
           <Text style={pdfStyles.label}>Condiciones Generales:</Text>
           <Text style={pdfStyles.value}>
@@ -368,7 +317,6 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
         )}
 
-        {/* Firma Dinámica */}
         <View style={pdfStyles.signatureSection}>
           <Text style={pdfStyles.signatureText}>
             Enviar orden de compra a <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text> con atención a {nombreUsuario}.
@@ -500,7 +448,6 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
       link.href = url;
       link.download = `Cotizacion_${folio || 'Borrador'}_FULL.pdf`;
       link.click();
-      // revoke the object URL to free memory after the download is triggered
       URL.revokeObjectURL(url);
 
     } catch (error) {
@@ -650,17 +597,25 @@ const NuevaCotizacionPage: React.FC = () => {
 const handleGuardar = async () => {
     try {
       setLoading(true)
+      
       const itemsFormateados = itemsServicio.map(item => {
         const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
         const precioUnitario = item.conContrato
           ? tarifa?.precio_con_contrato || 0
           : tarifa?.precio_sin_contrato || 0
 
+        const cantidadReal = tarifa?.requiere_desglose 
+            ? item.cantidad 
+            : (item.cantidad * (item.ingenieros || 1));
+
         return {
           concepto: tarifa?.concepto || 'Servicio no especificado',
-          cantidad: item.cantidad,
+          cantidad: cantidadReal, 
           precioUnitario: precioUnitario,
-          total: item.total
+          total: item.total,
+          detalles: item.detalles || "", 
+          desglose: item.desglose || [],
+          ingenieros: item.ingenieros || 1
         }
       })
 
@@ -700,32 +655,41 @@ const handleGuardar = async () => {
   }
 
   const handleSelectCliente = (value: string) => {
-    if (value === "nuevo") {
-      setModoNuevoCliente(true);
-      setClienteSeleccionadoId("nuevo");
-      setFormData((prev) => ({
-        ...prev,
-        facturarA: { 
-            nombre: "", direccion: "", colonia: "", ciudad: "", cp: "" 
-        },
-      }));
-      return;
-    }
-    setModoNuevoCliente(false);
-    setClienteSeleccionadoId(value);
-    const cliente = clientesDisponibles.find((c) => String(c.id) === value);
-    if (!cliente) return;
+  if (value === "nuevo") {
+    setModoNuevoCliente(true);
+    setClienteSeleccionadoId("nuevo");
     setFormData((prev) => ({
       ...prev,
-      facturarA: { 
-        nombre: cliente.nombre || "", 
-        direccion: cliente.direccion || "", 
-        colonia: cliente.colonia || "", 
-        ciudad: cliente.ciudad || "", 
-        cp: cliente.cp || ""
-      },
+      facturarA: { nombre: "", direccion: "", colonia: "", ciudad: "", cp: "" },
+      contactoSecundario: { nombre: "", email: "", telefono: "" },
     }));
-  };
+    return;
+  }
+
+  setModoNuevoCliente(false);
+  setClienteSeleccionadoId(value);
+
+  const cliente = clientesDisponibles.find((c) => String(c.id) === value);
+  if (!cliente) return;
+
+  setFormData((prev) => ({
+    ...prev,
+    facturarA: {
+      nombre: cliente.nombre || "",
+      direccion: cliente.direccion || "",
+      colonia: cliente.colonia || "",
+      ciudad: cliente.ciudad || "",
+      cp: cliente.cp || "",
+    },
+    contactoSecundario: {
+      // ✅ aquí el cambio:
+      nombre: (cliente as any).contacto_nombre || "", // o cliente.contacto_nombre si ya lo tienes tipado
+      email: cliente.correo || "",
+      telefono: cliente.telefono || "",
+    },
+  }));
+};
+
 
   const handleSelectShipTo = (value: string) => {
       setShipToSeleccionadoId(value);
@@ -780,16 +744,13 @@ const handleGuardar = async () => {
         else if (campo === "conContrato") updated.conContrato = Boolean(valor);
         else if (campo === "detalles") updated.detalles = String(valor);
         else {
-          // Narrow to known numeric fields to keep strong typing
           if (campo === "ingenieros") {
             updated.ingenieros = Number(valor) || 0;
           } else if (campo === "cantidad") {
             updated.cantidad = Number(valor) || 0;
           } else if (campo === "id") {
-            // rarely updated — keep a safe fallback
             updated.id = Number(valor) || updated.id;
           } else {
-            // Last fallback if an unexpected key arrives; keep it explicit
             (updated as any)[campo] = valor;
           }
         }
@@ -880,11 +841,7 @@ const handleGuardar = async () => {
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Cotizador de Servicio Técnico</h1>
               <p className="text-gray-500">Generación de ofertas para asistencia y soporte en planta.</p>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setModalVistaPreviaAbierto(true)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
-                <Eye size={20} /> Vista previa
-              </button>
-            </div>
+            {/* --- AQUÍ ELIMINÉ EL BOTÓN DE VISTA PREVIA --- */}
           </div>
         </div>
 
@@ -1082,6 +1039,14 @@ const handleGuardar = async () => {
           <button className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold">
             Cancelar
           </button>
+          {/* ✅ NUEVA UBICACIÓN DEL BOTÓN DE VISTA PREVIA */}
+          <button 
+            onClick={() => setModalVistaPreviaAbierto(true)} 
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-semibold"
+          >
+            <Eye size={20} /> Vista previa
+          </button>
+
           <button
             onClick={handleGuardar}
             disabled={loading}

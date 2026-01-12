@@ -1,187 +1,364 @@
 "use client";
+
 import React from "react";
 import Link from "next/link";
-import { 
-  ArrowRight, 
-  CheckCircle2, 
-  LayoutDashboard, 
-  Zap, 
-  ShieldCheck, 
-  BarChart3 
+import {
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  Search,
+  ClipboardCheck,
+  Users,
+  ShieldCheck,
+  BarChart3,
+  Sparkles,
 } from "lucide-react";
+
+function FeatureCard({
+  icon: Icon,
+  title,
+  desc,
+  tone = "blue",
+}: {
+  icon: any;
+  title: string;
+  desc: string;
+  tone?: "blue" | "indigo" | "emerald" | "slate";
+}) {
+  const tones: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    slate: "bg-slate-50 text-slate-700 border-slate-200",
+  };
+
+  return (
+    <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+      <div className="flex items-start gap-4">
+        <div
+          className={`h-12 w-12 rounded-2xl border flex items-center justify-center ${tones[tone]}`}
+        >
+          <Icon size={20} />
+        </div>
+        <div>
+          <h3 className="text-lg font-extrabold tracking-tight text-slate-900">
+            {title}
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">{desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Step({
+  n,
+  title,
+  desc,
+}: {
+  n: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-extrabold">
+          {n}
+        </div>
+        <div>
+          <div className="font-extrabold text-slate-900">{title}</div>
+          <div className="mt-1 text-sm text-slate-600 leading-relaxed">
+            {desc}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-blue-100">
-      
-      {/* 1. NAVBAR (Barra de navegación superior) */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-200">
+    <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100">
+      {/* NAVBAR */}
+      <nav className="fixed top-0 w-full z-50 border-b border-slate-100 bg-white/75 backdrop-blur-md">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-extrabold shadow-sm">
               S
             </div>
-            <span className="font-bold text-xl tracking-tight">SIG System</span>
+            <div className="leading-tight">
+              <div className="font-extrabold tracking-tight text-slate-900">
+                SIG Cotizaciones
+              </div>
+              <div className="text-xs text-slate-500">
+                Plataforma interna • Control y trazabilidad
+              </div>
+            </div>
           </div>
 
-          {/* Botones de Acción */}
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/login" 
-              className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors hidden sm:block"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex rounded-xl px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
             >
-              Iniciar Sesión
+              Iniciar sesión
             </Link>
-            <Link 
-              href="/register" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 text-sm"
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-blue-700 transition shadow-sm"
             >
-              Crear Cuenta
+              Solicitar acceso <ArrowRight size={16} />
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* 2. HERO SECTION (La parte principal) */}
-      <header className="pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 relative overflow-hidden">
-        {/* Fondos decorativos (Glows) */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-50 rounded-full blur-3xl -z-10 opacity-60" />
-        
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            Nueva Versión 2.0 Disponible
-          </div>
-          
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both">
-            Cotizaciones inteligentes para <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              SIG Combibloc
-            </span>
-          </h1>
-          
-          <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200 fill-mode-both">
-            Gestiona folios ST y SM, controla órdenes de compra y agiliza tus procesos comerciales en una sola plataforma centralizada.
-          </p>
+      {/* HERO */}
+      <header className="relative overflow-hidden pt-32 pb-16 lg:pt-44 lg:pb-24">
+        {/* background glow */}
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[520px] w-[1100px] rounded-full bg-blue-50 blur-3xl opacity-70 -z-10" />
+        <div className="absolute -bottom-40 right-0 h-[520px] w-[520px] rounded-full bg-indigo-50 blur-3xl opacity-70 -z-10" />
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300 fill-mode-both">
-            <Link 
-              href="/login"
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-xl shadow-blue-200 hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center gap-2"
-            >
-              Comenzar ahora <ArrowRight size={20} />
-            </Link>
-            <Link 
-              href="/register"
-              className="w-full sm:w-auto bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center"
-            >
-              Registrarse
-            </Link>
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-extrabold text-slate-600">
+                <Sparkles size={14} className="text-blue-600" />
+                Cotiza, da seguimiento y documenta sin perder el control
+              </div>
+
+              <h1 className="mt-6 text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900">
+                Unifica tu flujo de{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                  cotizaciones
+                </span>{" "}
+                en SIG
+              </h1>
+
+              <p className="mt-5 text-lg text-slate-600 leading-relaxed max-w-xl">
+                Centraliza cotizaciones, clientes, órdenes de compra y documentos
+                en una plataforma clara, rápida y auditable para equipos SAM /
+                BackOffice.
+              </p>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 font-extrabold text-white hover:bg-slate-800 transition shadow-sm"
+                >
+                  Entrar <ArrowRight size={18} />
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3 font-extrabold text-slate-900 border border-slate-200 hover:bg-slate-50 transition"
+                >
+                  Solicitar acceso
+                </Link>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-600">
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                  Historial y trazabilidad
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                  Búsqueda rápida
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                  Documentación centralizada
+                </span>
+              </div>
+            </div>
+
+            {/* Visual mock */}
+            <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-slate-100 p-5 flex items-center justify-between">
+                <div className="font-extrabold text-slate-900">Vista general</div>
+                <div className="text-xs font-bold text-slate-500">
+                  Estados • Clientes • PO • Documentos
+                </div>
+              </div>
+              <div className="p-6 grid gap-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-extrabold">Cotización</div>
+                    <span className="text-xs font-extrabold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">
+                      En revisión
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-slate-600">
+                    Cliente • PO • partidas • totales • notas
+                  </div>
+                  <div className="mt-3 h-2 w-full rounded-full bg-white border border-slate-200 overflow-hidden">
+                    <div className="h-full w-[62%] bg-slate-900" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="text-xs font-bold text-slate-500">
+                      Búsquedas
+                    </div>
+                    <div className="mt-2 text-2xl font-extrabold">
+                      Rápidas
+                    </div>
+                    <div className="mt-2 text-sm text-slate-600">
+                      Folio, cliente, PO, palabra clave
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="text-xs font-bold text-slate-500">
+                      Documentos
+                    </div>
+                    <div className="mt-2 text-2xl font-extrabold">
+                      Central
+                    </div>
+                    <div className="mt-2 text-sm text-slate-600">
+                      PDF, evidencia y exportables
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-slate-900 text-white p-4">
+                  <div className="font-extrabold">Pensado para auditoría</div>
+                  <div className="text-sm text-white/80 mt-1">
+                    Cada cambio queda registrado para seguimiento y control.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* 3. FEATURES GRID (Características) */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Card 1 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <LayoutDashboard size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-900">Control Total</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Distingue automáticamente entre cotizaciones Time & Material (ST) y Servicios Mensuales (SM) desde un único tablero.
-              </p>
-            </div>
+      {/* FEATURES */}
+      <section className="py-16 bg-slate-50 border-t border-slate-100">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-tight">
+              ¿Qué puedes hacer en SIG Cotizaciones?
+            </h2>
+            <p className="mt-3 text-slate-600 leading-relaxed">
+              Un landing moderno resume capacidades reales: creación, seguimiento,
+              búsqueda y control documental.
+            </p>
+          </div>
 
-            {/* Card 2 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Zap size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-900">Gestión Rápida</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Crea cotizaciones en segundos. El sistema detecta clientes recurrentes y autocompleta la información fiscal.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <ShieldCheck size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-900">Trazabilidad PO</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Nunca pierdas de vista una Orden de Compra. Registra el número de PO y cambia el estatus a "Completada" al facturar.
-              </p>
-            </div>
-
+          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <FeatureCard
+              icon={FileText}
+              title="Cotizaciones centralizadas"
+              desc="Crea, edita y mantiene histórico. Evita archivos sueltos y versiones perdidas."
+              tone="blue"
+            />
+            <FeatureCard
+              icon={Search}
+              title="Búsqueda eficiente"
+              desc="Encuentra por folio, cliente, PO o texto. Menos tiempo buscando, más operando."
+              tone="slate"
+            />
+            <FeatureCard
+              icon={ClipboardCheck}
+              title="Seguimiento y estatus"
+              desc="Controla el avance (revisión, enviada, aprobada, facturación, etc.) con claridad."
+              tone="indigo"
+            />
+            <FeatureCard
+              icon={Users}
+              title="Gestión de clientes"
+              desc="Datos fiscales y contactos consistentes para evitar errores en documentos."
+              tone="emerald"
+            />
+            <FeatureCard
+              icon={BarChart3}
+              title="Visibilidad operativa"
+              desc="Consulta pendientes, recientes y actividad del equipo para tomar decisiones."
+              tone="slate"
+            />
+            <FeatureCard
+              icon={ShieldCheck}
+              title="Control y trazabilidad"
+              desc="Operación auditable: quién cambió qué, cuándo, y con qué contexto."
+              tone="blue"
+            />
           </div>
         </div>
       </section>
 
-      {/* 4. ESTADÍSTICAS / SOCIAL PROOF */}
-      <section className="py-20 bg-white border-t border-slate-100">
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-slate-900 mb-12">Diseñado para la eficiencia del equipo SAM</h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="p-4">
-              <div className="text-4xl font-extrabold text-blue-600 mb-2">+1.5k</div>
-              <div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Cotizaciones</div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl font-extrabold text-blue-600 mb-2">98%</div>
-              <div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Aprobaciones</div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl font-extrabold text-blue-600 mb-2">24/7</div>
-              <div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Disponibilidad</div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl font-extrabold text-blue-600 mb-2">100%</div>
-              <div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Seguro</div>
-            </div>
+      {/* HOW IT WORKS */}
+      <section className="py-16 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-tight">
+              Flujo claro, sin fricción
+            </h2>
+            <p className="mt-3 text-slate-600 leading-relaxed">
+              Un proceso simple y repetible para que el equipo trabaje igual,
+              siempre.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <Step
+              n="1"
+              title="Captura y estructura"
+              desc="Registra información del cliente, partidas y condiciones en un formato consistente."
+            />
+            <Step
+              n="2"
+              title="Revisión y seguimiento"
+              desc="Actualiza estatus y conserva el historial para evitar confusión y retrabajo."
+            />
+            <Step
+              n="3"
+              title="Documentación y cierre"
+              desc="Genera documentos y centraliza evidencia para facturación, PO y auditoría."
+            />
           </div>
         </div>
       </section>
 
-      {/* 5. CTA FINAL */}
-      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
-         {/* Decoración de fondo */}
-         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600 rounded-full blur-[120px] opacity-20 translate-x-1/2 -translate-y-1/2"></div>
-
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">¿Listo para optimizar tu flujo de trabajo?</h2>
-          <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-            Únete al sistema y lleva el control de tus servicios de mantenimiento y materiales al siguiente nivel.
+      {/* FINAL CTA */}
+      <section className="py-20 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute -top-24 left-0 h-[420px] w-[420px] rounded-full bg-blue-600 blur-[120px] opacity-20" />
+        <div className="mx-auto max-w-7xl px-6 text-center relative">
+          <h2 className="text-4xl font-extrabold tracking-tight">
+            Listo para trabajar con control real
+          </h2>
+          <p className="mt-4 text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Accede a SIG Cotizaciones y mantén trazabilidad, búsqueda y documentación
+            en un solo lugar.
           </p>
-          <Link 
-            href="/login"
-            className="inline-flex bg-white text-blue-900 hover:bg-blue-50 px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-          >
-            Acceder al Sistema
-          </Link>
+          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-3 font-extrabold text-slate-900 hover:bg-slate-100 transition"
+            >
+              Iniciar sesión <ArrowRight size={18} />
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-7 py-3 font-extrabold text-white hover:bg-white/15 transition"
+            >
+              Solicitar acceso
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* 6. FOOTER */}
-      <footer className="bg-white py-12 border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-slate-200 rounded flex items-center justify-center text-slate-600 font-bold text-xs">S</div>
-            <span className="font-bold text-slate-700">SIG System</span>
+      {/* FOOTER */}
+      <footer className="border-t border-slate-100 bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-slate-600">
+            © {new Date().getFullYear()} SIG Combibloc • SIG Cotizaciones
           </div>
-          <div className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} SIG Combibloc. Todos los derechos reservados.
-          </div>
+          <div className="text-sm text-slate-500">Plataforma interna</div>
         </div>
       </footer>
-
     </div>
   );
 }

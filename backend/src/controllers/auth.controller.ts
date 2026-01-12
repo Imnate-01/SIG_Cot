@@ -66,7 +66,6 @@ export const loginUsuario = async (req: Request, res: Response) => {
 
     // 2. Para leer el perfil, lo correcto es usar el cliente ADMIN aquí 
     // para asegurar que obtenemos los datos del rol sin importar las reglas RLS del usuario
-    // (Opcional: Podríamos usar createClientForUser(token) si la tabla 'usuarios' es legible por el propio usuario)
     const { data: perfil } = await supabaseAdmin
       .from('usuarios')
       .select('*')
@@ -80,7 +79,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
         id: data.user.id,
         email: data.user.email,
         nombre: perfil?.nombre,
-        rol: perfil?.rol
+        rol: perfil?.rol,
+        // ✅ AGREGADO: Enviamos el departamento para decidir la redirección en el front
+        departamento: perfil?.departamento 
       },
     });
 
