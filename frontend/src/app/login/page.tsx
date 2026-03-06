@@ -34,7 +34,7 @@ export default function LoginPage() {
       return;
     }
 
-    // --- CORRECCIÓN CLAVE ---
+   
     // Usamos la variable de entorno. Si no existe (en local), usa localhost.
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 

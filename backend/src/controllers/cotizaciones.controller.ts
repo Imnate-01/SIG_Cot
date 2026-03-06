@@ -1,9 +1,9 @@
 import { Request, Response } from 'express'
 // CAMBIO IMPORTANTE: Importamos la función para crear clientes seguros, no la instancia global
-import { createClientForUser } from '../config/supabase' 
+import { createClientForUser } from '../config/supabase'
 
 export class CotizacionesController {
-  
+
   // ---------------------------------------------------------
   // 1. CREAR COTIZACIÓN
   // ---------------------------------------------------------
@@ -21,7 +21,7 @@ export class CotizacionesController {
       if (authError || !user) {
         return res.status(401).json({ success: false, message: 'Token inválido o expirado' })
       }
-      
+
       const creado_por = user.id
 
       // D. Recibir datos
@@ -34,9 +34,16 @@ export class CotizacionesController {
         itemsServicio,
         total,
         estado = 'borrador',
-        tipo_servicio = 'TM', 
-        proveedor
+        tipo_servicio = 'TM',
+        proveedor,
+        descripcion // ← AGREGAR
       } = req.body
+
+      // Sanitizar descripción
+      const descripcionFinal: string | null =
+        (typeof descripcion === 'string' && descripcion.trim().length > 0)
+          ? descripcion.trim().slice(0, 120)
+          : null;
 
       // E. Lógica de Cliente Inteligente (Evita duplicados y maneja IDs de texto)
       if (!cliente_id || isNaN(Number(cliente_id))) {
@@ -97,7 +104,7 @@ Moneda: ${condiciones?.moneda || 'USD'}
 Observaciones: ${condiciones?.observaciones || ''}
       `.trim()
 
-    // G. Insertar la Cotización Maestra
+      // G. Insertar la Cotización Maestra
       const { data: cotizacion, error: errorCotizacion } = await supabaseUser
         .from('cotizaciones')
         .insert({
@@ -106,18 +113,19 @@ Observaciones: ${condiciones?.observaciones || ''}
           total: total,
           estado: estado,
           // Guardamos notas por compatibilidad, pero usaremos 'condiciones' para el PDF nuevo
-          notas: notas, 
+          notas: notas,
           tipo_servicio: tipo_servicio,
+          descripcion: descripcionFinal, // Insertar descripción sanitizada
           estatus_po: 'pendiente',
           // agregamos esta línea para guardar el objeto condiciones completo
-          condiciones: condiciones || {} 
+          condiciones: condiciones || {}
         })
         .select()
         .single()
 
       if (errorCotizacion) throw errorCotizacion
 
-     // H. Insertar los Items
+      // H. Insertar los Items
       const itemsConCotizacionId = itemsServicio.map((item: any) => ({
         cotizacion_id: cotizacion.id,
         concepto: item.concepto || 'Servicio',
@@ -125,7 +133,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         precio_unitario: item.precioUnitario || 0,
         subtotal: item.total || 0,
         // AQUÍ ESTÁ LA CORRECCIÓN: Guardamos lo que faltaba
-        detalles: item.detalles || null,       
+        detalles: item.detalles || null,
         desglose: item.desglose || [],          // Guardamos el array de ingenieros
         //  NUEVO: Guardamos la cantidad de ingenieros explícitamente
         ingenieros: item.ingenieros || 1
@@ -211,7 +219,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         .select(`
           *,
           clientes ( * ),
-          usuarios ( id, nombre, email ),
+          usuarios ( id, nombre, email, puesto, telefono ),
           cotizacion_items ( * )
         `)
         .eq('id', id)
@@ -265,6 +273,160 @@ Observaciones: ${condiciones?.observaciones || ''}
       res.json({ success: true, data })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  // ---------------------------------------------------------
+  // 4.5. ACTUALIZAR COTIZACIÓN (EDICIÓN DE BORRADOR)
+  // ---------------------------------------------------------
+  async update(req: Request, res: Response) {
+    try {
+      // A. Validar Token
+      const token = req.headers.authorization?.split(' ')[1]
+      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' })
+
+      const supabaseUser = createClientForUser(token);
+      const { id } = req.params;
+
+      // B. Verificar que exista y sea borrador
+      const { data: cotizacionActual, error: errorCheck } = await supabaseUser
+        .from('cotizaciones')
+        .select('estado')
+        .eq('id', id)
+        .single();
+
+      if (errorCheck || !cotizacionActual) {
+        return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
+      }
+
+      if (cotizacionActual.estado !== 'borrador') {
+        return res.status(400).json({ success: false, message: 'Solo se pueden editar cotizaciones en estado borrador.' });
+      }
+
+      // C. Recibir datos completos
+      let {
+        cliente_id,
+        facturarA,
+        contactoPrincipal,
+        contactoSecundario,
+        condiciones,
+        itemsServicio,
+        total,
+        // estado, // No permitimos cambiar estado aquí, solo datos
+        tipo_servicio = 'TM',
+        descripcion = null, // Nuevo campo
+        proveedor
+      } = req.body
+
+      // D. Lógica de Cliente (Igual que Create)
+      if (!cliente_id || isNaN(Number(cliente_id))) {
+        cliente_id = null;
+      }
+      let clienteIdFinal = cliente_id;
+
+      if (!clienteIdFinal && facturarA?.nombre) {
+        const { data: clienteExistente } = await supabaseUser
+          .from('clientes')
+          .select('id')
+          .ilike('nombre', `%${facturarA.nombre}%`)
+          .maybeSingle()
+
+        if (clienteExistente) {
+          clienteIdFinal = clienteExistente.id;
+        } else {
+          const { data: nuevoCliente, error: errorCliente } = await supabaseUser
+            .from('clientes')
+            .insert({
+              nombre: facturarA.nombre,
+              empresa: facturarA.nombre,
+              direccion: facturarA.direccion || '',
+              colonia: facturarA.colonia || '',
+              ciudad: facturarA.ciudad || '',
+              cp: facturarA.cp || '',
+              correo: contactoSecundario?.email || '',
+              telefono: contactoSecundario?.telefono || ''
+            })
+            .select()
+            .single()
+
+          if (errorCliente) throw errorCliente
+          clienteIdFinal = nuevoCliente.id
+        }
+      }
+
+      // E. Construir Notas
+      const notas = `
+PROVEEDOR:
+${proveedor?.nombre || ''}
+${proveedor?.direccion || ''}
+
+FACTURAR A:
+${facturarA?.nombre || ''}
+
+CONTACTOS:
+Principal: ${contactoPrincipal?.nombre || ''} (${contactoPrincipal?.email || ''})
+Secundario: ${contactoSecundario?.nombre || ''} (${contactoSecundario?.email || ''})
+
+CONDICIONES:
+Precios: ${condiciones?.precios || ''}
+Moneda: ${condiciones?.moneda || 'USD'}
+Observaciones: ${condiciones?.observaciones || ''}
+      `.trim()
+
+      // F. Actualizar Cabecera
+      const { error: errorUpdate } = await supabaseUser
+        .from('cotizaciones')
+        .update({
+          cliente_id: clienteIdFinal,
+          total: total,
+          notas: notas,
+          tipo_servicio: tipo_servicio,
+          descripcion: descripcion, // Actualizar descripción
+          condiciones: condiciones || {}
+        })
+        .eq('id', id);
+
+      if (errorUpdate) throw errorUpdate;
+
+      // G. Estrategia DELETE + INSERT para Items
+      // 1. Borrar anteriores
+      const { error: errorDeleteItems } = await supabaseUser
+        .from('cotizacion_items')
+        .delete()
+        .eq('cotizacion_id', id);
+
+      if (errorDeleteItems) throw errorDeleteItems;
+
+      // 2. Insertar nuevos
+      const itemsConCotizacionId = itemsServicio.map((item: any) => ({
+        cotizacion_id: id,
+        concepto: item.concepto || 'Servicio',
+        cantidad: item.cantidad || 1,
+        precio_unitario: item.precioUnitario || 0,
+        subtotal: item.total || 0,
+        detalles: item.detalles || null,
+        desglose: item.desglose || [],
+        ingenieros: item.ingenieros || 1
+      }))
+
+      const { error: errorInsertItems } = await supabaseUser
+        .from('cotizacion_items')
+        .insert(itemsConCotizacionId);
+
+      if (errorInsertItems) throw errorInsertItems;
+
+      res.json({
+        success: true,
+        message: 'Cotización actualizada correctamente',
+        data: { id }
+      })
+
+    } catch (error: any) {
+      console.error('Error al actualizar cotización:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Error interno al actualizar cotización'
+      })
     }
   }
 
@@ -324,7 +486,7 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       const { data, error } = await supabaseUser
         .from('usuarios')
-        .select('id, nombre, email, departamento')
+        .select('id, nombre, email, departamento, puesto, telefono')
         .eq('activo', true)
         .order('nombre')
 

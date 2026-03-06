@@ -9,7 +9,8 @@ import {
   Trash2,
   Eye,
   X,
-  Download
+  Download,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -64,6 +65,11 @@ const CotizacionDocument = ({ data }: { data: any }) => {
   const usuario = data.usuarios || {};
   const items = data.cotizacion_items || [];
   const condiciones = data.condiciones || {};
+
+  // Determinar puesto del usuario - Eduardo tiene cargo especial
+  const puestoUsuario = (usuario.nombre || "").toLowerCase().includes("eduardo")
+    ? "Back Office Manager"
+    : (usuario.puesto || "Service Sales");
 
   const proveedor = {
     nombre: "SIG Combibloc México, S.A. de C.V.",
@@ -243,7 +249,7 @@ const CotizacionDocument = ({ data }: { data: any }) => {
           <Image style={pdfStyles.signatureImage} src="/firma_julio.png" />
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{usuario.nombre || "Representante SIG"}</Text>
-          <Text style={pdfStyles.signatureJob}>{usuario.puesto || "Service Sales"}</Text>
+          <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
         </View>
 
         <View style={pdfStyles.footer}>
@@ -340,6 +346,14 @@ export default function GestionCotizacion() {
               </h2>
               <p className="opacity-90 mt-2">Folio: {cotizacion?.numero_cotizacion}</p>
               <p className="opacity-75 text-sm">{cotizacion?.clientes?.nombre}</p>
+
+              {/* Descripción — solo renderiza si existe */}
+              {cotizacion?.descripcion && (
+                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 text-sm border border-white/20">
+                  <span className="opacity-60 text-xs">📋</span>
+                  <span className="font-medium">{cotizacion.descripcion}</span>
+                </div>
+              )}
             </div>
 
             <button
@@ -417,12 +431,24 @@ export default function GestionCotizacion() {
               </div>
             )}
 
+            {/* Botones de Acción */}
             <div className="pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
+
+              {/* Botón Editar solo si es borrador */}
+              {estado === "borrador" && (
+                <Link
+                  href={`/cotizaciones/editar/${id}`}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  <FileText size={24} /> Editar Contenido
+                </Link>
+              )}
+
               <button
                 onClick={handleGuardarCambios}
                 className="w-full bg-blue-600 dark:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-lg flex items-center justify-center gap-2"
               >
-                <Save size={24} /> Guardar Cambios
+                <Save size={24} /> Guardar Estado
               </button>
 
               <button

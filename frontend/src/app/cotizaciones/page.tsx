@@ -43,7 +43,8 @@ export default function DashboardCotizaciones() {
     const coincideTexto =
       cot.numero_cotizacion.toLowerCase().includes(texto) ||
       (cot.clientes?.nombre || "").toLowerCase().includes(texto) ||
-      (cot.clientes?.empresa || "").toLowerCase().includes(texto);
+      (cot.clientes?.empresa || "").toLowerCase().includes(texto) ||
+      (cot.descripcion || "").toLowerCase().includes(texto); // Filtro por descripción
 
     // 2. Filtro por Estado
     const coincideEstado = filtroEstado === "todos" || cot.estado === filtroEstado;
@@ -237,6 +238,11 @@ export default function DashboardCotizaciones() {
                         <td className="px-6 py-4">
                           <div className="font-bold text-gray-800 dark:text-white">{cot.clientes?.empresa || cot.clientes?.nombre}</div>
                           {cot.clientes?.empresa && <div className="text-xs text-gray-400 dark:text-gray-500">{cot.clientes?.nombre}</div>}
+                          {cot.descripcion && (
+                            <div className="mt-1 text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full inline-block border border-purple-100 dark:border-purple-900/30">
+                              {cot.descripcion}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           {cot.creado_por_nombre}

@@ -12,6 +12,7 @@ interface Cotizacion {
     clientes: { nombre: string; empresa: string };
     usuarios: { nombre: string };
     creado_por_nombre: string;
+    descripcion?: string | null; // Nuevo campo
 }
 
 export const exportToExcel = async (cotizaciones: Cotizacion[]) => {
@@ -23,6 +24,7 @@ export const exportToExcel = async (cotizaciones: Cotizacion[]) => {
     worksheet.columns = [
         { header: "Folio", key: "folio", width: 15 },
         { header: "Cliente", key: "cliente", width: 30 },
+        { header: "Descripción", key: "descripcion", width: 40 }, // Nueva columna
         { header: "Creado por", key: "creado_por", width: 20 },
         { header: "Fecha", key: "fecha", width: 15 },
         { header: "Total USD", key: "total", width: 15 },
@@ -48,6 +50,7 @@ export const exportToExcel = async (cotizaciones: Cotizacion[]) => {
             cliente: cot.clientes?.empresa
                 ? `${cot.clientes.empresa} (${cot.clientes.nombre})`
                 : cot.clientes?.nombre || "Sin cliente",
+            descripcion: cot.descripcion || "", // Mapeo de descripción
             creado_por: cot.creado_por_nombre || "Sistema",
             fecha: new Date(cot.fecha_creacion).toLocaleDateString("es-MX"),
             total: cot.total,

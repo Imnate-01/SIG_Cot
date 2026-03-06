@@ -55,7 +55,17 @@ interface FacturarA { nombre: string; direccion: string; colonia: string; ciudad
 interface ShipTo { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
 interface Contacto { nombre: string; email: string; telefono: string; }
 interface Condiciones { precios: string; moneda: string; maquina: string; observaciones: string; }
-interface CotizacionFormData { proveedor: Proveedor; facturarA: FacturarA; shipTo: ShipTo; shipToMismoQueFacturar: boolean; contactoPrincipal: Contacto; contactoSecundario: Contacto; condiciones: Condiciones; }
+interface CotizacionFormData {
+  proveedor: Proveedor;
+  facturarA: FacturarA;
+  shipTo: ShipTo;
+  shipToMismoQueFacturar: boolean;
+  contactoPrincipal: Contacto;
+  contactoSecundario: Contacto;
+  condiciones: Condiciones;
+  descripcion: string;
+  tipo_servicio: string;
+}
 interface ClientePredefinido {
   id: string | number;
   nombre: string;
@@ -179,7 +189,9 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
 
   const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
 
-  const puestoUsuario = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
+  const puestoUsuarioRaw = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
+  const nombreUsuarioCheck = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.nombre || "";
+  const puestoUsuario = nombreUsuarioCheck.toLowerCase().includes("eduardo") ? "Back Office Manager" : puestoUsuarioRaw;
   const displayFolio = folio ? folio : "BORRADOR";
 
   const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
@@ -202,6 +214,8 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
             <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>FECHA: </Text>{fecha}</Text>
           </View>
         </View>
+
+
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
@@ -528,6 +542,8 @@ const NuevaCotizacionPage: React.FC = () => {
     contactoPrincipal: { nombre: "", email: "", telefono: "" },
     contactoSecundario: { nombre: "", email: "", telefono: "" },
     condiciones: { precios: "Los precios cotizados no incluyen IVA", moneda: "USD", maquina: "", observaciones: "" },
+    descripcion: "", // Init
+    tipo_servicio: "TM",
   });
 
   const [clienteSeleccionadoId, setClienteSeleccionadoId] = useState<string>("");
@@ -630,6 +646,8 @@ const NuevaCotizacionPage: React.FC = () => {
         contactoSecundario: formData.contactoSecundario,
         condiciones: formData.condiciones,
         itemsServicio: itemsFormateados,
+        descripcion: formData.descripcion,
+        tipo_servicio: formData.tipo_servicio,
         aplicarIVA,
         subtotal: itemsServicio.reduce((sum, i) => sum + i.total, 0),
         iva: (itemsServicio.reduce((sum, i) => sum + i.total, 0)) * (aplicarIVA ? 0.16 : 0),
@@ -844,6 +862,48 @@ const NuevaCotizacionPage: React.FC = () => {
               <p className="text-gray-500 dark:text-gray-400">Generación de ofertas para asistencia y soporte en planta.</p>
             </div>
             {/* --- AQUÍ ELIMINÉ EL BOTÓN DE VISTA PREVIA --- */}
+          </div>
+        </div>
+
+
+
+        {/* Bloque de Identificación (Descripción) */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+              <FileText className="text-amber-600 dark:text-amber-400" size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                Identificación de la cotización
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Agrega una descripción para encontrarla fácilmente
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Descripción / Motivo
+              <span className="font-normal text-gray-400 ml-2">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              maxLength={120}
+              value={formData.descripcion}
+              onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+              placeholder="Ej: Mantenimiento correctivo · Red profibus"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-amber-500 focus:outline-none transition-colors"
+            />
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex justify-between">
+              <span>
+                Aparecerá en la tarjeta del tablero y en el PDF
+              </span>
+              <span className={formData.descripcion.length > 100 ? 'text-red-400' : 'text-gray-400'}>
+                {formData.descripcion.length}/120
+              </span>
+            </p>
           </div>
         </div>
 

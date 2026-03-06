@@ -14,6 +14,7 @@ export interface Cotizacion {
     clientes: { nombre: string; empresa: string };
     usuarios: { nombre: string };
     creado_por_nombre: string;
+    descripcion?: string; // Nuevo campo opcional
 }
 
 interface KanbanCardProps {
@@ -50,11 +51,21 @@ export const KanbanCard = ({ cotizacion, index }: KanbanCardProps) => {
                         </span>
                     </div>
 
+
+
                     {/* Cliente */}
                     <div className="mb-3">
                         <h4 className="font-semibold text-slate-800 dark:text-white text-sm line-clamp-1">
                             {cotizacion.clientes?.empresa || "Sin Empresa"}
                         </h4>
+
+                        {/* Descripción — solo renderiza si existe */}
+                        {cotizacion.descripcion && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1 line-clamp-1 border-l-2 border-blue-400 dark:border-blue-500 pl-2">
+                                {cotizacion.descripcion}
+                            </p>
+                        )}
+
                         <p className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
                             <User size={10} />
                             {cotizacion.clientes?.nombre || "Sin Contacto"}
