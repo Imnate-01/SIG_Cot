@@ -823,12 +823,12 @@ const NuevaCotizacionPage: React.FC = () => {
 
   const mejorarObservaciones = async () => {
     const textoOriginal = formData.condiciones.observaciones;
-    if (!textoOriginal || textoOriginal.length < 5) { toast.warning("Texto demasiado corto", { description: "Escribe algo en las observaciones primero." }); return; }
+    if (!textoOriginal || textoOriginal.length < 5) { toast.warning(t("toastTextShort"), { description: t("toastTextShortDesc") }); return; }
     setMejorandoTexto(true);
     try {
       const { data } = await api.post("/ia/mejorar-texto", { text: textoOriginal });
       if (data.result) handleInputChange("condiciones", "observaciones", data.result);
-    } catch (error) { toast.error("Error al mejorar texto con IA"); } finally { setMejorandoTexto(false); }
+    } catch (error) { toast.error(t("toastImproveError")); } finally { setMejorandoTexto(false); }
   };
 
   const extraerDatosCliente = async () => {
@@ -848,9 +848,9 @@ const NuevaCotizacionPage: React.FC = () => {
           }
         }));
         setTextoClienteSucio("");
-        toast.success("Datos extraídos correctamente");
+        toast.success(t("toastExtractSuccess"));
       }
-    } catch (error) { toast.error("Error extrayendo datos con IA"); } finally { setExtrayendoCliente(false); }
+    } catch (error) { toast.error(t("toastExtractError")); } finally { setExtrayendoCliente(false); }
   }
 
   const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
@@ -863,8 +863,8 @@ const NuevaCotizacionPage: React.FC = () => {
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-blue-600 dark:border-blue-500">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Cotizador de Servicio Técnico</h1>
-              <p className="text-gray-500 dark:text-gray-400">Generación de ofertas para asistencia y soporte en planta.</p>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{t("pageTitle")}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{t("pageSubtitle")}</p>
             </div>
             {/* --- AQUÍ ELIMINÉ EL BOTÓN DE VISTA PREVIA --- */}
           </div>
@@ -880,30 +880,30 @@ const NuevaCotizacionPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Identificación de la cotización
+                {t("identTitle")}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Agrega una descripción para encontrarla fácilmente
+                {t("identSubtitle")}
               </p>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Descripción / Motivo
-              <span className="font-normal text-gray-400 ml-2">(opcional)</span>
+              {t("identLabel")}
+              <span className="font-normal text-gray-400 ml-2">{t("identOptional")}</span>
             </label>
             <input
               type="text"
               maxLength={120}
               value={formData.descripcion}
               onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-              placeholder="Ej: Mantenimiento correctivo · Red profibus"
+              placeholder={t("identPlaceholder")}
               className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-amber-500 focus:outline-none transition-colors"
             />
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex justify-between">
               <span>
-                Aparecerá en la tarjeta del tablero y en el PDF
+                {t("identHelp")}
               </span>
               <span className={formData.descripcion.length > 100 ? 'text-red-400' : 'text-gray-400'}>
                 {formData.descripcion.length}/120
@@ -915,40 +915,40 @@ const NuevaCotizacionPage: React.FC = () => {
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><Building2 className="text-blue-600 dark:text-blue-400" size={24} /></div>
-            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">Información del proveedor</h2><p className="text-sm text-gray-500 dark:text-gray-400">Datos fijos de SIG</p></div>
+            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("provTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("provSubtitle")}</p></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre de la empresa</label><input type="text" value={formData.proveedor.nombre} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dirección</label><input type="text" value={formData.proveedor.direccion} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Colonia</label><input type="text" value={formData.proveedor.colonia} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ciudad</label><input type="text" value={formData.proveedor.ciudad} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Código postal</label><input type="text" value={formData.proveedor.cp} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
+            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("companyName")}</label><input type="text" value={formData.proveedor.nombre} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.proveedor.direccion} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.proveedor.colonia} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.proveedor.ciudad} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.proveedor.cp} disabled className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 cursor-not-allowed" /></div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl"><User className="text-green-600 dark:text-green-400" size={24} /></div>
-            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">Facturar a (Bill To)</h2><p className="text-sm text-gray-500 dark:text-gray-400">Selecciona un cliente existente o agrega uno nuevo</p></div>
+            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("billTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("billSubtitle")}</p></div>
           </div>
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Cliente</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("client")}</label>
             <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
-              <option value="">Selecciona un cliente...</option>
+              <option value="">{t("selectClient")}</option>
               {clientesDisponibles.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
-              <option value="nuevo">➕ Agregar nuevo cliente</option>
+              <option value="nuevo">{t("addNewClient")}</option>
             </select>
           </div>
 
           {modoNuevoCliente && (
             <div className="mb-6 bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 animate-fadeIn">
-              <h3 className="text-sm font-bold text-purple-800 dark:text-purple-300 flex items-center gap-2 mb-2"><Wand2 size={16} /> Autocompletar con IA</h3>
-              <p className="text-xs text-purple-600 dark:text-purple-400 mb-3">Pega aquí la firma del correo o los datos fiscales desordenados:</p>
+              <h3 className="text-sm font-bold text-purple-800 dark:text-purple-300 flex items-center gap-2 mb-2"><Wand2 size={16} /> {t("aiAutofill")}</h3>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mb-3">{t("aiAutofillDesc")}</p>
               <textarea
                 value={textoClienteSucio}
                 onChange={(e) => setTextoClienteSucio(e.target.value)}
                 className="w-full p-3 text-sm border border-purple-200 dark:border-purple-800 dark:bg-zinc-800 dark:text-gray-200 rounded-lg mb-3 focus:outline-none focus:border-purple-500"
-                placeholder="Ej: Razón Social: Empresa SA de CV, Calle Reforma 222, Col. Juarez, CDMX..."
+                placeholder={t("aiAutofillPlaceholder")}
                 rows={3}
               />
               <button
@@ -956,44 +956,44 @@ const NuevaCotizacionPage: React.FC = () => {
                 disabled={extrayendoCliente || !textoClienteSucio}
                 className="bg-purple-600 dark:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-all disabled:opacity-50"
               >
-                {extrayendoCliente ? "Analizando..." : "Extraer Datos"}
+                {extrayendoCliente ? t("aiAnalyzing") : t("aiExtract")}
               </button>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre del cliente</label><input type="text" value={formData.facturarA.nombre} onChange={(e) => handleFacturarFieldChange("nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Nombre o razón social" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dirección</label><input type="text" value={formData.facturarA.direccion} onChange={(e) => handleFacturarFieldChange("direccion", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Calle, número, etc." /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Colonia</label><input type="text" value={formData.facturarA.colonia} onChange={(e) => handleFacturarFieldChange("colonia", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Colonia o barrio" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ciudad</label><input type="text" value={formData.facturarA.ciudad} onChange={(e) => handleFacturarFieldChange("ciudad", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Ciudad, estado" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Código postal</label><input type="text" value={formData.facturarA.cp} onChange={(e) => handleFacturarFieldChange("cp", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="CP" /></div>
+            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("clientName")}</label><input type="text" value={formData.facturarA.nombre} onChange={(e) => handleFacturarFieldChange("nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("clientNamePlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.facturarA.direccion} onChange={(e) => handleFacturarFieldChange("direccion", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.facturarA.colonia} onChange={(e) => handleFacturarFieldChange("colonia", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.facturarA.ciudad} onChange={(e) => handleFacturarFieldChange("ciudad", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.facturarA.cp} onChange={(e) => handleFacturarFieldChange("cp", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-xl"><MapPin className="text-teal-600 dark:text-teal-400" size={24} /></div>
-            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">Lugar del servicio (Ship To)</h2><p className="text-sm text-gray-500 dark:text-gray-400">Dirección física donde se realizan los trabajos</p></div>
+            <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("shipTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("shipSubtitle")}</p></div>
           </div>
           <div className="mb-6 bg-teal-50 dark:bg-teal-900/10 p-4 rounded-xl border border-teal-100 dark:border-teal-900/30 flex items-center gap-3 transition-all hover:border-teal-300 dark:hover:border-teal-700 cursor-pointer" onClick={toggleShipToMismo}>
             <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${formData.shipToMismoQueFacturar ? 'bg-teal-600 border-teal-600 dark:bg-teal-500 dark:border-teal-500' : 'bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-600'}`}>{formData.shipToMismoQueFacturar && <CheckSquare size={16} className="text-white" />}</div>
-            <span className="text-gray-700 dark:text-gray-300 font-semibold select-none">Usar la misma dirección y datos que "Facturar A"</span>
+            <span className="text-gray-700 dark:text-gray-300 font-semibold select-none">{t("shipSameAsBill")}</span>
           </div>
           {!formData.shipToMismoQueFacturar && (
             <div className="animate-fadeIn">
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Seleccionar ubicación conocida:</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("shipSelectKnown")}</label>
                 <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-teal-500 focus:outline-none transition-colors">
-                  <option value="">-- Escribir manualmente o seleccionar --</option>
+                  <option value="">{t("shipSelectPlaceholder")}</option>
                   {clientesDisponibles.map(c => (<option key={c.id} value={c.id}>{c.nombre} - {c.ciudad}</option>))}
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre / Planta</label><input type="text" value={formData.shipTo.nombre} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, nombre: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder="Ej: Planta Producción Norte" /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dirección</label><input type="text" value={formData.shipTo.direccion} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, direccion: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder="Calle, número, etc." /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Colonia</label><input type="text" value={formData.shipTo.colonia} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, colonia: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder="Colonia" /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ciudad</label><input type="text" value={formData.shipTo.ciudad} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, ciudad: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder="Ciudad" /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Código postal</label><input type="text" value={formData.shipTo.cp} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, cp: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder="CP" /></div>
+                <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("shipNamePlant")}</label><input type="text" value={formData.shipTo.nombre} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, nombre: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("shipNamePlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.shipTo.direccion} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, direccion: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.shipTo.colonia} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, colonia: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.shipTo.ciudad} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, ciudad: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.shipTo.cp} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, cp: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
               </div>
             </div>
           )}
@@ -1002,34 +1002,34 @@ const NuevaCotizacionPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5 dark:opacity-10"><Users size={100} className="dark:text-white" /></div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2"><Users size={20} className="text-blue-600 dark:text-blue-400" />Solicitante (Quien cotiza)</h3>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2"><Users size={20} className="text-blue-600 dark:text-blue-400" />{t("requesterTitle")}</h3>
             <div className="mb-6 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
-              <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">Seleccionar usuario registrado:</label>
+              <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">{t("selectRegistered")}</label>
               <select value={usuarioSeleccionadoId} onChange={(e) => handleSelectUsuario(e.target.value)} className="w-full px-4 py-2 border border-blue-200 dark:border-blue-900/30 rounded-lg text-gray-800 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
-                <option value="">-- Seleccionar usuario --</option>
+                <option value="">{t("selectUser")}</option>
                 {usuariosRegistrados.map(user => (<option key={user.id} value={user.id}>{user.nombre} - {user.puesto}</option>))}
               </select>
             </div>
             <div className="space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre</label><input type="text" value={formData.contactoPrincipal.nombre} onChange={(e) => handleInputChange("contactoPrincipal", "nombre", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="Nombre completo" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email</label><input type="email" value={formData.contactoPrincipal.email} onChange={(e) => handleInputChange("contactoPrincipal", "email", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="correo@sig.biz" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Teléfono</label><input type="tel" value={formData.contactoPrincipal.telefono} onChange={(e) => handleInputChange("contactoPrincipal", "telefono", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="+52 55 1234 5678" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoPrincipal.nombre} onChange={(e) => handleInputChange("contactoPrincipal", "nombre", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder={t("namePlaceholder")} /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoPrincipal.email} onChange={(e) => handleInputChange("contactoPrincipal", "email", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="correo@sig.biz" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoPrincipal.telefono} onChange={(e) => handleInputChange("contactoPrincipal", "telefono", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="+52 55 1234 5678" /></div>
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8">
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Contacto secundario (Cliente)</h3>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">{t("secondaryContact")}</h3>
             <div className="space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre</label><input type="text" value={formData.contactoSecundario.nombre} onChange={(e) => handleInputChange("contactoSecundario", "nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Nombre completo" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email</label><input type="email" value={formData.contactoSecundario.email} onChange={(e) => handleInputChange("contactoSecundario", "email", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="correo@cliente.com" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Teléfono</label><input type="tel" value={formData.contactoSecundario.telefono} onChange={(e) => handleInputChange("contactoSecundario", "telefono", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="+52 55 1234 5678" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoSecundario.nombre} onChange={(e) => handleInputChange("contactoSecundario", "nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("namePlaceholder")} /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoSecundario.email} onChange={(e) => handleInputChange("contactoSecundario", "email", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="correo@cliente.com" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoSecundario.telefono} onChange={(e) => handleInputChange("contactoSecundario", "telefono", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="+52 55 1234 5678" /></div>
             </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3"><div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl"><FileText className="text-purple-600 dark:text-purple-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">Detalles del servicio</h2><p className="text-sm text-gray-500 dark:text-gray-400">Selecciona la tarifa, número de ingenieros y horas/días</p></div></div>
-            <button onClick={agregarLineaServicio} className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg">+ Agregar concepto</button>
+            <div className="flex items-center gap-3"><div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl"><FileText className="text-purple-600 dark:text-purple-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("serviceTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("serviceSubtitle")}</p></div></div>
+            <button onClick={agregarLineaServicio} className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg">{t("addConcept")}</button>
           </div>
           <div className="space-y-6">
             {itemsServicio.map((item) => {
@@ -1040,78 +1040,78 @@ const NuevaCotizacionPage: React.FC = () => {
               return (
                 <div key={item.id} className="border border-gray-200 dark:border-zinc-700 rounded-xl p-5 bg-gray-50 dark:bg-zinc-800/50 relative">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
-                    <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Concepto de servicio</label>
+                    <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("serviceConcept")}</label>
                       <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
-                        <option value="">Selecciona una tarifa</option>
+                        <option value="">{t("selectRate")}</option>
                         {/* RENDERIZADO DINÁMICO */}
                         {tarifasDisponibles.map((t) => (<option key={t.id} value={t.id}>{t.concepto}</option>))}
                       </select>
                     </div>
-                    <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">N.º de ingenieros</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>
-                    <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Total {tarifa?.unidad === "dia" ? "Días" : "Horas"}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>
+                    <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("numEngineers")}</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>
+                    <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{tarifa?.unidad === "dia" ? t("totalDays") : t("totalHours")}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>
                   </div>
                   {esViaje && (
                     <div className="mb-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-4 rounded-lg animate-fadeIn">
-                      <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2"><Users size={16} /> Desglose de horas por Ingeniero</h4>
-                      <div className="space-y-2">{item.desglose.map((d, idx) => (<div key={idx} className="flex flex-col sm:flex-row gap-3 items-center"><span className="text-xs font-bold text-blue-500 dark:text-blue-400 w-8">#{idx + 1}</span><div className="flex-1 w-full"><input type="text" placeholder={`Nombre del Ingeniero ${idx + 1}`} value={d.nombre} onChange={(e) => actualizarDesglose(item.id, idx, 'nombre', e.target.value)} className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 dark:bg-zinc-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-blue-300 outline-none" /></div><div className="w-full sm:w-32 flex items-center gap-2"><input type="number" placeholder="Horas" value={d.horas} onChange={(e) => actualizarDesglose(item.id, idx, 'horas', e.target.value)} className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 dark:bg-zinc-900 dark:text-white rounded text-center font-bold text-sm focus:ring-2 focus:ring-blue-300 outline-none" /><span className="text-xs text-gray-500 dark:text-gray-400">hrs</span></div></div>))}</div>
-                      <div className="mt-3 text-right text-xs font-bold text-blue-700 dark:text-blue-300">Suma total de horas: {item.cantidad}</div>
+                      <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2"><Users size={16} /> {t("breakdownTitle")}</h4>
+                      <div className="space-y-2">{item.desglose.map((d, idx) => (<div key={idx} className="flex flex-col sm:flex-row gap-3 items-center"><span className="text-xs font-bold text-blue-500 dark:text-blue-400 w-8">#{idx + 1}</span><div className="flex-1 w-full"><input type="text" placeholder={t("engineerNamePlaceholder", { num: idx + 1 })} value={d.nombre} onChange={(e) => actualizarDesglose(item.id, idx, 'nombre', e.target.value)} className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 dark:bg-zinc-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-blue-300 outline-none" /></div><div className="w-full sm:w-32 flex items-center gap-2"><input type="number" placeholder={t("hoursPlaceholder")} value={d.horas} onChange={(e) => actualizarDesglose(item.id, idx, 'horas', e.target.value)} className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 dark:bg-zinc-900 dark:text-white rounded text-center font-bold text-sm focus:ring-2 focus:ring-blue-300 outline-none" /><span className="text-xs text-gray-500 dark:text-gray-400">{t("hrs")}</span></div></div>))}</div>
+                      <div className="mt-3 text-right text-xs font-bold text-blue-700 dark:text-blue-300">{t("totalHoursSum")}: {item.cantidad}</div>
                     </div>
                   )}
                   <div className="flex flex-wrap md:flex-nowrap gap-4 items-center justify-between pt-3 border-t border-gray-200 dark:border-zinc-700 mt-2">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tipo:</span>
-                      <label className="inline-flex items-center gap-1 text-sm cursor-pointer text-gray-700 dark:text-gray-300"><input type="radio" className="accent-blue-600" checked={item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", true)} /> Con contrato</label>
-                      <label className="inline-flex items-center gap-1 text-sm cursor-pointer text-gray-700 dark:text-gray-300"><input type="radio" className="accent-blue-600" checked={!item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", false)} /> Sin contrato</label>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("type")}</span>
+                      <label className="inline-flex items-center gap-1 text-sm cursor-pointer text-gray-700 dark:text-gray-300"><input type="radio" className="accent-blue-600" checked={item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", true)} /> {t("withContract")}</label>
+                      <label className="inline-flex items-center gap-1 text-sm cursor-pointer text-gray-700 dark:text-gray-300"><input type="radio" className="accent-blue-600" checked={!item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", false)} /> {t("withoutContract")}</label>
                       {tarifa && (<span className="text-xs text-gray-500 dark:text-gray-400 ml-2 hidden sm:inline">(${(item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato).toFixed(2)} / {tarifa.unidad})</span>)}
                     </div>
                     <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                      <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">Total línea</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)} USD</span></div>
-                      {itemsServicio.length > 1 && (<button onClick={() => eliminarLineaServicio(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Eliminar concepto"><Trash2 size={20} /></button>)}
+                      <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">{t("lineTotal")}</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)} USD</span></div>
+                      {itemsServicio.length > 1 && (<button onClick={() => eliminarLineaServicio(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title={t("deleteConcept")}><Trash2 size={20} /></button>)}
                     </div>
                   </div>
-                  {!esViaje && (<div className="mt-3"><input type="text" placeholder="Detalles adicionales (opcional)" value={item.detalles} onChange={(e) => actualizarLineaServicio(item.id, "detalles", e.target.value)} className="w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded text-sm bg-white dark:bg-zinc-800 dark:text-white focus:border-blue-500 outline-none" /></div>)}
+                  {!esViaje && (<div className="mt-3"><input type="text" placeholder={t("additionalDetails")} value={item.detalles} onChange={(e) => actualizarLineaServicio(item.id, "detalles", e.target.value)} className="w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded text-sm bg-white dark:bg-zinc-800 dark:text-white focus:border-blue-500 outline-none" /></div>)}
                 </div>
               );
             })}
           </div>
           <div className="mt-6 flex justify-end">
             <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 min-w-[300px] shadow-inner border border-blue-100 dark:border-blue-900/20">
-              <div className="flex items-center justify-between mb-3 border-b border-blue-200 dark:border-blue-900/30 pb-3"><label htmlFor="aplicarIVA" className="text-gray-700 dark:text-gray-200 font-semibold cursor-pointer select-none">Aplicar IVA (16%)</label><input type="checkbox" id="aplicarIVA" checked={aplicarIVA} onChange={(e) => setAplicarIVA(e.target.checked)} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" /></div>
-              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">Subtotal:</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalServicios.toFixed(2)} USD</span></div>
-              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">IVA (16%):</span><span className="text-gray-800 dark:text-white font-semibold">${ivaServicios.toFixed(2)} USD</span></div>
-              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">Total:</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalServicios.toFixed(2)} USD</span></div></div>
+              <div className="flex items-center justify-between mb-3 border-b border-blue-200 dark:border-blue-900/30 pb-3"><label htmlFor="aplicarIVA" className="text-gray-700 dark:text-gray-200 font-semibold cursor-pointer select-none">{t("applyIVA")}</label><input type="checkbox" id="aplicarIVA" checked={aplicarIVA} onChange={(e) => setAplicarIVA(e.target.checked)} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" /></div>
+              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("subtotal")}</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalServicios.toFixed(2)} USD</span></div>
+              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("iva")}</span><span className="text-gray-800 dark:text-white font-semibold">${ivaServicios.toFixed(2)} USD</span></div>
+              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">{t("total")}</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalServicios.toFixed(2)} USD</span></div></div>
             </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
-          <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl"><Calculator className="text-orange-600 dark:text-orange-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">Condiciones generales</h2><p className="text-sm text-gray-500 dark:text-gray-400">Ajusta la moneda, máquina y notas</p></div></div>
+          <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl"><Calculator className="text-orange-600 dark:text-orange-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nota de precios</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Los precios cotizados no incluyen IVA" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Moneda</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
-            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Máquina / equipo</label><input type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="Ej: CFA 909-32 8539 51 015" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("priceNote")}</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("priceNotePlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
+            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("machine")}</label><input type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("machinePlaceholder")} /></div>
             <div className="md:col-span-2">
               <div className="flex justify-between items-end mb-2">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Observaciones</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">{t("observations")}</label>
                 <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className={`text-xs flex items-center gap-1 px-3 py-1 rounded-full transition-all font-bold ${mejorandoTexto ? "bg-purple-100 dark:bg-purple-900/30 text-purple-400 cursor-wait" : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 hover:scale-105"}`}>
-                  <Sparkles size={14} /> {mejorandoTexto ? "Mejorando..." : "Mejorar redacción con IA"}
+                  <Sparkles size={14} /> {mejorandoTexto ? t("improvingText") : t("improveAI")}
                 </button>
               </div>
-              <textarea rows={4} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors resize-none" placeholder="Notas adicionales..." />
+              <textarea rows={4} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors resize-none" placeholder={t("observationsPlaceholder")} />
             </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-6 flex justify-end gap-4 mt-6">
           <button className="px-6 py-3 border-2 border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all font-semibold">
-            Cancelar
+            {t("btnCancel")}
           </button>
           {/* ✅ NUEVA UBICACIÓN DEL BOTÓN DE VISTA PREVIA */}
           <button
             onClick={() => setModalVistaPreviaAbierto(true)}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg font-semibold"
           >
-            <Eye size={20} /> Vista previa
+            <Eye size={20} /> {t("btnPreview")}
           </button>
 
           <button
@@ -1120,7 +1120,7 @@ const NuevaCotizacionPage: React.FC = () => {
             className="flex items-center gap-2 px-6 py-3 bg-green-600 dark:bg-green-700 text-white rounded-xl hover:bg-green-700 dark:hover:bg-green-600 transition-all shadow-md hover:shadow-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save size={20} />
-            {loading ? "Guardando..." : "Guardar cotización"}
+            {loading ? t("btnSaving") : t("btnSave")}
           </button>
         </div>
       </div>
