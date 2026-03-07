@@ -219,7 +219,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         .select(`
           *,
           clientes ( * ),
-          usuarios ( id, nombre, email, puesto, telefono ),
+          usuarios ( id, nombre, email ),
           cotizacion_items ( * )
         `)
         .eq('id', id)
@@ -486,7 +486,7 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       const { data, error } = await supabaseUser
         .from('usuarios')
-        .select('id, nombre, email, departamento, puesto, telefono')
+        .select('id, nombre, email, departamento')
         .eq('activo', true)
         .order('nombre')
 
