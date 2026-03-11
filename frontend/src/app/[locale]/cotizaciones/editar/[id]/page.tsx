@@ -749,20 +749,6 @@ const EditarCotizacionPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo de Servicio</label>
-                            <select
-                                value={formData.tipo_servicio}
-                                onChange={(e) => handleInputChange("tipo_servicio", "", e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="TM">Mantenimiento (TM)</option>
-                                <option value="Project">Proyecto (Project)</option>
-                                <option value="Training">Entrenamiento</option>
-                                <option value="Spares">Repuestos</option>
-                            </select>
-                        </div>
-
-                        <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Entidad Emisora</label>
                             <select value={formData.condiciones.entidad || 'MX'} onChange={(e) => {
                                 const val = e.target.value as "MX" | "US";
@@ -776,6 +762,20 @@ const EditarCotizacionPage: React.FC = () => {
                             }} className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                 <option value="MX">SIG MX (México)</option>
                                 <option value="US">SIG US (Estados Unidos)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo de Servicio</label>
+                            <select
+                                value={formData.tipo_servicio}
+                                onChange={(e) => handleInputChange("tipo_servicio", "", e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="TM">Mantenimiento (TM)</option>
+                                <option value="Project">Proyecto (Project)</option>
+                                <option value="Training">Entrenamiento</option>
+                                <option value="Spares">Repuestos</option>
                             </select>
                         </div>
 

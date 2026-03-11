@@ -1040,6 +1040,32 @@ const NuevaCotizacionPage: React.FC = () => {
               </span>
             </p>
           </div>
+
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-zinc-800">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Entidad Emisora
+            </label>
+            <select 
+              value={formData.condiciones.entidad || 'MX'} 
+              onChange={(e) => {
+                const val = e.target.value as "MX" | "US";
+                const proveedorUS = { nombre: "SIG US Inc.", direccion: "123 Main St", colonia: "Suite 100", ciudad: "Chicago, IL", cp: "60007", rfc: "" };
+                const proveedorMX = { nombre: "SIG Combibloc México, S.A. de C.V.", direccion: "Av. Emilio Castelar No. 75", colonia: "Polanco IV Sección", ciudad: "Ciudad de México", cp: "11550", rfc: "" };
+                setFormData(prev => ({
+                  ...prev,
+                  condiciones: { ...prev.condiciones, entidad: val, moneda: val === "US" ? "USD" : prev.condiciones.moneda },
+                  proveedor: val === "US" ? proveedorUS : proveedorMX
+                }));
+              }} 
+              className="w-full md:w-1/2 lg:w-1/3 px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors"
+            >
+              <option value="MX">SIG MX (México)</option>
+              <option value="US">SIG US (Estados Unidos)</option>
+            </select>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              ({t("currency")}: {formData.condiciones.entidad === "US" ? "USD" : formData.condiciones.moneda})
+            </p>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
@@ -1240,22 +1266,6 @@ const NuevaCotizacionPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl"><Calculator className="text-orange-600 dark:text-orange-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("priceNote")}</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("priceNotePlaceholder")} /></div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Entidad Emisora</label>
-              <select value={formData.condiciones.entidad || 'MX'} onChange={(e) => {
-                const val = e.target.value as "MX" | "US";
-                const proveedorUS = { nombre: "SIG US Inc.", direccion: "123 Main St", colonia: "Suite 100", ciudad: "Chicago, IL", cp: "60007", rfc: "" };
-                const proveedorMX = { nombre: "SIG Combibloc México, S.A. de C.V.", direccion: "Av. Emilio Castelar No. 75", colonia: "Polanco IV Sección", ciudad: "Ciudad de México", cp: "11550", rfc: "" };
-                setFormData(prev => ({
-                  ...prev,
-                  condiciones: { ...prev.condiciones, entidad: val, moneda: val === "US" ? "USD" : prev.condiciones.moneda },
-                  proveedor: val === "US" ? proveedorUS : proveedorMX
-                }));
-              }} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors">
-                <option value="MX">SIG MX (México)</option>
-                <option value="US">SIG US (Estados Unidos)</option>
-              </select>
-            </div>
             <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("machine")}</label>
