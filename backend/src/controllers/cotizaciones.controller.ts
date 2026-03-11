@@ -469,7 +469,7 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       const { data, error } = await supabaseUser
         .from('clientes')
-        .select('*')
+        .select('*, cliente_direcciones(*), cliente_maquinas(*)')
         .order('nombre')
 
       if (error) throw error

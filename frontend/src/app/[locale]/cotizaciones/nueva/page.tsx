@@ -60,17 +60,39 @@ interface CotizacionFormData {
   descripcion: string;
   tipo_servicio: string;
 }
+interface ClienteDireccion {
+  id: string | number;
+  tipo: "sold_to" | "ship_to";
+  empresa_planta_nombre: string;
+  direccion: string;
+  colonia: string;
+  ciudad: string;
+  cp: string;
+  contacto_nombre: string;
+  contacto_correo: string;
+  contacto_telefono: string;
+}
+
+interface ClienteMaquina {
+  id: string | number;
+  modelo_maquina: string;
+  serie: string;
+  machine_id: string;
+}
+
 interface ClientePredefinido {
   id: string | number;
   nombre: string;
   empresa?: string;
-  contacto_nombre?: string; // ✅
+  contacto_nombre?: string;
   correo?: string;
   telefono?: string;
   direccion: string;
   colonia: string;
   ciudad: string;
   cp: string;
+  cliente_direcciones?: ClienteDireccion[];
+  cliente_maquinas?: ClienteMaquina[];
 }
 
 interface UsuarioRegistrado { id: string; nombre: string; email: string; telefono: string; puesto?: string; departamento?: string; }
@@ -83,6 +105,7 @@ interface Tarifa {
   precio_con_contrato: number;
   moneda?: string;
   requiere_desglose?: boolean;
+  categoria?: string;
 }
 
 interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
@@ -175,10 +198,9 @@ interface CotizacionPDFProps {
   usuariosRegistrados: UsuarioRegistrado[];
 }
 
-const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados }) => {
+const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
   const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-  const iva = aplicarIVA ? subtotal * 0.16 : 0;
-  const total = subtotal + iva;
+  const total = subtotal;
   const fecha = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
   const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
@@ -191,6 +213,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
   const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
   const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
   const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
+  const isUS = formData.condiciones.entidad === "US";
 
   return (
     <Document>
@@ -202,10 +225,10 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
           <View style={pdfStyles.headerRight}>
             <Text style={{ fontSize: 9, marginBottom: 3 }}>
-              <Text style={{ fontWeight: "bold" }}>COTIZACIÓN No: </Text>
+              <Text style={{ fontWeight: "bold" }}>{isUS ? "QUOTE No: " : "COTIZACIÓN No: "}</Text>
               {displayFolio}
             </Text>
-            <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>FECHA: </Text>{fecha}</Text>
+            <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>{isUS ? "DATE: " : "FECHA: "}</Text>{fecha}</Text>
           </View>
         </View>
 
@@ -213,25 +236,25 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.sectionTitle}>PROVEEDOR:</Text>
+            <Text style={pdfStyles.sectionTitle}>{isUS ? "VENDOR:" : "PROVEEDOR:"}</Text>
             <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.proveedor.nombre}</Text>
             <Text style={pdfStyles.value}>{formData.proveedor.direccion}</Text>
-            <Text style={pdfStyles.value}>{formData.proveedor.ciudad}, C.P. {formData.proveedor.cp}</Text>
+            <Text style={pdfStyles.value}>{formData.proveedor.ciudad}{formData.proveedor.cp ? `, C.P. ${formData.proveedor.cp}` : ""}</Text>
             {formData.proveedor.rfc && <Text style={pdfStyles.value}>RFC: {formData.proveedor.rfc}</Text>}
           </View>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.sectionTitle}>FACTURAR A (SOLD TO):</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.direccion || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.colonia || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.ciudad || "No especificado"}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text>
+            <Text style={pdfStyles.sectionTitle}>{isUS ? "BILL TO (SOLD TO):" : "FACTURAR A (SOLD TO):"}</Text>
+            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>{formData.facturarA.direccion || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>{formData.facturarA.colonia || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>{formData.facturarA.ciudad || (isUS ? "Not specified" : "No especificado")}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text>
           </View>
         </View>
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.sectionTitle}>LUGAR DEL SERVICIO (SHIP TO):</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre || "No especificado"}</Text>
+            <Text style={pdfStyles.sectionTitle}>{isUS ? "SERVICE LOCATION (SHIP TO):" : "LUGAR DEL SERVICIO (SHIP TO):"}</Text>
+            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
             <Text style={pdfStyles.value}>{shipToData.direccion || ""}</Text>
             <Text style={pdfStyles.value}>{shipToData.colonia || ""}</Text>
             <Text style={pdfStyles.value}>{shipToData.ciudad || ""}{shipToData.cp ? `, C.P. ${shipToData.cp}` : ""}</Text>
@@ -240,26 +263,26 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.label}>De:</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono || "No especificado"}</Text>
+            <Text style={pdfStyles.label}>{isUS ? "From:" : "De:"}</Text>
+            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
           </View>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.label}>Contacto:</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email || "No especificado"}</Text>
-            <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono || "No especificado"}</Text>
+            <Text style={pdfStyles.label}>{isUS ? "Contact:" : "Contacto:"}</Text>
+            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email || (isUS ? "Not specified" : "No especificado")}</Text>
+            <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
           </View>
         </View>
 
         {/* Tabla */}
         <View style={pdfStyles.table}>
           <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.colDesc}>Detalle</Text>
-            <Text style={pdfStyles.colTiny}>Ing.</Text>
-            <Text style={pdfStyles.colSmall}>Cant.</Text>
-            <Text style={pdfStyles.colSmall}>P. Unit.</Text>
+            <Text style={pdfStyles.colDesc}>{isUS ? "Detail" : "Detalle"}</Text>
+            <Text style={pdfStyles.colTiny}>{isUS ? "Eng." : "Ing."}</Text>
+            <Text style={pdfStyles.colSmall}>{isUS ? "Qty." : "Cant."}</Text>
+            <Text style={pdfStyles.colSmall}>{isUS ? "Unit P." : "P. Unit."}</Text>
             <Text style={pdfStyles.colSmall}>Total</Text>
           </View>
 
@@ -276,13 +299,13 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
             return (
               <View key={item.id} style={pdfStyles.tableRow}>
                 <View style={pdfStyles.colDesc}>
-                  <Text>{tarifa?.concepto || "No especificado"}</Text>
+                  <Text>{tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}</Text>
 
                   {tarifa?.requiere_desglose && item.desglose.length > 0 && item.desglose.map((d, idx) => (
-                    <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || `Ing. ${idx + 1}`}: {d.horas}h</Text>
+                    <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
                   ))}
 
-                  {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>Nota: {item.detalles}</Text>}
+                  {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
                 </View>
 
                 <Text style={pdfStyles.colTiny}>{numIngenieros}</Text>
@@ -298,12 +321,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
             <Text>${subtotal.toFixed(2)} {formData.condiciones.moneda}</Text>
           </View>
 
-          {aplicarIVA && (
-            <View style={[pdfStyles.total, { backgroundColor: "#f3f4f6" }]}>
-              <Text>IVA (16%):</Text>
-              <Text>${iva.toFixed(2)} {formData.condiciones.moneda}</Text>
-            </View>
-          )}
+
 
           <View style={[pdfStyles.total, { backgroundColor: "#dbeafe", fontSize: 9 }]}>
             <Text>TOTAL:</Text>
@@ -312,23 +330,34 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
         </View>
 
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.label}>Condiciones Generales:</Text>
+          <Text style={pdfStyles.label}>{isUS ? "General Conditions:" : "Condiciones Generales:"}</Text>
           <Text style={pdfStyles.value}>
-            <Text style={{ fontWeight: "bold" }}>Precios: </Text>{formData.condiciones.precios} | <Text style={{ fontWeight: "bold" }}>Moneda: </Text>{formData.condiciones.moneda}
-            {formData.condiciones.maquina && <Text> | <Text style={{ fontWeight: "bold" }}>Máquina: </Text>{formData.condiciones.maquina}</Text>}
+            <Text style={{ fontWeight: "bold" }}>{isUS ? "Prices: " : "Precios: "}</Text>{formData.condiciones.precios} | <Text style={{ fontWeight: "bold" }}>{isUS ? "Currency: " : "Moneda: "}</Text>{formData.condiciones.moneda}
+            {formData.condiciones.maquina && <Text> | <Text style={{ fontWeight: "bold" }}>{isUS ? "Machine: " : "Máquina: "}</Text>{formData.condiciones.maquina}</Text>}
           </Text>
         </View>
 
         {formData.condiciones.observaciones && (
           <View style={pdfStyles.section}>
-            <Text style={pdfStyles.label}>Observaciones:</Text>
+            <Text style={pdfStyles.label}>{isUS ? "Observations:" : "Observaciones:"}</Text>
             <Text style={pdfStyles.value}>{formData.condiciones.observaciones}</Text>
+          </View>
+        )}
+
+        {isUS && (
+          <View style={pdfStyles.section}>
+            <Text style={pdfStyles.label}>Terms and Conditions:</Text>
+            <Text style={[pdfStyles.value, { fontSize: 7, textAlign: "justify" }]}>
+              If there is an existing written agreement between Customer and SIG governing the sale of the products or services quoted herein, the terms of that agreement shall apply. In the absence of such agreement, this Quotation and any resulting orders are subject to SIG’s General Terms and Conditions of Sale, a current copy of which can be found at https://www.sig.biz/en/general-terms-and-conditions-for-customers (“GTC”). By placing an order, Customer agrees to be bound by the GTC, which are incorporated by reference. Any terms in Customer’s purchase order or other documents that are different from, or in addition to, the GTC are expressly rejected and shall have no effect unless accepted by SIG in a signed writing.
+            </Text>
           </View>
         )}
 
         <View style={pdfStyles.signatureSection}>
           <Text style={pdfStyles.signatureText}>
-            Enviar orden de compra a <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text> con atención a {nombreUsuario}.
+            {isUS ? "Send purchase order to " : "Enviar orden de compra a "}
+            <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
+            {isUS ? " to the attention of " : " con atención a "}{nombreUsuario}.
           </Text>
           <Image style={pdfStyles.signatureImage} src="/firma_julio.png" />
           <View style={pdfStyles.signatureLine} />
@@ -353,13 +382,12 @@ interface ModalVistaPreviaProps {
   onClose: () => void;
   formData: CotizacionFormData;
   itemsServicio: ServicioTarifado[];
-  aplicarIVA: boolean;
   tarifas: Tarifa[];
   folio: string | null;
   usuariosRegistrados: UsuarioRegistrado[];
 }
 
-const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados }) => {
+const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
   const t = useTranslations("NuevaCotizacion");
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -374,7 +402,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
           <CotizacionPDF
             formData={formData}
             itemsServicio={itemsServicio}
-            aplicarIVA={aplicarIVA}
+            aplicarIVA={true}
             tarifas={tarifas}
             folio={folio}
             usuariosRegistrados={usuariosRegistrados}
@@ -388,7 +416,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
     };
     renderPDF();
     return () => { if (url) URL.revokeObjectURL(url); };
-  }, [isOpen, formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados]);
+  }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados]);
 
   const [correoGenerado, setCorreoGenerado] = useState("");
   const [generandoCorreo, setGenerandoCorreo] = useState(false);
@@ -427,7 +455,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
     setGenerandoCorreo(true);
     try {
       const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-      const total = subtotal * (aplicarIVA ? 1.16 : 1);
+      const total = subtotal;
 
       const { data } = await api.post("/ia/generar-correo", {
         cliente: formData.facturarA.nombre,
@@ -455,7 +483,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
         <CotizacionPDF
           formData={formData}
           itemsServicio={itemsServicio}
-          aplicarIVA={aplicarIVA}
+          aplicarIVA={true}
           tarifas={tarifas}
           folio={folio}
           usuariosRegistrados={usuariosRegistrados}
@@ -582,8 +610,12 @@ const NuevaCotizacionPage: React.FC = () => {
   const [shipToSeleccionadoId, setShipToSeleccionadoId] = useState<string>("");
   const [usuarioSeleccionadoId, setUsuarioSeleccionadoId] = useState<string>("");
   const [modoNuevoCliente, setModoNuevoCliente] = useState<boolean>(false);
-  const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }], },]);
-  const [aplicarIVA, setAplicarIVA] = useState<boolean>(true);
+
+  const [direccionesSoldTo, setDireccionesSoldTo] = useState<ClienteDireccion[]>([]);
+  const [direccionesShipTo, setDireccionesShipTo] = useState<ClienteDireccion[]>([]);
+  const [maquinasCliente, setMaquinasCliente] = useState<ClienteMaquina[]>([]);
+  const [soldToSeleccionadoId, setSoldToSeleccionadoId] = useState<string>("");
+  const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }], }]);
   const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
 
   const [mejorandoTexto, setMejorandoTexto] = useState(false);
@@ -621,7 +653,8 @@ const NuevaCotizacionPage: React.FC = () => {
           precio_sin_contrato: Number(s.precio_sin_contrato),
           precio_con_contrato: Number(s.precio_con_contrato),
           moneda: s.moneda,
-          requiere_desglose: s.concepto.toLowerCase().includes('viaje')
+          requiere_desglose: s.concepto.toLowerCase().includes('viaje'),
+          categoria: s.categoria || 'Servicio Técnico'
         }));
         setTarifasDisponibles(lista);
       } catch (error) {
@@ -680,10 +713,9 @@ const NuevaCotizacionPage: React.FC = () => {
         itemsServicio: itemsFormateados,
         descripcion: formData.descripcion,
         tipo_servicio: formData.tipo_servicio,
-        aplicarIVA,
         subtotal: itemsServicio.reduce((sum, i) => sum + i.total, 0),
-        iva: (itemsServicio.reduce((sum, i) => sum + i.total, 0)) * (aplicarIVA ? 0.16 : 0),
-        total: (itemsServicio.reduce((sum, i) => sum + i.total, 0)) * (aplicarIVA ? 1.16 : 1),
+        iva: 0,
+        total: itemsServicio.reduce((sum, i) => sum + i.total, 0),
         estado: 'borrador'
       }
       const { data } = await api.post('/cotizaciones', payload);
@@ -710,6 +742,11 @@ const NuevaCotizacionPage: React.FC = () => {
     if (value === "nuevo") {
       setModoNuevoCliente(true);
       setClienteSeleccionadoId("nuevo");
+      setDireccionesSoldTo([]);
+      setDireccionesShipTo([]);
+      setMaquinasCliente([]);
+      setSoldToSeleccionadoId("");
+      setShipToSeleccionadoId("");
       setFormData((prev) => ({
         ...prev,
         facturarA: { nombre: "", direccion: "", colonia: "", ciudad: "", cp: "" },
@@ -724,44 +761,110 @@ const NuevaCotizacionPage: React.FC = () => {
     const cliente = clientesDisponibles.find((c) => String(c.id) === value);
     if (!cliente) return;
 
+    const soldTo = cliente.cliente_direcciones?.filter(d => d.tipo === 'sold_to') || [];
+    const shipTo = cliente.cliente_direcciones?.filter(d => d.tipo === 'ship_to') || [];
+    const maquinas = cliente.cliente_maquinas || [];
+
+    setDireccionesSoldTo(soldTo);
+    setDireccionesShipTo(shipTo);
+    setMaquinasCliente(maquinas);
+
+    // Seleccionar el primero por defecto si existe
+    const defaultSoldTo = soldTo[0];
+    const defaultShipTo = shipTo[0];
+
+    if (defaultSoldTo) {
+      setSoldToSeleccionadoId(String(defaultSoldTo.id));
+    } else {
+      setSoldToSeleccionadoId("");
+    }
+
+    if (defaultShipTo) {
+      setShipToSeleccionadoId(String(defaultShipTo.id));
+    } else {
+      setShipToSeleccionadoId("");
+    }
+
     setFormData((prev) => ({
       ...prev,
       facturarA: {
-        nombre: cliente.nombre || "",
-        direccion: cliente.direccion || "",
-        colonia: cliente.colonia || "",
-        ciudad: cliente.ciudad || "",
-        cp: cliente.cp || "",
+        nombre: defaultSoldTo?.empresa_planta_nombre || cliente.nombre || "",
+        direccion: defaultSoldTo?.direccion || cliente.direccion || "",
+        colonia: defaultSoldTo?.colonia || cliente.colonia || "",
+        ciudad: defaultSoldTo?.ciudad || cliente.ciudad || "",
+        cp: defaultSoldTo?.cp || cliente.cp || "",
+      },
+      shipTo: {
+        nombre: defaultShipTo?.empresa_planta_nombre || cliente.nombre || "",
+        direccion: defaultShipTo?.direccion || cliente.direccion || "",
+        colonia: defaultShipTo?.colonia || cliente.colonia || "",
+        ciudad: defaultShipTo?.ciudad || cliente.ciudad || "",
+        cp: defaultShipTo?.cp || cliente.cp || "",
       },
       contactoSecundario: {
-        // ✅ aquí el cambio:
-        nombre: (cliente as any).contacto_nombre || "", // o cliente.contacto_nombre si ya lo tienes tipado
-        email: cliente.correo || "",
-        telefono: cliente.telefono || "",
+        nombre: defaultSoldTo?.contacto_nombre || cliente.contacto_nombre || "",
+        email: defaultSoldTo?.contacto_correo || cliente.correo || "",
+        telefono: defaultSoldTo?.contacto_telefono || cliente.telefono || "",
       },
     }));
   };
 
+  const handleSelectSoldTo = (value: string) => {
+    setSoldToSeleccionadoId(value);
+    const soldTo = direccionesSoldTo.find((d) => String(d.id) === value);
+    if (soldTo) {
+      setFormData(prev => ({
+        ...prev,
+        facturarA: {
+          nombre: soldTo.empresa_planta_nombre || "",
+          direccion: soldTo.direccion || "",
+          colonia: soldTo.colonia || "",
+          ciudad: soldTo.ciudad || "",
+          cp: soldTo.cp || ""
+        },
+        contactoSecundario: {
+          nombre: soldTo.contacto_nombre || "",
+          email: soldTo.contacto_correo || "",
+          telefono: soldTo.contacto_telefono || "",
+        }
+      }));
+    }
+  };
 
   const handleSelectShipTo = (value: string) => {
     setShipToSeleccionadoId(value);
-    const cliente = clientesDisponibles.find((c) => String(c.id) === value);
-    if (cliente) {
+    const shipTo = direccionesShipTo.find((d) => String(d.id) === value);
+
+    if (shipTo) {
       setFormData(prev => ({
         ...prev,
         shipTo: {
-          nombre: cliente.nombre || "",
-          direccion: cliente.direccion || "",
-          colonia: cliente.colonia || "",
-          ciudad: cliente.ciudad || "",
-          cp: cliente.cp || ""
+          nombre: shipTo.empresa_planta_nombre || "",
+          direccion: shipTo.direccion || "",
+          colonia: shipTo.colonia || "",
+          ciudad: shipTo.ciudad || "",
+          cp: shipTo.cp || ""
         }
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        shipTo: { nombre: "", direccion: "", colonia: "", ciudad: "", cp: "" }
-      }));
+      const cliente = clientesDisponibles.find((c) => String(c.id) === value);
+      if (cliente) {
+        setFormData(prev => ({
+          ...prev,
+          shipTo: {
+            nombre: cliente.nombre || "",
+            direccion: cliente.direccion || "",
+            colonia: cliente.colonia || "",
+            ciudad: cliente.ciudad || "",
+            cp: cliente.cp || ""
+          }
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          shipTo: { nombre: "", direccion: "", colonia: "", ciudad: "", cp: "" }
+        }));
+      }
     }
   }
 
@@ -882,8 +985,7 @@ const NuevaCotizacionPage: React.FC = () => {
   }
 
   const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-  const ivaServicios = aplicarIVA ? subtotalServicios * 0.16 : 0;
-  const totalServicios = subtotalServicios + ivaServicios;
+  const totalServicios = subtotalServicios;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-6">
@@ -959,13 +1061,27 @@ const NuevaCotizacionPage: React.FC = () => {
             <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl"><User className="text-green-600 dark:text-green-400" size={24} /></div>
             <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("billTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("billSubtitle")}</p></div>
           </div>
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("client")}</label>
-            <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
-              <option value="">{t("selectClient")}</option>
-              {clientesDisponibles.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
-              <option value="nuevo">{t("addNewClient")}</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("client")}</label>
+              <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+                <option value="">{t("selectClient")}</option>
+                {clientesDisponibles.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
+                <option value="nuevo">{t("addNewClient")}</option>
+              </select>
+            </div>
+
+            {direccionesSoldTo.length > 0 && (
+              <div className="animate-fadeIn">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Facturar A (Sold To)</label>
+                <select value={soldToSeleccionadoId} onChange={(e) => handleSelectSoldTo(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+                  <option value="">Seleccione Razón Social</option>
+                  {direccionesSoldTo.map((d) => (
+                    <option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {modoNuevoCliente && (
@@ -1010,10 +1126,15 @@ const NuevaCotizacionPage: React.FC = () => {
           {!formData.shipToMismoQueFacturar && (
             <div className="animate-fadeIn">
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("shipSelectKnown")}</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {direccionesShipTo.length > 0 ? "Seleccionar Planta (Ship To)" : t("shipSelectKnown")}
+                </label>
                 <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-teal-500 focus:outline-none transition-colors">
                   <option value="">{t("shipSelectPlaceholder")}</option>
-                  {clientesDisponibles.map(c => (<option key={c.id} value={c.id}>{c.nombre} - {c.ciudad}</option>))}
+                  {direccionesShipTo.length > 0
+                    ? direccionesShipTo.map(d => (<option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>))
+                    : clientesDisponibles.map(c => (<option key={c.id} value={c.id}>{c.nombre} - {c.ciudad}</option>))
+                  }
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1071,8 +1192,13 @@ const NuevaCotizacionPage: React.FC = () => {
                     <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("serviceConcept")}</label>
                       <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
                         <option value="">{t("selectRate")}</option>
-                        {/* RENDERIZADO DINÁMICO */}
-                        {tarifasDisponibles.map((t) => (<option key={t.id} value={t.id}>{t.concepto}</option>))}
+                        {/* RENDERIZADO DINÁMICO POR TIPOS */}
+                        <optgroup label="Servicio Técnico">
+                          {tarifasDisponibles.filter(t => t.categoria === 'Servicio Técnico').map((t) => (<option key={t.id} value={t.id}>{t.concepto}</option>))}
+                        </optgroup>
+                        <optgroup label="Servicio de Ingeniería Aséptica">
+                          {tarifasDisponibles.filter(t => t.categoria === 'Servicio de Ingeniería Aséptica').map((t) => (<option key={t.id} value={t.id}>{t.concepto}</option>))}
+                        </optgroup>
                       </select>
                     </div>
                     <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("numEngineers")}</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>
@@ -1104,10 +1230,8 @@ const NuevaCotizacionPage: React.FC = () => {
           </div>
           <div className="mt-6 flex justify-end">
             <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 min-w-[300px] shadow-inner border border-blue-100 dark:border-blue-900/20">
-              <div className="flex items-center justify-between mb-3 border-b border-blue-200 dark:border-blue-900/30 pb-3"><label htmlFor="aplicarIVA" className="text-gray-700 dark:text-gray-200 font-semibold cursor-pointer select-none">{t("applyIVA")}</label><input type="checkbox" id="aplicarIVA" checked={aplicarIVA} onChange={(e) => setAplicarIVA(e.target.checked)} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" /></div>
               <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("subtotal")}</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalServicios.toFixed(2)} USD</span></div>
-              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("iva")}</span><span className="text-gray-800 dark:text-white font-semibold">${ivaServicios.toFixed(2)} USD</span></div>
-              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">{t("total")}</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalServicios.toFixed(2)} USD</span></div></div>
+              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">{t("total")}</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${subtotalServicios.toFixed(2)} USD</span></div></div>
             </div>
           </div>
         </div>
@@ -1133,7 +1257,17 @@ const NuevaCotizacionPage: React.FC = () => {
               </select>
             </div>
             <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
-            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("machine")}</label><input type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("machinePlaceholder")} /></div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("machine")}</label>
+              <input list="maquinas-cliente-list" type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={maquinasCliente.length > 0 ? "Selecciona o escribe una máquina..." : t("machinePlaceholder")} />
+              {maquinasCliente.length > 0 && (
+                <datalist id="maquinas-cliente-list">
+                  {maquinasCliente.map(m => (
+                    <option key={m.id} value={m.machine_id}>{m.modelo_maquina} (Serie: {m.serie})</option>
+                  ))}
+                </datalist>
+              )}
+            </div>
             <div className="md:col-span-2">
               <div className="flex justify-between items-end mb-2">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">{t("observations")}</label>
@@ -1175,7 +1309,6 @@ const NuevaCotizacionPage: React.FC = () => {
         onClose={() => setModalVistaPreviaAbierto(false)}
         formData={formData}
         itemsServicio={itemsServicio}
-        aplicarIVA={aplicarIVA}
         tarifas={tarifasDisponibles} // PASAMOS LAS TARIFAS DINÁMICAS
         folio={folioGenerado}
         usuariosRegistrados={usuariosRegistrados}

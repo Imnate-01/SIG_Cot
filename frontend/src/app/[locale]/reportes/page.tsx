@@ -76,7 +76,7 @@ export default function ReportesPage() {
   const formatMoney = (val: number) => `$${(val / 1000).toFixed(0)}k`;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
 
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{t("title")}</h1>
@@ -197,29 +197,29 @@ export default function ReportesPage() {
           <CardKPI
             title={t("kpiTotalWon")}
             value={`$${data.kpis.totalVendido.toLocaleString()}`}
-            icon={<DollarSign className="text-green-600" />}
-            color="bg-green-50 border-green-100"
+            icon={<DollarSign className="text-green-600 dark:text-green-400" />}
+            color="bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800"
           />
 
           <CardKPI
             title={t("kpiPipeline")}
             value={`$${data.kpis.totalCotizado.toLocaleString()}`}
-            icon={<TrendingUp className="text-blue-600" />}
-            color="bg-blue-50 border-blue-100"
+            icon={<TrendingUp className="text-blue-600 dark:text-blue-400" />}
+            color="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800"
           />
 
           <CardKPI
             title={t("kpiConversion")}
             value={`${data.kpis.tasaConversion}%`}
-            icon={<FileCheck className="text-indigo-600" />}
-            color="bg-indigo-50 border-indigo-100"
+            icon={<FileCheck className="text-indigo-600 dark:text-indigo-400" />}
+            color="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800"
           />
 
           <CardKPI
             title={t("kpiTotalQuotes")}
             value={data.kpis.totalCotizaciones}
-            icon={<AlertCircle className="text-orange-600" />}
-            color="bg-orange-50 border-orange-100"
+            icon={<AlertCircle className="text-orange-600 dark:text-orange-400" />}
+            color="bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800"
           />
         </div>
 
@@ -313,7 +313,7 @@ export default function ReportesPage() {
 
 function CardKPI({ title, value, icon, color }: any) {
   return (
-    <div className={`p-6 rounded-2xl border ${color.replace('bg-', 'bg-opacity-10 dark:bg-opacity-5 ').replace('border-', 'dark:border-opacity-20 ')} dark:border-opacity-50 flex items-start justify-between transition-transform hover:-translate-y-1`}>
+    <div className={`p-6 rounded-2xl border ${color} flex items-start justify-between transition-transform hover:-translate-y-1`}>
       <div>
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">{title}</p>
         <h3 className="text-2xl font-bold text-gray-800 dark:text-white">{value}</h3>

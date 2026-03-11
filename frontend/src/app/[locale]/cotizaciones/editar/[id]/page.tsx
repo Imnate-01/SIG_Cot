@@ -118,16 +118,14 @@ const pdfStyles = StyleSheet.create({
 interface CotizacionPDFProps {
     formData: CotizacionFormData;
     itemsServicio: ServicioTarifado[];
-    aplicarIVA: boolean;
     tarifas: Tarifa[];
     folio: string | null;
     usuariosRegistrados: UsuarioRegistrado[];
 }
 
-const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados }) => {
+const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
     const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-    const iva = aplicarIVA ? subtotal * 0.16 : 0;
-    const total = subtotal + iva;
+    const total = subtotal;
     const fecha = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
     const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
     const puestoUsuarioRaw = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
@@ -137,6 +135,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
     const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
     const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
     const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
+    const isUS = formData.condiciones.entidad === "US";
 
     return (
         <Document>
@@ -148,33 +147,33 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
                     </View>
                     <View style={pdfStyles.headerRight}>
                         <Text style={{ fontSize: 9, marginBottom: 3 }}>
-                            <Text style={{ fontWeight: "bold" }}>COTIZACIÓN No: </Text>
+                            <Text style={{ fontWeight: "bold" }}>{isUS ? "QUOTE No: " : "COTIZACIÓN No: "}</Text>
                             {displayFolio}
                         </Text>
-                        <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>FECHA: </Text>{fecha}</Text>
+                        <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>{isUS ? "DATE: " : "FECHA: "}</Text>{fecha}</Text>
                     </View>
                 </View>
 
                 <View style={pdfStyles.row}>
                     <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>PROVEEDOR:</Text>
+                        <Text style={pdfStyles.sectionTitle}>{isUS ? "VENDOR:" : "PROVEEDOR:"}</Text>
                         <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.proveedor.nombre}</Text>
                         <Text style={pdfStyles.value}>{formData.proveedor.direccion}</Text>
-                        <Text style={pdfStyles.value}>{formData.proveedor.ciudad}, C.P. {formData.proveedor.cp}</Text>
+                        <Text style={pdfStyles.value}>{formData.proveedor.ciudad}{formData.proveedor.cp ? `, C.P. ${formData.proveedor.cp}` : ""}</Text>
                         {formData.proveedor.rfc && <Text style={pdfStyles.value}>RFC: {formData.proveedor.rfc}</Text>}
                     </View>
                     <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>FACTURAR A (SOLD TO):</Text>
-                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>{formData.facturarA.direccion || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>{formData.facturarA.colonia || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>{formData.facturarA.ciudad || "No especificado"}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text>
+                        <Text style={pdfStyles.sectionTitle}>{isUS ? "BILL TO (SOLD TO):" : "FACTURAR A (SOLD TO):"}</Text>
+                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>{formData.facturarA.direccion || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>{formData.facturarA.colonia || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>{formData.facturarA.ciudad || (isUS ? "Not specified" : "No especificado")}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text>
                     </View>
                 </View>
                 <View style={pdfStyles.row}>
                     <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>LUGAR DEL SERVICIO (SHIP TO):</Text>
-                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre || "No especificado"}</Text>
+                        <Text style={pdfStyles.sectionTitle}>{isUS ? "SERVICE LOCATION (SHIP TO):" : "LUGAR DEL SERVICIO (SHIP TO):"}</Text>
+                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
                         <Text style={pdfStyles.value}>{shipToData.direccion || ""}</Text>
                         <Text style={pdfStyles.value}>{shipToData.colonia || ""}</Text>
                         <Text style={pdfStyles.value}>{shipToData.ciudad || ""}{shipToData.cp ? `, C.P. ${shipToData.cp}` : ""}</Text>
@@ -182,24 +181,24 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
                 </View>
                 <View style={pdfStyles.row}>
                     <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.label}>De:</Text>
-                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono || "No especificado"}</Text>
+                        <Text style={pdfStyles.label}>{isUS ? "From:" : "De:"}</Text>
+                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
                     </View>
                     <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.label}>Contacto:</Text>
-                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email || "No especificado"}</Text>
-                        <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono || "No especificado"}</Text>
+                        <Text style={pdfStyles.label}>{isUS ? "Contact:" : "Contacto:"}</Text>
+                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email || (isUS ? "Not specified" : "No especificado")}</Text>
+                        <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
                     </View>
                 </View>
                 <View style={pdfStyles.table}>
                     <View style={pdfStyles.tableHeader}>
-                        <Text style={pdfStyles.colDesc}>Detalle</Text>
-                        <Text style={pdfStyles.colTiny}>Ing.</Text>
-                        <Text style={pdfStyles.colSmall}>Cant.</Text>
-                        <Text style={pdfStyles.colSmall}>P. Unit.</Text>
+                        <Text style={pdfStyles.colDesc}>{isUS ? "Detail" : "Detalle"}</Text>
+                        <Text style={pdfStyles.colTiny}>{isUS ? "Eng." : "Ing."}</Text>
+                        <Text style={pdfStyles.colSmall}>{isUS ? "Qty." : "Cant."}</Text>
+                        <Text style={pdfStyles.colSmall}>{isUS ? "Unit P." : "P. Unit."}</Text>
                         <Text style={pdfStyles.colSmall}>Total</Text>
                     </View>
                     {itemsServicio.map((item) => {
@@ -209,11 +208,11 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
                         return (
                             <View key={item.id} style={pdfStyles.tableRow}>
                                 <View style={pdfStyles.colDesc}>
-                                    <Text>{tarifa?.concepto || "No especificado"}</Text>
+                                    <Text>{tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}</Text>
                                     {tarifa?.requiere_desglose && item.desglose.length > 0 && item.desglose.map((d, idx) => (
-                                        <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || `Ing. ${idx + 1}`}: {d.horas}h</Text>
+                                        <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
                                     ))}
-                                    {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>Nota: {item.detalles}</Text>}
+                                    {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
                                 </View>
                                 <Text style={pdfStyles.colTiny}>{numIngenieros}</Text>
                                 <Text style={pdfStyles.colSmall}>{item.cantidad}</Text>
@@ -226,32 +225,40 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
                         <Text>Subtotal:</Text>
                         <Text>${subtotal.toFixed(2)} {formData.condiciones.moneda}</Text>
                     </View>
-                    {aplicarIVA && (
-                        <View style={[pdfStyles.total, { backgroundColor: "#f3f4f6" }]}>
-                            <Text>IVA (16%):</Text>
-                            <Text>${iva.toFixed(2)} {formData.condiciones.moneda}</Text>
-                        </View>
-                    )}
+
                     <View style={[pdfStyles.total, { backgroundColor: "#dbeafe", fontSize: 9 }]}>
                         <Text>TOTAL:</Text>
                         <Text>${total.toFixed(2)} {formData.condiciones.moneda}</Text>
                     </View>
                 </View>
                 <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.label}>Condiciones Generales:</Text>
+                    <Text style={pdfStyles.label}>{isUS ? "General Conditions:" : "Condiciones Generales:"}</Text>
                     <Text style={pdfStyles.value}>
-                        <Text style={{ fontWeight: "bold" }}>Precios: </Text>{formData.condiciones.precios} | <Text style={{ fontWeight: "bold" }}>Moneda: </Text>{formData.condiciones.moneda}
-                        {formData.condiciones.maquina && <Text> | <Text style={{ fontWeight: "bold" }}>Máquina: </Text>{formData.condiciones.maquina}</Text>}
+                        <Text style={{ fontWeight: "bold" }}>{isUS ? "Prices: " : "Precios: "}</Text>{formData.condiciones.precios} | <Text style={{ fontWeight: "bold" }}>{isUS ? "Currency: " : "Moneda: "}</Text>{formData.condiciones.moneda}
+                        {formData.condiciones.maquina && <Text> | <Text style={{ fontWeight: "bold" }}>{isUS ? "Machine: " : "Máquina: "}</Text>{formData.condiciones.maquina}</Text>}
                     </Text>
                 </View>
                 {formData.condiciones.observaciones && (
                     <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>Observaciones:</Text>
+                        <Text style={pdfStyles.label}>{isUS ? "Observations:" : "Observaciones:"}</Text>
                         <Text style={pdfStyles.value}>{formData.condiciones.observaciones}</Text>
                     </View>
                 )}
+                
+                {isUS && (
+                    <View style={pdfStyles.section}>
+                        <Text style={pdfStyles.label}>Terms and Conditions:</Text>
+                        <Text style={[pdfStyles.value, { fontSize: 7, textAlign: "justify" }]}>
+                            If there is an existing written agreement between Customer and SIG governing the sale of the products or services quoted herein, the terms of that agreement shall apply. In the absence of such agreement, this Quotation and any resulting orders are subject to SIG’s General Terms and Conditions of Sale, a current copy of which can be found at https://www.sig.biz/en/general-terms-and-conditions-for-customers (“GTC”). By placing an order, Customer agrees to be bound by the GTC, which are incorporated by reference. Any terms in Customer’s purchase order or other documents that are different from, or in addition to, the GTC are expressly rejected and shall have no effect unless accepted by SIG in a signed writing.
+                        </Text>
+                    </View>
+                )}
                 <View style={pdfStyles.signatureSection}>
-                    <Text style={pdfStyles.signatureText}>Enviar orden de compra a <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text> con atención a {nombreUsuario}.</Text>
+                    <Text style={pdfStyles.signatureText}>
+                        {isUS ? "Send purchase order to " : "Enviar orden de compra a "}
+                        <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
+                        {isUS ? " to the attention of " : " con atención a "}{nombreUsuario}.
+                    </Text>
                     <Image style={pdfStyles.signatureImage} src="/firma_julio.png" />
                     <View style={pdfStyles.signatureLine} />
                     <Text style={pdfStyles.signatureName}>{nombreUsuario}</Text>
@@ -274,13 +281,12 @@ interface ModalVistaPreviaProps {
     onClose: () => void;
     formData: CotizacionFormData;
     itemsServicio: ServicioTarifado[];
-    aplicarIVA: boolean;
     tarifas: Tarifa[];
     folio: string | null;
     usuariosRegistrados: UsuarioRegistrado[];
 }
 
-const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados }) => {
+const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -293,7 +299,6 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
                     <CotizacionPDF
                         formData={formData}
                         itemsServicio={itemsServicio}
-                        aplicarIVA={aplicarIVA}
                         tarifas={tarifas}
                         folio={folio}
                         usuariosRegistrados={usuariosRegistrados}
@@ -307,7 +312,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
         };
         renderPDF();
         return () => { if (url) URL.revokeObjectURL(url); };
-    }, [isOpen, formData, itemsServicio, aplicarIVA, tarifas, folio, usuariosRegistrados]);
+    }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados]);
 
     const [correoGenerado, setCorreoGenerado] = useState("");
     const [generandoCorreo, setGenerandoCorreo] = useState(false);
@@ -328,7 +333,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
         setGenerandoCorreo(true);
         try {
             const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-            const total = subtotal * (aplicarIVA ? 1.16 : 1);
+            const total = subtotal;
             const { data } = await api.post("/ia/generar-correo", {
                 cliente: formData.facturarA.nombre,
                 numeroCotizacion: folioParaIA,
@@ -344,7 +349,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
         setIsMerging(true);
         try {
             const { pdf } = await import("@react-pdf/renderer");
-            const quoteBlob = await pdf(<CotizacionPDF formData={formData} itemsServicio={itemsServicio} aplicarIVA={aplicarIVA} tarifas={tarifas} folio={folio} usuariosRegistrados={usuariosRegistrados} />).toBlob();
+            const quoteBlob = await pdf(<CotizacionPDF formData={formData} itemsServicio={itemsServicio} tarifas={tarifas} folio={folio} usuariosRegistrados={usuariosRegistrados} />).toBlob();
             if (!reporteTecnico) {
                 const url = URL.createObjectURL(quoteBlob);
                 const link = document.createElement('a'); link.href = url; link.download = `Cotizacion_${folio || 'Borrador'}.pdf`; link.click(); setIsMerging(false); return;
@@ -431,7 +436,6 @@ const EditarCotizacionPage: React.FC = () => {
     const [usuarioSeleccionadoId, setUsuarioSeleccionadoId] = useState<string>("");
     const [modoNuevoCliente, setModoNuevoCliente] = useState<boolean>(false);
     const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([]);
-    const [aplicarIVA, setAplicarIVA] = useState<boolean>(true);
     const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
 
     const [mejorandoTexto, setMejorandoTexto] = useState(false);
@@ -598,7 +602,7 @@ const EditarCotizacionPage: React.FC = () => {
                 contactoSecundario: formData.contactoSecundario,
                 condiciones: formData.condiciones,
                 itemsServicio: itemsFormateados,
-                total: (itemsServicio.reduce((sum, i) => sum + i.total, 0)) * (aplicarIVA ? 1.16 : 1),
+                total: itemsServicio.reduce((sum, i) => sum + i.total, 0),
                 descripcion: formData.descripcion,
                 tipo_servicio: formData.tipo_servicio,
             }
@@ -696,8 +700,7 @@ const EditarCotizacionPage: React.FC = () => {
     };
 
     const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-    const ivaServicios = aplicarIVA ? subtotalServicios * 0.16 : 0;
-    const totalServicios = subtotalServicios + ivaServicios;
+    const totalServicios = subtotalServicios;
 
     if (initialLoading) return <div className="p-10 text-center">Cargando datos de cotización...</div>
 
@@ -868,7 +871,6 @@ const EditarCotizacionPage: React.FC = () => {
                     <div className="mt-6 flex justify-end">
                         <div className="bg-blue-50 p-4 rounded-xl min-w-[300px]">
                             <div className="flex justify-between mb-2"><span>Subtotal:</span><span className="font-bold">${subtotalServicios.toFixed(2)}</span></div>
-                            <div className="flex justify-between mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={aplicarIVA} onChange={(e) => setAplicarIVA(e.target.checked)} /> IVA (16%)</label><span className="font-bold">${ivaServicios.toFixed(2)}</span></div>
                             <div className="flex justify-between pt-2 border-t border-blue-200 text-xl font-bold text-blue-800"><span>Total:</span><span>${totalServicios.toFixed(2)}</span></div>
                         </div>
                     </div>
@@ -897,7 +899,6 @@ const EditarCotizacionPage: React.FC = () => {
                 onClose={() => setModalVistaPreviaAbierto(false)}
                 formData={formData}
                 itemsServicio={itemsServicio}
-                aplicarIVA={aplicarIVA}
                 tarifas={tarifasDisponibles}
                 folio={folioGenerado}
                 usuariosRegistrados={usuariosRegistrados}

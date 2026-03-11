@@ -12,6 +12,7 @@ interface Servicio {
   precio_sin_contrato: number;
   precio_con_contrato: number;
   moneda: string;
+  categoria: string;
 }
 
 export default function ServiciosPage() {
@@ -30,7 +31,8 @@ export default function ServiciosPage() {
     unidad: "hora",
     precio_sin_contrato: 0,
     precio_con_contrato: 0,
-    moneda: "USD"
+    moneda: "USD",
+    categoria: "Servicio Técnico"
   });
 
   const cargarServicios = async () => {
@@ -51,11 +53,12 @@ export default function ServiciosPage() {
         unidad: servicio.unidad,
         precio_sin_contrato: servicio.precio_sin_contrato,
         precio_con_contrato: servicio.precio_con_contrato,
-        moneda: servicio.moneda
+        moneda: servicio.moneda,
+        categoria: servicio.categoria || "Servicio Técnico"
       });
     } else {
       setServicioEditando(null);
-      setFormData({ concepto: "", unidad: "hora", precio_sin_contrato: 0, precio_con_contrato: 0, moneda: "USD" });
+      setFormData({ concepto: "", unidad: "hora", precio_sin_contrato: 0, precio_con_contrato: 0, moneda: "USD", categoria: "Servicio Técnico" });
     }
     setModalAbierto(true);
   };
@@ -151,6 +154,12 @@ export default function ServiciosPage() {
                       ${servicio.precio_con_contrato.toFixed(2)} <span className="text-xs">{servicio.moneda}</span>
                     </span>
                   </div>
+
+                  {servicio.categoria && (
+                    <div className="mt-2 text-center text-[10px] font-bold tracking-wider text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 py-1 rounded-md uppercase">
+                      {servicio.categoria}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -173,6 +182,15 @@ export default function ServiciosPage() {
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t("concept")}</label>
                 <input required className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all dark:placeholder-gray-500"
                   value={formData.concepto} onChange={e => setFormData({ ...formData, concepto: e.target.value })} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
+                <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all appearance-none"
+                  value={formData.categoria} onChange={e => setFormData({ ...formData, categoria: e.target.value })}>
+                  <option value="Servicio Técnico">Servicio Técnico</option>
+                  <option value="Servicio de Ingeniería Aséptica">Servicio de Ingeniería Aséptica</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

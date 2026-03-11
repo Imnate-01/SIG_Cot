@@ -239,9 +239,9 @@
         "saveClient": "Guardar Cliente"
     },
     "Servicios": {
-        "title": "Catálogo de Servicios",
-        "subtitle": "Gestiona las tarifas oficiales para cotizaciones ST y SM",
-        "newService": "Nuevo Servicio",
+        "title": "Catálogo de Tarifas y Servicios",
+        "subtitle": "Gestiona las tarifas oficiales para cotizaciones",
+        "newService": "Nueva Tarifa",
         "searchPlaceholder": "Buscar concepto...",
         "loading": "Cargando...",
         "successSaved": "Guardado correctamente",
@@ -259,7 +259,7 @@
         "unitDay": "Día",
         "unitEvent": "Evento",
         "unitPiece": "Pieza",
-        "saveService": "Guardar Servicio"
+        "saveService": "Guardar Tarifa"
     },
     "Ayuda": {
         "title": "Centro de Ayuda",

@@ -8,7 +8,7 @@ export class ServiciosController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      
+
       const supabaseUser = createClientForUser(token);
 
       const { data, error } = await supabaseUser
@@ -29,14 +29,14 @@ export class ServiciosController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      
+
       const supabaseUser = createClientForUser(token);
-      const { concepto, unidad, precio_sin_contrato, precio_con_contrato, moneda } = req.body
+      const { concepto, unidad, precio_sin_contrato, precio_con_contrato, moneda, categoria } = req.body
 
       const { data, error } = await supabaseUser
         .from('servicios')
         .insert({
-          concepto, unidad, precio_sin_contrato, precio_con_contrato, moneda
+          concepto, unidad, precio_sin_contrato, precio_con_contrato, moneda, categoria
         })
         .select()
         .single()
@@ -53,7 +53,7 @@ export class ServiciosController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      
+
       const supabaseUser = createClientForUser(token);
       const { id } = req.params
       const updates = req.body
@@ -77,10 +77,10 @@ export class ServiciosController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      
+
       const supabaseUser = createClientForUser(token);
       const { id } = req.params
-      
+
       const { error } = await supabaseUser
         .from('servicios')
         .update({ activo: false }) // Lo marcamos como inactivo
