@@ -759,7 +759,7 @@ const EditarCotizacionPage: React.FC = () => {
                                     condiciones: { ...prev.condiciones, entidad: val, moneda: val === "US" ? "USD" : prev.condiciones.moneda },
                                     proveedor: val === "US" ? proveedorUS : proveedorMX
                                 }));
-                            }} className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            }} className="premium-select w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                 <option value="MX">SIG MX (México)</option>
                                 <option value="US">SIG US (Estados Unidos)</option>
                             </select>
@@ -770,7 +770,7 @@ const EditarCotizacionPage: React.FC = () => {
                             <select
                                 value={formData.tipo_servicio}
                                 onChange={(e) => handleInputChange("tipo_servicio", "", e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="premium-select w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="TM">Mantenimiento (TM)</option>
                                 <option value="Project">Proyecto (Project)</option>
@@ -784,7 +784,7 @@ const EditarCotizacionPage: React.FC = () => {
                             <select
                                 value={formData.condiciones.moneda}
                                 onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="premium-select w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="USD">Dólares (USD)</option>
                                 <option value="MXN">Pesos Mexicanos (MXN)</option>
@@ -804,7 +804,7 @@ const EditarCotizacionPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-semibold mb-2">Cliente</label>
-                            <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="w-full p-3 border rounded-xl">
+                            <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="premium-select w-full p-3 border rounded-xl dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
                                 <option value="">Seleccionar...</option>
                                 {clientesDisponibles.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
                             </select>
@@ -832,7 +832,7 @@ const EditarCotizacionPage: React.FC = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
                                         <div className="md:col-span-2">
                                             <label className="text-xs font-bold uppercase">Concepto</label>
-                                            <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="w-full p-2 border rounded">
+                                            <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="premium-select w-full p-2 border rounded dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
                                                 <option value="">Seleccionar</option>
                                                 {tarifasDisponibles.map(t => <option key={t.id} value={t.id}>{t.concepto}</option>)}
                                             </select>

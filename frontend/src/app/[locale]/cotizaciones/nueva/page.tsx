@@ -1,8 +1,9 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/services/api";
 import { useDropzone } from "react-dropzone";
 import { PDFDocument } from "pdf-lib";
+import MachineCombobox from "@/components/MachineCombobox";
 import {
   Download,
   Eye,
@@ -78,6 +79,7 @@ interface ClienteMaquina {
   modelo_maquina: string;
   serie: string;
   machine_id: string;
+  direccion_id?: number | null;
 }
 
 interface ClientePredefinido {
@@ -813,27 +815,57 @@ const NuevaCotizacionPage: React.FC = () => {
     setSoldToSeleccionadoId(value);
     const soldTo = direccionesSoldTo.find((d) => String(d.id) === value);
     if (soldTo) {
-      setFormData(prev => ({
-        ...prev,
-        facturarA: {
-          nombre: soldTo.empresa_planta_nombre || "",
-          direccion: soldTo.direccion || "",
-          colonia: soldTo.colonia || "",
-          ciudad: soldTo.ciudad || "",
-          cp: soldTo.cp || ""
-        },
-        contactoSecundario: {
-          nombre: soldTo.contacto_nombre || "",
-          email: soldTo.contacto_correo || "",
-          telefono: soldTo.contacto_telefono || "",
+      setFormData(prev => {
+        const newState = {
+          ...prev,
+          facturarA: {
+            nombre: soldTo.empresa_planta_nombre || "",
+            direccion: soldTo.direccion || "",
+            colonia: soldTo.colonia || "",
+            ciudad: soldTo.ciudad || "",
+            cp: soldTo.cp || ""
+          },
+          contactoSecundario: {
+            nombre: soldTo.contacto_nombre || "",
+            email: soldTo.contacto_correo || "",
+            telefono: soldTo.contacto_telefono || "",
+          }
+        };
+
+        // Si shipToMismoQueFacturar es true, intentar encontrar un Ship To equivalente
+        if (prev.shipToMismoQueFacturar) {
+          const matchingShipTo = direccionesShipTo.find(d => 
+            d.empresa_planta_nombre === soldTo.empresa_planta_nombre || 
+            (d.ciudad === soldTo.ciudad && d.direccion === soldTo.direccion)
+          );
+          
+          if (matchingShipTo) {
+            setShipToSeleccionadoId(String(matchingShipTo.id));
+            newState.shipTo = {
+              nombre: matchingShipTo.empresa_planta_nombre || "",
+              direccion: matchingShipTo.direccion || "",
+              colonia: matchingShipTo.colonia || "",
+              ciudad: matchingShipTo.ciudad || "",
+              cp: matchingShipTo.cp || ""
+            };
+            newState.condiciones.maquina = ""; // Reset machine selection
+          }
         }
-      }));
+        
+        return newState;
+      });
     }
   };
 
   const handleSelectShipTo = (value: string) => {
     setShipToSeleccionadoId(value);
     const shipTo = direccionesShipTo.find((d) => String(d.id) === value);
+
+    // Reset machine selection when Ship To changes
+    setFormData(prev => ({
+      ...prev,
+      condiciones: { ...prev.condiciones, maquina: "" }
+    }));
 
     if (shipTo) {
       setFormData(prev => ({
@@ -868,7 +900,36 @@ const NuevaCotizacionPage: React.FC = () => {
     }
   }
 
-  const toggleShipToMismo = () => { setFormData(prev => ({ ...prev, shipToMismoQueFacturar: !prev.shipToMismoQueFacturar })); };
+  const toggleShipToMismo = () => {
+    setFormData(prev => {
+      const isNowMismo = !prev.shipToMismoQueFacturar;
+      const newState = { ...prev, shipToMismoQueFacturar: isNowMismo };
+      
+      if (isNowMismo && soldToSeleccionadoId) {
+        // Al encenderlo, buscar el Ship To que haga match con el Sold To actual
+        const soldTo = direccionesSoldTo.find((d) => String(d.id) === soldToSeleccionadoId);
+        if (soldTo) {
+          const matchingShipTo = direccionesShipTo.find(d => 
+            d.empresa_planta_nombre === soldTo.empresa_planta_nombre || 
+            (d.ciudad === soldTo.ciudad && d.direccion === soldTo.direccion)
+          ) || direccionesShipTo[0];
+
+          if (matchingShipTo) {
+            setShipToSeleccionadoId(String(matchingShipTo.id));
+            newState.shipTo = {
+              nombre: matchingShipTo.empresa_planta_nombre || "",
+              direccion: matchingShipTo.direccion || "",
+              colonia: matchingShipTo.colonia || "",
+              ciudad: matchingShipTo.ciudad || "",
+              cp: matchingShipTo.cp || ""
+            };
+            newState.condiciones.maquina = ""; // Reset machine if changing logic
+          }
+        }
+      }
+      return newState;
+    });
+  };
 
   const handleSelectUsuario = (value: string) => {
     setUsuarioSeleccionadoId(value);
@@ -987,6 +1048,15 @@ const NuevaCotizacionPage: React.FC = () => {
   const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
   const totalServicios = subtotalServicios;
 
+  // Filter machines by selected Ship To
+  const maquinasFiltradas = useMemo(() => {
+    if (!shipToSeleccionadoId || !maquinasCliente.length) return maquinasCliente;
+    const idNum = Number(shipToSeleccionadoId);
+    const filtradas = maquinasCliente.filter(m => m.direccion_id === idNum);
+    // If no machines have direccion_id assigned, show all (backwards compatible)
+    return filtradas.length > 0 ? filtradas : maquinasCliente;
+  }, [maquinasCliente, shipToSeleccionadoId]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-6">
       <div className="max-w-7xl mx-auto">
@@ -1057,7 +1127,7 @@ const NuevaCotizacionPage: React.FC = () => {
                   proveedor: val === "US" ? proveedorUS : proveedorMX
                 }));
               }} 
-              className="w-full md:w-1/2 lg:w-1/3 px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors"
+              className="premium-select w-full md:w-1/2 lg:w-1/3 px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors"
             >
               <option value="MX">SIG MX (México)</option>
               <option value="US">SIG US (Estados Unidos)</option>
@@ -1090,7 +1160,7 @@ const NuevaCotizacionPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("client")}</label>
-              <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+              <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
                 <option value="">{t("selectClient")}</option>
                 {clientesDisponibles.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
                 <option value="nuevo">{t("addNewClient")}</option>
@@ -1100,7 +1170,7 @@ const NuevaCotizacionPage: React.FC = () => {
             {direccionesSoldTo.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Facturar A (Sold To)</label>
-                <select value={soldToSeleccionadoId} onChange={(e) => handleSelectSoldTo(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+                <select value={soldToSeleccionadoId} onChange={(e) => handleSelectSoldTo(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
                   <option value="">Seleccione Razón Social</option>
                   {direccionesSoldTo.map((d) => (
                     <option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>
@@ -1155,7 +1225,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   {direccionesShipTo.length > 0 ? "Seleccionar Planta (Ship To)" : t("shipSelectKnown")}
                 </label>
-                <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-teal-500 focus:outline-none transition-colors">
+                <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-teal-500 focus:outline-none transition-colors">
                   <option value="">{t("shipSelectPlaceholder")}</option>
                   {direccionesShipTo.length > 0
                     ? direccionesShipTo.map(d => (<option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>))
@@ -1180,7 +1250,7 @@ const NuevaCotizacionPage: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2"><Users size={20} className="text-blue-600 dark:text-blue-400" />{t("requesterTitle")}</h3>
             <div className="mb-6 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
               <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">{t("selectRegistered")}</label>
-              <select value={usuarioSeleccionadoId} onChange={(e) => handleSelectUsuario(e.target.value)} className="w-full px-4 py-2 border border-blue-200 dark:border-blue-900/30 rounded-lg text-gray-800 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
+              <select value={usuarioSeleccionadoId} onChange={(e) => handleSelectUsuario(e.target.value)} className="premium-select w-full px-4 py-2 border border-blue-200 dark:border-blue-900/30 rounded-lg text-gray-800 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
                 <option value="">{t("selectUser")}</option>
                 {usuariosRegistrados.map(user => (<option key={user.id} value={user.id}>{user.nombre} - {user.puesto}</option>))}
               </select>
@@ -1216,7 +1286,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 <div key={item.id} className="border border-gray-200 dark:border-zinc-700 rounded-xl p-5 bg-gray-50 dark:bg-zinc-800/50 relative">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
                     <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("serviceConcept")}</label>
-                      <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
+                      <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="premium-select w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
                         <option value="">{t("selectRate")}</option>
                         {/* RENDERIZADO DINÁMICO POR TIPOS */}
                         <optgroup label="Servicio Técnico">
@@ -1266,16 +1336,24 @@ const NuevaCotizacionPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl"><Calculator className="text-orange-600 dark:text-orange-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("priceNote")}</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("priceNotePlaceholder")} /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("machine")}</label>
-              <input list="maquinas-cliente-list" type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={maquinasCliente.length > 0 ? "Selecciona o escribe una máquina..." : t("machinePlaceholder")} />
-              {maquinasCliente.length > 0 && (
-                <datalist id="maquinas-cliente-list">
-                  {maquinasCliente.map(m => (
-                    <option key={m.id} value={m.machine_id}>{m.modelo_maquina} (Serie: {m.serie})</option>
-                  ))}
-                </datalist>
+              {maquinasFiltradas.length > 0 ? (
+                <MachineCombobox
+                  value={formData.condiciones.maquina}
+                  onChange={(val) => handleInputChange("condiciones", "maquina", val)}
+                  machines={maquinasFiltradas}
+                  placeholder={shipToSeleccionadoId ? "Buscar máquina de esta planta..." : "Selecciona un Ship To para filtrar máquinas..."}
+                />
+              ) : (
+                <input type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("machinePlaceholder")} />
+              )}
+              {shipToSeleccionadoId && maquinasFiltradas.length > 0 && (
+                <p className="text-xs text-teal-600 dark:text-teal-400 mt-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block"></span>
+                  Mostrando {maquinasFiltradas.length} máquina{maquinasFiltradas.length !== 1 ? 's' : ''} de la planta seleccionada
+                </p>
               )}
             </div>
             <div className="md:col-span-2">
