@@ -14,7 +14,7 @@ const SUPABASE_JWT_SECRET = new TextEncoder().encode(
 // Middleware de i18n
 const intlMiddleware = createMiddleware(routing);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Primero aplicamos el middleware de i18n
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
 
     try {
       if (!process.env.SUPABASE_JWT_SECRET) {
-        console.error("🚨 ERROR: Falta SUPABASE_JWT_SECRET en .env.local");
+        console.error(" ERROR: Falta SUPABASE_JWT_SECRET en .env.local");
         return redirectToLogin(request);
       }
 
@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
       return intlResponse;
 
     } catch (error) {
-      console.error("🚨 Token de Supabase inválido:", error);
+      console.error("Token de Supabase inválido:", error);
       const response = redirectToLogin(request);
       response.cookies.delete('auth_token');
       return response;

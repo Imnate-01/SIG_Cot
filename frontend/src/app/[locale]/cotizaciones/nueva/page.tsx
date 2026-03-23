@@ -361,7 +361,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
             <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
             {isUS ? " to the attention of " : " con atención a "}{nombreUsuario}.
           </Text>
-          <Image style={pdfStyles.signatureImage} src="/firma_julio.png" />
+          <Image style={pdfStyles.signatureImage} src={nombreUsuario.toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : "/firma_julio.png"} />
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{nombreUsuario}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>

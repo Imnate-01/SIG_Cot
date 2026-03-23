@@ -250,7 +250,7 @@ const CotizacionDocument = ({ data }: { data: any }) => {
           <Text style={pdfStyles.signatureText}>
             Atentamente,
           </Text>
-          <Image style={pdfStyles.signatureImage} src="/firma_julio.png" />
+          <Image style={pdfStyles.signatureImage} src={(usuario.nombre || "").toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : "/firma_julio.png"} />
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{usuario.nombre || "Representante SIG"}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
