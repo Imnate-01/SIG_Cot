@@ -12,6 +12,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const esFullPage = pathname === "/" ||
     pathname.endsWith("/login") ||
     pathname.endsWith("/register") ||
+    pathname.endsWith("/verificado") ||
     pathname.match(/^\/(en|es)$/) !== null;
 
   return (
