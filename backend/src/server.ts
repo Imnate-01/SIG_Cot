@@ -16,6 +16,7 @@ import reportesRoutes from './routes/reportes.routes';
 import usuariosRoutes from './routes/usuarios.routes';
 import reportesTecnicosRoutes from './routes/reportes-tecnicos.routes';
 import iaRoutes from './routes/iaRoutes';
+import tarifasClienteRoutes from './routes/tarifas-cliente.routes';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -55,6 +56,7 @@ app.use('/api/reportes', reportesRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/ia', iaRoutes);
 app.use('/api/reportes-tecnicos', reportesTecnicosRoutes);
+app.use('/api/tarifas-cliente', tarifasClienteRoutes);
 
 
 // --- INICIAR SERVIDOR ---

@@ -624,6 +624,10 @@ const NuevaCotizacionPage: React.FC = () => {
   const [textoClienteSucio, setTextoClienteSucio] = useState("");
   const [extrayendoCliente, setExtrayendoCliente] = useState(false);
 
+  // Client-specific contract rate overrides: { servicio_id: precio_contrato }
+  const [tarifasCliente, setTarifasCliente] = useState<Record<string, number>>({});
+  const clienteTieneContrato = Object.keys(tarifasCliente).length > 0;
+
   useEffect(() => {
     const fetchClientes = async () => {
       try {
@@ -781,6 +785,15 @@ const NuevaCotizacionPage: React.FC = () => {
 
     setModoNuevoCliente(false);
     setClienteSeleccionadoId(value);
+
+    // Fetch client-specific contract rates
+    api.get(`/tarifas-cliente/${value}`).then(({ data }) => {
+      const overrides: Record<string, number> = {};
+      (data.data || []).forEach((tc: any) => {
+        overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+      });
+      setTarifasCliente(overrides);
+    }).catch(() => setTarifasCliente({}));
 
     const cliente = clientesDisponibles.find((c) => String(c.id) === value);
     if (!cliente) return;
@@ -1002,7 +1015,13 @@ const NuevaCotizacionPage: React.FC = () => {
         else if (diff < 0) { updated.desglose = updated.desglose.slice(0, updated.ingenieros); }
       }
       if (tarifa) {
-        const precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+        // Use client-specific contract rate if available, otherwise generic
+        let precioUnitario: number;
+        if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+          precioUnitario = tarifasCliente[updated.tarifaId];
+        } else {
+          precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+        }
         if (requiereDesglose) {
           const totalHoras = updated.desglose.reduce((acc, curr) => acc + curr.horas, 0);
           updated.cantidad = totalHoras;
@@ -1028,8 +1047,16 @@ const NuevaCotizacionPage: React.FC = () => {
       if (tarifa && tarifa.requiere_desglose) {
         const totalHoras = nuevoDesglose.reduce((acc, curr) => acc + curr.horas, 0);
         updated.cantidad = totalHoras;
-        const precio = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-        updated.total = precio * totalHoras;
+        
+        // Use client-specific contract rate if available, otherwise generic
+        let precioUnitario: number;
+        if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+          precioUnitario = tarifasCliente[updated.tarifaId];
+        } else {
+          precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+        }
+        
+        updated.total = precioUnitario * totalHoras;
       }
       return updated;
     }));

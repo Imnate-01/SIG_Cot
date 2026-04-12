@@ -442,6 +442,10 @@ const EditarCotizacionPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
 
+    // Client-specific contract rate overrides: { servicio_id: precio_contrato }
+    const [tarifasCliente, setTarifasCliente] = useState<Record<string, number>>({});
+    const clienteTieneContrato = Object.keys(tarifasCliente).length > 0;
+
     // FETCH DATA
     useEffect(() => {
         const loadAll = async () => {
@@ -487,6 +491,18 @@ const EditarCotizacionPage: React.FC = () => {
                 const condiciones = cot.condiciones || {}; // JSONB
 
                 setClienteSeleccionadoId(String(cot.cliente_id));
+
+                // 4. Cargar tarifas especiales de este cliente si tiene
+                try {
+                    const resTarifasCliente = await api.get(`/tarifas-cliente/${cot.cliente_id}`);
+                    const overrides: Record<string, number> = {};
+                    (resTarifasCliente.data.data || []).forEach((tc: any) => {
+                        overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+                    });
+                    setTarifasCliente(overrides);
+                } catch (error) {
+                    console.log("No se pudieron cargar tarifas especiales del cliente", error);
+                }
 
                 // Populate Form
                 setFormData({
@@ -647,6 +663,15 @@ const EditarCotizacionPage: React.FC = () => {
     const handleSelectCliente = (value: string) => {
         // (Simplificado) Importar lógica completa si es necesario cambiar cliente
         setClienteSeleccionadoId(value);
+
+        // Fetch client-specific contract rates
+        api.get(`/tarifas-cliente/${value}`).then(({ data }) => {
+            const overrides: Record<string, number> = {};
+            (data.data || []).forEach((tc: any) => {
+                overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+            });
+            setTarifasCliente(overrides);
+        }).catch(() => setTarifasCliente({}));
         const cliente = clientesDisponibles.find((c) => String(c.id) === value);
         if (cliente) {
             setFormData(prev => ({ ...prev, facturarA: { ...prev.facturarA, nombre: cliente.nombre, direccion: cliente.direccion, colonia: cliente.colonia, ciudad: cliente.ciudad, cp: cliente.cp } }));
@@ -680,7 +705,13 @@ const EditarCotizacionPage: React.FC = () => {
                 else if (diff < 0) { updated.desglose = updated.desglose.slice(0, updated.ingenieros); }
             }
             if (tarifa) {
-                const precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+                // Use client-specific contract rate if available, otherwise generic
+                let precioUnitario: number;
+                if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+                    precioUnitario = tarifasCliente[updated.tarifaId];
+                } else {
+                    precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+                }
                 if (requiereDesglose) {
                     const totalHoras = updated.desglose.reduce((acc, curr) => acc + curr.horas, 0);
                     updated.cantidad = totalHoras;
@@ -705,8 +736,16 @@ const EditarCotizacionPage: React.FC = () => {
             if (tarifa && tarifa.requiere_desglose) {
                 const totalHoras = nuevoDesglose.reduce((acc, curr) => acc + curr.horas, 0);
                 updated.cantidad = totalHoras;
-                const precio = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-                updated.total = precio * totalHoras;
+
+                // Use client-specific contract rate if available, otherwise generic
+                let precioUnitario: number;
+                if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+                    precioUnitario = tarifasCliente[updated.tarifaId];
+                } else {
+                    precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
+                }
+
+                updated.total = precioUnitario * totalHoras;
             }
             return updated;
         }));
