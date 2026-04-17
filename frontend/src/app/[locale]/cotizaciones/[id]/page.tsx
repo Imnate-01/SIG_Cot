@@ -24,39 +24,46 @@ const PDFViewerDynamic = dynamic(
   { ssr: false, loading: () => <p className="text-center p-4">Cargando visor...</p> }
 );
 
-// --- 2. ESTILOS ACTUALIZADOS (Con columnas definidas igual que en Nueva) ---
-const pdfStyles = StyleSheet.create({
-  page: { padding: 35, fontSize: 10, fontFamily: "Helvetica" },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 15, paddingBottom: 10, borderBottom: "2px solid #2563eb", alignItems: 'center' },
-  logo: { width: 60, height: 60, marginBottom: 5, objectFit: "contain" },
-  companyName: { fontSize: 13, fontWeight: "bold" },
-  headerRight: { textAlign: "right" },
-  section: { marginBottom: 10 },
-  sectionTitle: { fontSize: 9, fontWeight: "bold", backgroundColor: "#f3f4f6", padding: 4, marginBottom: 4 },
-  row: { flexDirection: "row", marginBottom: 10 },
-  column: { flex: 1, marginRight: 10 },
-  label: { fontSize: 8, fontWeight: "bold", marginBottom: 2 },
-  value: { fontSize: 9, marginBottom: 2, lineHeight: 1.3 },
+// --- 2. FUNCIÓN PARA GENERAR ESTILOS DINÁMICOS SEGÚN CANTIDAD DE ITEMS ---
+const buildPdfStyles = (itemCount: number) => {
+  // Escala: 1.0 para <=3 items, baja progresivamente hasta 0.65 para 10+ items
+  const scale = itemCount <= 3 ? 1 : itemCount <= 5 ? 0.9 : itemCount <= 7 ? 0.8 : itemCount <= 9 ? 0.72 : 0.65;
 
-  // Estilos de Tabla Mejorados
-  table: { marginTop: 10, marginBottom: 15 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 5, fontWeight: "bold", fontSize: 8 },
-  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb", padding: 5, fontSize: 8 },
+  return StyleSheet.create({
+    page: { padding: 30 * scale + 5, fontSize: 10 * scale, fontFamily: "Helvetica" },
+    header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 * scale, paddingBottom: 6 * scale, borderBottom: "2px solid #2563eb", alignItems: 'center' },
+    logo: { width: 50 * scale + 10, height: 50 * scale + 10, marginBottom: 3 * scale, objectFit: "contain" as const },
+    companyName: { fontSize: 13 * scale, fontWeight: "bold" },
+    headerRight: { textAlign: "right" as const },
+    section: { marginBottom: 6 * scale },
+    sectionTitle: { fontSize: 9 * scale, fontWeight: "bold", backgroundColor: "#f3f4f6", padding: 3 * scale, marginBottom: 2 * scale },
+    row: { flexDirection: "row" as const, marginBottom: 6 * scale },
+    column: { flex: 1, marginRight: 8 * scale },
+    label: { fontSize: 8 * scale, fontWeight: "bold", marginBottom: 1 },
+    value: { fontSize: 9 * scale, marginBottom: 1, lineHeight: 1.3 },
 
-  // Columnas específicas (Alineadas con Nueva Cotización)
-  colDesc: { flex: 2 },
-  colTiny: { width: 35, textAlign: "center" }, // Para "Ing."
-  colSmall: { width: 55, textAlign: "center" }, // Para Cant, Precio, Total
+    // Estilos de Tabla
+    table: { marginTop: 6 * scale, marginBottom: 8 * scale },
+    tableHeader: { flexDirection: "row" as const, backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 4 * scale, fontWeight: "bold", fontSize: 8 * scale },
+    tableRow: { flexDirection: "row" as const, borderBottom: "1px solid #e5e7eb", padding: 3 * scale, fontSize: 8 * scale },
 
-  total: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#dbeafe", padding: 6, marginTop: 4, fontWeight: "bold", fontSize: 9 },
-  footer: { position: "absolute", bottom: 30, left: 35, right: 35, textAlign: "center", fontSize: 8, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 8 },
-  signatureSection: { marginTop: 20, marginBottom: 10 },
-  signatureText: { fontSize: 9, marginBottom: 5, color: "#000", lineHeight: 1.3 },
-  signatureImage: { width: 100, height: 50, objectFit: "contain", marginLeft: 0, marginBottom: 0 },
-  signatureLine: { borderBottom: "1px solid #000", width: 180, marginTop: 5, marginBottom: 4 },
-  signatureName: { fontSize: 9, fontWeight: "bold" },
-  signatureJob: { fontSize: 9, fontWeight: "bold" }
-});
+    // Columnas
+    colDesc: { flex: 2 },
+    colTiny: { width: 35, textAlign: "center" as const },
+    colSmall: { width: 55, textAlign: "center" as const },
+
+    total: { flexDirection: "row" as const, justifyContent: "space-between" as const, backgroundColor: "#dbeafe", padding: 4 * scale, marginTop: 2 * scale, fontWeight: "bold", fontSize: 9 * scale },
+    footer: { textAlign: "center" as const, fontSize: 7 * scale, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 5 * scale, marginTop: 8 * scale },
+    signatureSection: { marginTop: 10 * scale, marginBottom: 4 * scale },
+    signatureText: { fontSize: 9 * scale, marginBottom: 3 * scale, color: "#000", lineHeight: 1.3 },
+    signatureImage: { width: 80 * scale + 20, height: 40 * scale + 10, objectFit: "contain" as const, marginLeft: 0, marginBottom: 0 },
+    signatureLine: { borderBottom: "1px solid #000", width: 150 * scale + 30, marginTop: 3 * scale, marginBottom: 2 * scale },
+    signatureName: { fontSize: 9 * scale, fontWeight: "bold" },
+    signatureJob: { fontSize: 9 * scale, fontWeight: "bold" },
+    desgloseText: { fontSize: 7 * scale, color: "#4b5563", marginLeft: 4, marginTop: 1 },
+    notaText: { fontSize: 7 * scale, color: "#6b7280", fontStyle: "italic" as const, marginTop: 1 }
+  });
+};
 
 // --- 3. COMPONENTE VISUAL DEL PDF ---
 // Note: We'll keep the PDF static text logic in Spanish inside the PDF generator for this scope, 
@@ -69,6 +76,9 @@ const CotizacionDocument = ({ data }: { data: any }) => {
   const usuario = data.usuarios || {};
   const items = data.cotizacion_items || [];
   const condiciones = data.condiciones || {};
+
+  // Generar estilos dinámicos según la cantidad de items
+  const pdfStyles = buildPdfStyles(items.length);
 
   // Determinar puesto del usuario - Eduardo tiene cargo especial
   const puestoUsuario = (usuario.nombre || "").toLowerCase().includes("eduardo")
@@ -165,13 +175,11 @@ const CotizacionDocument = ({ data }: { data: any }) => {
           </View>
 
           {items.map((item: any, idx: number) => {
-            // Lógica para mostrar ingenieros:
-            // 1. Si hay desglose (array en JSONB), contamos elementos.
-            // 2. Si no, usamos el campo 'ingenieros' que agregamos a la BD.
-            // 3. Si todo falla, asumimos 1.
-            const numIngenieros = item.desglose && item.desglose.length > 0
-              ? item.desglose.length
-              : (item.ingenieros || 1);
+            const tieneDesgloseValido = item.desglose && item.desglose.length > 0 && 
+              (item.desglose.length > 1 || item.desglose[0].nombre || item.desglose[0].horas > 0);
+            
+            // Priorizar item.ingenieros si es válido (incluso si es 6 y desglose tiene 1 elemento vacío)
+            const numIngenieros = item.ingenieros ? item.ingenieros : (tieneDesgloseValido ? item.desglose.length : 1);
 
             return (
               <View key={idx} style={pdfStyles.tableRow}>
@@ -179,14 +187,17 @@ const CotizacionDocument = ({ data }: { data: any }) => {
                   <Text>{item.concepto}</Text>
 
                   {/* Renderizar Desglose (Nombres) */}
-                  {item.desglose && Array.isArray(item.desglose) && item.desglose.length > 0 && item.desglose.map((d: any, i: number) => (
-                    <Text key={i} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>
-                      • {d.nombre || `Ing. ${i + 1}`}: {d.horas}h
-                    </Text>
-                  ))}
+                  {tieneDesgloseValido && item.desglose.map((d: any, i: number) => {
+                    if (!d.nombre && (!d.horas || d.horas === 0)) return null;
+                    return (
+                      <Text key={i} style={pdfStyles.desgloseText}>
+                        • {d.nombre || `Ing. ${i + 1}`}: {d.horas}h
+                      </Text>
+                    );
+                  })}
 
                   {/* Renderizar Notas */}
-                  {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", fontStyle: 'italic', marginTop: 1 }}>Nota: {item.detalles}</Text>}
+                  {item.detalles && <Text style={pdfStyles.notaText}>Nota: {item.detalles}</Text>}
                 </View>
 
                 {/* ✅ Celda "Ing." */}
@@ -245,8 +256,8 @@ const CotizacionDocument = ({ data }: { data: any }) => {
           )
         )}
 
-        {/* Firma */}
-        <View style={pdfStyles.signatureSection}>
+        {/* Firma + Footer: wrap=false para que no se separen en otra hoja */}
+        <View wrap={false} style={pdfStyles.signatureSection}>
           <Text style={pdfStyles.signatureText}>
             Atentamente,
           </Text>
@@ -254,12 +265,12 @@ const CotizacionDocument = ({ data }: { data: any }) => {
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{usuario.nombre || "Representante SIG"}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
-        </View>
 
-        <View style={pdfStyles.footer}>
-          <Text style={{ fontWeight: "bold" }}>{proveedor.nombre}</Text>
-          <Text>{proveedor.direccion}, {proveedor.ciudad}</Text>
-          <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
+          <View style={pdfStyles.footer}>
+            <Text style={{ fontWeight: "bold" }}>{proveedor.nombre}</Text>
+            <Text>{proveedor.direccion}, {proveedor.ciudad}</Text>
+            <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
+          </View>
         </View>
       </Page>
     </Document>
