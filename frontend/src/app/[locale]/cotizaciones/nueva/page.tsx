@@ -113,81 +113,40 @@ interface Tarifa {
 interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
 interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; }
 
-/* ===================== Estilos PDF ===================== */
-
-const pdfStyles = StyleSheet.create({
-  page: {
-    padding: 35,
-    fontSize: 10,
-    fontFamily: "Helvetica",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-    paddingBottom: 10,
-    borderBottom: "2px solid #2563eb",
-    alignItems: 'center'
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    marginBottom: 5,
-    objectFit: "contain"
-  },
-  companyName: {
-    fontSize: 13,
-    fontWeight: "bold"
-  },
-  headerRight: {
-    textAlign: "right"
-  },
-  section: {
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 9,
-    fontWeight: "bold",
-    backgroundColor: "#f3f4f6",
-    padding: 4,
-    marginBottom: 4
-  },
-  row: {
-    flexDirection: "row",
-    marginBottom: 10
-  },
-  column: {
-    flex: 1,
-    marginRight: 10
-  },
-  label: {
-    fontSize: 8,
-    fontWeight: "bold",
-    marginBottom: 2
-  },
-  value: {
-    fontSize: 9,
-    marginBottom: 2,
-    lineHeight: 1.3
-  },
-  // Estilos de Tabla
-  table: { marginTop: 10, marginBottom: 15 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 5, fontWeight: "bold", fontSize: 8 },
-  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb", padding: 5, fontSize: 8 },
-
-  colDesc: { flex: 2 },
-  colTiny: { width: 35, textAlign: "center" },
-  colSmall: { width: 55, textAlign: "center" },
-
-  total: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#dbeafe", padding: 6, marginTop: 4, fontWeight: "bold", fontSize: 9 },
-  footer: { position: "absolute", bottom: 30, left: 35, right: 35, textAlign: "center", fontSize: 8, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 8 },
-  signatureSection: { marginTop: 20, marginBottom: 10 },
-  signatureText: { fontSize: 9, marginBottom: 5, color: "#000", lineHeight: 1.3 },
-  signatureImage: { width: 100, height: 50, objectFit: "contain", marginLeft: 0, marginBottom: 0 },
-  signatureLine: { borderBottom: "1px solid #000", width: 180, marginTop: 5, marginBottom: 4 },
-  signatureName: { fontSize: 9, fontWeight: "bold" },
-  signatureJob: { fontSize: 9, fontWeight: "bold" }
-});
+/* ===================== Estilos PDF Dinámicos ===================== */
+const buildPdfStyles = (itemCount: number) => {
+    const scale = itemCount <= 3 ? 1 : itemCount <= 5 ? 0.9 : itemCount <= 7 ? 0.8 : itemCount <= 9 ? 0.72 : 0.65;
+    return StyleSheet.create({
+        page: { padding: 30 * scale + 5, fontSize: 10 * scale, fontFamily: "Helvetica" },
+        header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 * scale, paddingBottom: 6 * scale, borderBottom: "2px solid #2563eb", alignItems: 'center' },
+        logo: { width: 50 * scale + 10, height: 50 * scale + 10, marginBottom: 3 * scale, objectFit: "contain" as const },
+        companyName: { fontSize: 13 * scale, fontWeight: "bold" },
+        headerRight: { textAlign: "right" as const },
+        section: { marginBottom: 6 * scale },
+        sectionTitle: { fontSize: 9 * scale, fontWeight: "bold", backgroundColor: "#f3f4f6", padding: 3 * scale, marginBottom: 2 * scale },
+        row: { flexDirection: "row" as const, marginBottom: 6 * scale },
+        column: { flex: 1, marginRight: 8 * scale },
+        label: { fontSize: 8 * scale, fontWeight: "bold", marginBottom: 1 },
+        value: { fontSize: 9 * scale, marginBottom: 1, lineHeight: 1.3 },
+        table: { marginTop: 6 * scale, marginBottom: 8 * scale },
+        tableHeader: { flexDirection: "row" as const, backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 4 * scale, fontWeight: "bold", fontSize: 8 * scale },
+        tableRow: { flexDirection: "row" as const, borderBottom: "1px solid #e5e7eb", padding: 3 * scale, fontSize: 8 * scale },
+        colDesc: { flex: 2 },
+        colTiny: { width: 35, textAlign: "center" as const },
+        colSmall: { width: 55, textAlign: "center" as const },
+        total: { flexDirection: "row" as const, justifyContent: "space-between" as const, backgroundColor: "#dbeafe", padding: 4 * scale, marginTop: 2 * scale, fontWeight: "bold", fontSize: 9 * scale },
+        footer: { textAlign: "center" as const, fontSize: 7 * scale, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 5 * scale, marginTop: 8 * scale },
+        signatureSection: { marginTop: 10 * scale, marginBottom: 4 * scale },
+        signatureText: { fontSize: 9 * scale, marginBottom: 3 * scale, color: "#000", lineHeight: 1.3 },
+        signatureImage: { width: 80 * scale + 20, height: 40 * scale + 10, objectFit: "contain" as const, marginLeft: 0, marginBottom: 0 },
+        signatureLine: { borderBottom: "1px solid #000", width: 150 * scale + 30, marginTop: 3 * scale, marginBottom: 2 * scale },
+        signatureName: { fontSize: 9 * scale, fontWeight: "bold" },
+        signatureJob: { fontSize: 9 * scale, fontWeight: "bold" },
+        desgloseText: { fontSize: 7 * scale, color: "#4b5563", marginLeft: 4, marginTop: 1 },
+        notaText: { fontSize: 7 * scale, color: "#6b7280", fontStyle: "italic" as const, marginTop: 1 },
+        descripcionBadge: { fontSize: 8 * scale, color: "#4b5563", marginTop: 2, fontStyle: "italic" as const }
+    });
+};
 
 /* ===================== Componente PDF ===================== */
 
@@ -198,9 +157,11 @@ interface CotizacionPDFProps {
   tarifas: Tarifa[];
   folio: string | null;
   usuariosRegistrados: UsuarioRegistrado[];
+  tarifasCliente?: Record<string, number>;
 }
 
-const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
+const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
+  const pdfStyles = buildPdfStyles(itemsServicio.length);
   const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
   const total = subtotal;
   const fecha = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
@@ -231,6 +192,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
               {displayFolio}
             </Text>
             <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>{isUS ? "DATE: " : "FECHA: "}</Text>{fecha}</Text>
+            {formData.descripcion && <Text style={pdfStyles.descripcionBadge}>{formData.descripcion}</Text>}
           </View>
         </View>
 
@@ -283,31 +245,41 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           <View style={pdfStyles.tableHeader}>
             <Text style={pdfStyles.colDesc}>{isUS ? "Detail" : "Detalle"}</Text>
             <Text style={pdfStyles.colTiny}>{isUS ? "Eng." : "Ing."}</Text>
-            <Text style={pdfStyles.colSmall}>{isUS ? "Qty." : "Cant."}</Text>
+            <Text style={pdfStyles.colSmall}>{isUS ? "Qty.Hrs." : "Cant.Hrs."}</Text>
             <Text style={pdfStyles.colSmall}>{isUS ? "Unit P." : "P. Unit."}</Text>
             <Text style={pdfStyles.colSmall}>Total</Text>
           </View>
 
           {itemsServicio.map((item) => {
             const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
-            const precioUnitario = item.conContrato
-              ? tarifa?.precio_con_contrato || 0
-              : tarifa?.precio_sin_contrato || 0;
+            // Bug 3 fix: use client contract rate if available
+            let precioUnitario: number;
+            if (item.conContrato && tarifasCliente[item.tarifaId]) {
+              precioUnitario = tarifasCliente[item.tarifaId];
+            } else {
+              precioUnitario = item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0;
+            }
 
-            const numIngenieros = tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0
-              ? item.desglose.length
-              : (item.ingenieros || 1);
+            // Bug 5 fix: prioritize item.ingenieros
+            const numIngenieros = item.ingenieros ? item.ingenieros : (tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0 ? item.desglose.length : 1);
+
+            // Bug 4 fix: validate breakdown
+            const tieneDesgloseValido = item.desglose && item.desglose.length > 0 &&
+              (item.desglose.length > 1 || item.desglose[0]?.nombre || (item.desglose[0]?.horas && item.desglose[0].horas > 0));
 
             return (
               <View key={item.id} style={pdfStyles.tableRow}>
                 <View style={pdfStyles.colDesc}>
                   <Text>{tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}</Text>
 
-                  {tarifa?.requiere_desglose && item.desglose.length > 0 && item.desglose.map((d, idx) => (
-                    <Text key={idx} style={{ fontSize: 7, color: "#4b5563", marginLeft: 4, marginTop: 1 }}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
-                  ))}
+                  {tieneDesgloseValido && item.desglose.map((d, idx) => {
+                    if (!d.nombre && (!d.horas || d.horas === 0)) return null;
+                    return (
+                      <Text key={idx} style={pdfStyles.desgloseText}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
+                    );
+                  })}
 
-                  {item.detalles && <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 1, fontStyle: 'italic' }}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
+                  {item.detalles && <Text style={pdfStyles.notaText}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
                 </View>
 
                 <Text style={pdfStyles.colTiny}>{numIngenieros}</Text>
@@ -325,7 +297,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
 
 
 
-          <View style={[pdfStyles.total, { backgroundColor: "#dbeafe", fontSize: 9 }]}>
+          <View style={[pdfStyles.total, { backgroundColor: "#dbeafe" }]}>
             <Text>TOTAL:</Text>
             <Text>${total.toFixed(2)} {formData.condiciones.moneda}</Text>
           </View>
@@ -350,12 +322,13 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           <View style={pdfStyles.section}>
             <Text style={pdfStyles.label}>Terms and Conditions:</Text>
             <Text style={[pdfStyles.value, { fontSize: 7, textAlign: "justify" }]}>
-              If there is an existing written agreement between Customer and SIG governing the sale of the products or services quoted herein, the terms of that agreement shall apply. In the absence of such agreement, this Quotation and any resulting orders are subject to SIG’s General Terms and Conditions of Sale, a current copy of which can be found at https://www.sig.biz/en/general-terms-and-conditions-for-customers (“GTC”). By placing an order, Customer agrees to be bound by the GTC, which are incorporated by reference. Any terms in Customer’s purchase order or other documents that are different from, or in addition to, the GTC are expressly rejected and shall have no effect unless accepted by SIG in a signed writing.
+              If there is an existing written agreement between Customer and SIG governing the sale of the products or services quoted herein, the terms of that agreement shall apply. In the absence of such agreement, this Quotation and any resulting orders are subject to SIG's General Terms and Conditions of Sale, a current copy of which can be found at https://www.sig.biz/en/general-terms-and-conditions-for-customers ("GTC"). By placing an order, Customer agrees to be bound by the GTC, which are incorporated by reference. Any terms in Customer's purchase order or other documents that are different from, or in addition to, the GTC are expressly rejected and shall have no effect unless accepted by SIG in a signed writing.
             </Text>
           </View>
         )}
 
-        <View style={pdfStyles.signatureSection}>
+        {/* Firma + Footer: wrap=false para mantenerlos juntos */}
+        <View wrap={false} style={pdfStyles.signatureSection}>
           <Text style={pdfStyles.signatureText}>
             {isUS ? "Send purchase order to " : "Enviar orden de compra a "}
             <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
@@ -365,12 +338,12 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{nombreUsuario}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
-        </View>
 
-        <View style={pdfStyles.footer}>
-          <Text style={{ fontWeight: "bold" }}>{formData.proveedor.nombre}</Text>
-          <Text>{formData.proveedor.direccion}, {formData.proveedor.colonia}, {formData.proveedor.ciudad}, C.P. {formData.proveedor.cp}</Text>
-          <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
+          <View style={pdfStyles.footer}>
+            <Text style={{ fontWeight: "bold" }}>{formData.proveedor.nombre}</Text>
+            <Text>{formData.proveedor.direccion}, {formData.proveedor.colonia}, {formData.proveedor.ciudad}, C.P. {formData.proveedor.cp}</Text>
+            <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
+          </View>
         </View>
       </Page>
     </Document>
@@ -387,9 +360,10 @@ interface ModalVistaPreviaProps {
   tarifas: Tarifa[];
   folio: string | null;
   usuariosRegistrados: UsuarioRegistrado[];
+  tarifasCliente?: Record<string, number>;
 }
 
-const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados }) => {
+const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
   const t = useTranslations("NuevaCotizacion");
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -408,6 +382,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
             tarifas={tarifas}
             folio={folio}
             usuariosRegistrados={usuariosRegistrados}
+            tarifasCliente={tarifasCliente}
           />
         ).toBlob();
         url = URL.createObjectURL(blob);
@@ -489,6 +464,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
           tarifas={tarifas}
           folio={folio}
           usuariosRegistrados={usuariosRegistrados}
+          tarifasCliente={tarifasCliente}
         />
       ).toBlob();
 
@@ -635,11 +611,11 @@ const NuevaCotizacionPage: React.FC = () => {
       const newItems = prev.map(item => {
         const tarifa = tarifasDisponibles.find((t) => String(t.id) === item.tarifaId);
         if (!tarifa) return item;
-        
+
         const precioUnitario = item.conContrato && tarifasCliente[item.tarifaId]
           ? tarifasCliente[item.tarifaId]
           : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato);
-          
+
         const expectedTotal = tarifa.requiere_desglose
           ? precioUnitario * item.cantidad
           : precioUnitario * item.ingenieros * item.cantidad;
@@ -895,11 +871,11 @@ const NuevaCotizacionPage: React.FC = () => {
 
         // Si shipToMismoQueFacturar es true, intentar encontrar un Ship To equivalente
         if (prev.shipToMismoQueFacturar) {
-          const matchingShipTo = direccionesShipTo.find(d => 
-            d.empresa_planta_nombre === soldTo.empresa_planta_nombre || 
+          const matchingShipTo = direccionesShipTo.find(d =>
+            d.empresa_planta_nombre === soldTo.empresa_planta_nombre ||
             (d.ciudad === soldTo.ciudad && d.direccion === soldTo.direccion)
           );
-          
+
           if (matchingShipTo) {
             setShipToSeleccionadoId(String(matchingShipTo.id));
             newState.shipTo = {
@@ -912,7 +888,7 @@ const NuevaCotizacionPage: React.FC = () => {
             newState.condiciones.maquina = ""; // Reset machine selection
           }
         }
-        
+
         return newState;
       });
     }
@@ -965,13 +941,13 @@ const NuevaCotizacionPage: React.FC = () => {
     setFormData(prev => {
       const isNowMismo = !prev.shipToMismoQueFacturar;
       const newState = { ...prev, shipToMismoQueFacturar: isNowMismo };
-      
+
       if (isNowMismo && soldToSeleccionadoId) {
         // Al encenderlo, buscar el Ship To que haga match con el Sold To actual
         const soldTo = direccionesSoldTo.find((d) => String(d.id) === soldToSeleccionadoId);
         if (soldTo) {
-          const matchingShipTo = direccionesShipTo.find(d => 
-            d.empresa_planta_nombre === soldTo.empresa_planta_nombre || 
+          const matchingShipTo = direccionesShipTo.find(d =>
+            d.empresa_planta_nombre === soldTo.empresa_planta_nombre ||
             (d.ciudad === soldTo.ciudad && d.direccion === soldTo.direccion)
           ) || direccionesShipTo[0];
 
@@ -1073,7 +1049,7 @@ const NuevaCotizacionPage: React.FC = () => {
       if (tarifa && tarifa.requiere_desglose) {
         const totalHoras = nuevoDesglose.reduce((acc, curr) => acc + curr.horas, 0);
         updated.cantidad = totalHoras;
-        
+
         // Use client-specific contract rate if available, otherwise generic
         let precioUnitario: number;
         if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
@@ -1081,7 +1057,7 @@ const NuevaCotizacionPage: React.FC = () => {
         } else {
           precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
         }
-        
+
         updated.total = precioUnitario * totalHoras;
       }
       return updated;
@@ -1190,8 +1166,8 @@ const NuevaCotizacionPage: React.FC = () => {
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Entidad Emisora
             </label>
-            <select 
-              value={formData.condiciones.entidad || 'MX'} 
+            <select
+              value={formData.condiciones.entidad || 'MX'}
               onChange={(e) => {
                 const val = e.target.value as "MX" | "US";
                 const proveedorUS = { nombre: "SIG Combibloc Inc.", direccion: "2501 Seaport Drive - Suite 100", colonia: "", ciudad: "Chester, PA 19013", cp: "19013", rfc: "" };
@@ -1203,7 +1179,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 }));
                 // Re-fetch tarifas for the selected region
                 fetchTarifasByRegion(val);
-              }} 
+              }}
               className="premium-select w-full md:w-1/2 lg:w-1/3 px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors"
             >
               <option value="MX">SIG MX (México)</option>
@@ -1482,6 +1458,7 @@ const NuevaCotizacionPage: React.FC = () => {
         tarifas={tarifasDisponibles} // PASAMOS LAS TARIFAS DINÁMICAS
         folio={folioGenerado}
         usuariosRegistrados={usuariosRegistrados}
+        tarifasCliente={tarifasCliente}
       />
     </div>
   );
