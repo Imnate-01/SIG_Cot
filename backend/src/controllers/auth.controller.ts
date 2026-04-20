@@ -78,7 +78,7 @@ export const loginUsuario = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Login con cliente ANON (No requiere permisos especiales)
+    // 1. Login con cliente ANON
     const { data, error } = await supabaseAnon.auth.signInWithPassword({
       email,
       password,
@@ -87,24 +87,36 @@ export const loginUsuario = async (req: Request, res: Response) => {
     if (error) return res.status(401).json({ message: "Credenciales inválidas" });
     if (!data.session) return res.status(500).json({ message: "Error de sesión" });
 
-    // 2. Para leer el perfil, lo correcto es usar el cliente ADMIN aquí 
-    // para asegurar que obtenemos los datos del rol sin importar las reglas RLS del usuario
-    const { data: perfil } = await supabaseAdmin
-      .from('usuarios')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // 2. Obtener perfil — lo hacemos en paralelo con una pequeña optimización:
+    //    Si el perfil ya está en user_metadata (registrado correctamente), lo usamos
+    //    directamente y evitamos un roundtrip extra a Supabase.
+    const meta = data.user.user_metadata as any;
+    let nombre = meta?.nombre;
+    let rol = meta?.rol;
+    let departamento = meta?.departamento;
+
+    // Si alguno de los campos esenciales falta, hacemos la query a la tabla
+    if (!nombre || !rol) {
+      const { data: perfil } = await supabaseAdmin
+        .from('usuarios')
+        .select('nombre, rol, departamento')
+        .eq('id', data.user.id)
+        .single();
+
+      nombre = perfil?.nombre ?? nombre;
+      rol = perfil?.rol ?? rol;
+      departamento = perfil?.departamento ?? departamento;
+    }
 
     res.json({
       message: "Login correcto",
-      token: data.session.access_token, // Token oficial de Supabase
+      token: data.session.access_token,
       usuario: {
         id: data.user.id,
         email: data.user.email,
-        nombre: perfil?.nombre,
-        rol: perfil?.rol,
-        // ✅ AGREGADO: Enviamos el departamento para decidir la redirección en el front
-        departamento: perfil?.departamento 
+        nombre,
+        rol,
+        departamento,
       },
     });
 

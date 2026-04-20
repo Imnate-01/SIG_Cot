@@ -1,11 +1,18 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
-import Onboarding from "./Onboarding"; // <--- 1. IMPORTAMOS EL COMPONENTE
+import Onboarding from "./Onboarding";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  // Warm-up: despierta el backend (y por ende Supabase) en cuanto carga cualquier página.
+  // Esto reduce la latencia percibida en el login cuando el proyecto de Supabase estuvo inactivo.
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    fetch(`${API_URL}/api/health`, { method: "GET" }).catch(() => {});
+  }, []);
 
   // Rutas públicas donde NO debe salir ni el Menú ni el Onboarding
   // Soporta rutas con locale prefix: /en/login, /es/register, etc.

@@ -47,9 +47,6 @@ export default function LoginPage() {
       setEmail(savedEmail);
       setRemember(true);
     }
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    fetch(`${API_URL}/api/health`, { method: "GET" }).catch(() => { });
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
