@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import Cookies from "js-cookie";
 import {
   LayoutDashboard,
   FilePlus,
@@ -43,6 +44,9 @@ export default function Sidebar() {
   }, [pathname]);
 
   const handleLogout = () => {
+    // Eliminar cookie (fuente de verdad para el middleware)
+    Cookies.remove("auth_token");
+    // Limpiar localStorage
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_data");
     localStorage.removeItem("user");

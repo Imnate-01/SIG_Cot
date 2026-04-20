@@ -23,7 +23,8 @@ import {
     Copy,
     Paperclip,
     FileCheck,
-    ArrowLeft
+    ArrowLeft,
+    Edit2
 } from "lucide-react";
 
 import {
@@ -83,7 +84,7 @@ interface Tarifa {
     requiere_desglose?: boolean;
 }
 interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
-interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; }
+interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; esPrecioManual?: boolean; precioManual?: number; }
 
 /* ===================== Estilos PDF Dinámicos ===================== */
 const buildPdfStyles = (itemCount: number) => {
@@ -486,9 +487,11 @@ const EditarCotizacionPage: React.FC = () => {
                 const tarifa = tarifasDisponibles.find((t) => String(t.id) === item.tarifaId);
                 if (!tarifa) return item;
                 
-                const precioUnitario = item.conContrato && tarifasCliente[item.tarifaId]
-                    ? tarifasCliente[item.tarifaId]
-                    : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato);
+                const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
+                    ? item.precioManual
+                    : (item.conContrato && tarifasCliente[item.tarifaId]
+                        ? tarifasCliente[item.tarifaId]
+                        : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato));
                     
                 const expectedTotal = tarifa.requiere_desglose
                     ? precioUnitario * item.cantidad
@@ -680,7 +683,11 @@ const EditarCotizacionPage: React.FC = () => {
             setLoading(true)
             const itemsFormateados = itemsServicio.map(item => {
                 const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
-                const precioUnitario = item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0
+                const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
+                    ? item.precioManual
+                    : (item.conContrato && tarifasCliente[item.tarifaId]
+                        ? tarifasCliente[item.tarifaId]
+                        : (item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0));
                 const cantidadReal = tarifa?.requiere_desglose ? item.cantidad : (item.cantidad * (item.ingenieros || 1));
                 return {
                     concepto: tarifa?.concepto || 'Servicio no especificado',
@@ -754,6 +761,14 @@ const EditarCotizacionPage: React.FC = () => {
             if (campo === "tarifaId") updated.tarifaId = String(valor);
             else if (campo === "conContrato") updated.conContrato = Boolean(valor);
             else if (campo === "detalles") updated.detalles = String(valor);
+            else if (campo === "esPrecioManual") {
+                updated.esPrecioManual = Boolean(valor);
+                if (updated.esPrecioManual && updated.precioManual === undefined) {
+                    const t = tarifasDisponibles.find((x) => String(x.id) === updated.tarifaId);
+                    updated.precioManual = updated.conContrato && tarifasCliente[updated.tarifaId] ? tarifasCliente[updated.tarifaId] : (updated.conContrato ? t?.precio_con_contrato : t?.precio_sin_contrato);
+                }
+            }
+            else if (campo === "precioManual") updated.precioManual = Number(valor);
             else {
                 if (campo === "ingenieros") updated.ingenieros = Number(valor) || 0;
                 else if (campo === "cantidad") updated.cantidad = Number(valor) || 0;
@@ -770,7 +785,9 @@ const EditarCotizacionPage: React.FC = () => {
             if (tarifa) {
                 // Use client-specific contract rate if available, otherwise generic
                 let precioUnitario: number;
-                if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+                if (updated.esPrecioManual && updated.precioManual !== undefined) {
+                    precioUnitario = updated.precioManual;
+                } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
                     precioUnitario = tarifasCliente[updated.tarifaId];
                 } else {
                     precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
@@ -802,7 +819,9 @@ const EditarCotizacionPage: React.FC = () => {
 
                 // Use client-specific contract rate if available, otherwise generic
                 let precioUnitario: number;
-                if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
+                if (updated.esPrecioManual && updated.precioManual !== undefined) {
+                    precioUnitario = updated.precioManual;
+                } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
                     precioUnitario = tarifasCliente[updated.tarifaId];
                 } else {
                     precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
@@ -986,9 +1005,36 @@ const EditarCotizacionPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    <div className="flex justify-between items-center mt-2 pt-2 border-t">
-                                        <div className="text-xl font-bold text-gray-800">${item.total.toFixed(2)}</div>
-                                        {itemsServicio.length > 1 && <button onClick={() => eliminarLineaServicio(item.id)} className="text-red-500"><Trash2 size={20} /></button>}
+                                    <div className="flex flex-col md:flex-row gap-4 items-center justify-between pt-3 border-t mt-2">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <span className="text-sm font-semibold">Tipo</span>
+                                            <label className="inline-flex items-center gap-1 text-sm cursor-pointer"><input type="radio" className="accent-blue-600" checked={item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", true)} /> Con Contrato</label>
+                                            <label className="inline-flex items-center gap-1 text-sm cursor-pointer"><input type="radio" className="accent-blue-600" checked={!item.conContrato} onChange={() => actualizarLineaServicio(item.id, "conContrato", false)} /> Sin Contrato</label>
+                                            
+                                            <div className="flex items-center bg-gray-100 dark:bg-zinc-800/50 rounded-lg p-1 ml-2">
+                                                <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${item.esPrecioManual ? 'bg-white text-blue-600 dark:bg-zinc-700 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-zinc-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-transparent'}`}>
+                                                    <input type="checkbox" className="sr-only" checked={!!item.esPrecioManual} onChange={(e) => actualizarLineaServicio(item.id, "esPrecioManual", e.target.checked)} /> 
+                                                    {item.esPrecioManual ? <Edit2 size={14} /> : null} Precio Manual
+                                                </label>
+                                            </div>
+
+                                            {item.esPrecioManual && (
+                                                <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg px-3 py-1.5 transition-all shadow-sm">
+                                                    <span className="text-blue-700 dark:text-blue-400 font-bold text-sm">$</span>
+                                                    <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (item.conContrato && tarifa && tarifasCliente[tarifa.id] ? tarifasCliente[tarifa.id] : (item.conContrato ? tarifa?.precio_con_contrato : tarifa?.precio_sin_contrato))} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
+                                                </div>
+                                            )}
+                                            
+                                            {tarifa && !item.esPrecioManual && (
+                                                <span className="text-xs text-gray-500 ml-2">
+                                                    (${(item.conContrato && tarifasCliente[tarifa.id] ? tarifasCliente[tarifa.id] : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato)).toFixed(2)} / {tarifa.unidad})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                                            <div className="flex flex-col items-end"><span className="text-xs text-gray-500">Total</span><span className="text-xl font-bold text-gray-800">${item.total.toFixed(2)}</span></div>
+                                            {itemsServicio.length > 1 && <button onClick={() => eliminarLineaServicio(item.id)} className="text-red-500"><Trash2 size={20} /></button>}
+                                        </div>
                                     </div>
                                 </div>
                             )

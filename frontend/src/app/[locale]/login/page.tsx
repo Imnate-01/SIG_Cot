@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,16 +13,39 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const t = useTranslations("Login");
 
   // Efecto para cargar el email recordado + warm-up del backend
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedEmail = localStorage.getItem("remember_email");
-      if (savedEmail) {
-        setEmail(savedEmail);
-        setRemember(true);
+    if (typeof window === "undefined") return;
+
+    // Solo la cookie es fuente de verdad (el middleware del servidor la valida)
+    const token = Cookies.get("auth_token");
+    if (token) {
+      const userJson = localStorage.getItem("user_data");
+      if (userJson) {
+        try {
+          const parsedUser = JSON.parse(userJson);
+          const depto = parsedUser.departamento || "";
+          if (depto.toLowerCase().includes("técnico") || depto.toLowerCase().includes("servicio") || parsedUser.rol === 'ingeniero') {
+            router.push("/reportestec");
+          } else {
+            router.push("/cotizaciones");
+          }
+        } catch {
+          router.push("/cotizaciones");
+        }
+      } else {
+        router.push("/cotizaciones");
       }
+      return;
+    }
+
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRemember(true);
     }
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -56,7 +80,7 @@ export default function LoginPage() {
       }
 
       if (typeof window !== "undefined") {
-        Cookies.set("auth_token", data.token, { expires: 7 });
+        Cookies.set("auth_token", data.token, { expires: remember ? 30 : 1 });
         localStorage.setItem("auth_token", data.token);
         localStorage.setItem("user_data", JSON.stringify(data.usuario));
         localStorage.removeItem("user");
@@ -135,14 +159,23 @@ export default function LoginPage() {
               >
                 {t("passwordLabel")}
               </label>
-              <input
-                id="password"
-                type="password"
-                className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                placeholder={t("passwordPlaceholder")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 pr-12 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
+                  placeholder={t("passwordPlaceholder")}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             {/* Recordar sesión + Olvidaste tu contraseña */}
