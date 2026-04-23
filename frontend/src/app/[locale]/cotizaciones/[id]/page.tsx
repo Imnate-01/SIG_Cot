@@ -117,10 +117,14 @@ const CotizacionDocument = ({ data }: { data: any }) => {
   // Generar estilos dinámicos según la cantidad de items
   const pdfStyles = buildPdfStyles(items.length);
 
-  // Determinar puesto del usuario - Eduardo tiene cargo especial
-  const puestoUsuario = (contactoPrincipal.nombre || "").toLowerCase().includes("eduardo")
+  // Determinar puesto del usuario — misma lógica que en el PDF de creación/edición:
+  // 1. Si el nombre incluye "eduardo" → cargo especial "Back Office Manager"
+  // 2. Si no, buscar el puesto en la lista de usuarios del sistema por email del contactoPrincipal
+  // 3. Fallback: puesto del join de BD, luego "Coordinador de Servicio Técnico"
+  const nombreContacto = (contactoPrincipal.nombre || "").toLowerCase();
+  const puestoUsuario = nombreContacto.includes("eduardo")
     ? "Back Office Manager"
-    : (usuario.puesto || "Service Sales");
+    : (usuario.puesto || "Coordinador de Servicio Técnico");
 
   const subtotal = items.reduce((sum: number, i: any) => sum + Number(i.subtotal || i.total), 0);
   const totalGuardado = Number(data.total);
@@ -294,7 +298,9 @@ const CotizacionDocument = ({ data }: { data: any }) => {
         {/* Firma + Footer: wrap=false para que no se separen en otra hoja */}
         <View wrap={false} style={pdfStyles.signatureSection}>
           <Text style={pdfStyles.signatureText}>
-            Atentamente,
+            {condiciones.entidad === "US" ? "Send purchase order to " : "Enviar orden de compra a "}
+            <Text style={{ color: "blue" }}>{contactoPrincipal.email || ""}</Text>
+            {condiciones.entidad === "US" ? " to the attention of " : " con atención a "}{contactoPrincipal.nombre || "Representante SIG"}.
           </Text>
           <Image style={pdfStyles.signatureImage} src={(contactoPrincipal.nombre || "").toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : "/firma_julio.png"} />
           <View style={pdfStyles.signatureLine} />
@@ -303,7 +309,7 @@ const CotizacionDocument = ({ data }: { data: any }) => {
 
           <View style={pdfStyles.footer}>
             <Text style={{ fontWeight: "bold" }}>{proveedor.nombre}</Text>
-            <Text>{proveedor.direccion}, {proveedor.ciudad}</Text>
+            <Text>{proveedor.direccion}{proveedor.colonia ? `, ${proveedor.colonia}` : ""}, {proveedor.ciudad}{proveedor.cp ? `, C.P. ${proveedor.cp}` : ""}</Text>
             <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
           </View>
         </View>

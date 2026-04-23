@@ -222,7 +222,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         .select(`
           *,
           clientes ( * ),
-          usuarios ( id, nombre, email ),
+          usuarios ( id, nombre, email, puesto, telefono ),
           cotizacion_items ( * )
         `)
         .eq('id', id)
