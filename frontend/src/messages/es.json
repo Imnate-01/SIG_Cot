@@ -24,7 +24,16 @@
         "action": "Acción",
         "noResults": "No se encontraron resultados.",
         "internalPlatform": "Plataforma interna",
-        "copyright": "© {year} SIG Combibloc • SIG Cotizaciones"
+        "copyright": "© {year} SIG Combibloc • SIG Cotizaciones",
+        "filterActive": "Filtro activo:",
+        "countryRegion": "País / Región",
+        "region": "Región",
+        "mexico": "México",
+        "unitedStates": "Estados Unidos",
+        "mxOnly": "Solo México",
+        "usOnly": "Solo US",
+        "allRegions": "MX + US",
+        "analysisScope": "Alcance del análisis"
     },
     "Landing": {
         "hero": {

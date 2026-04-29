@@ -92,7 +92,8 @@ const MachineCombobox: React.FC<MachineComboboxProps> = ({
   };
 
   const selectMachine = (m: MachineOption) => {
-    onChange(m.machine_id);
+    // Store full machine reference: "CFA 406-32 850451014"
+    onChange(`${m.modelo_maquina} ${m.serie}`);
     setSearch("");
     setIsOpen(false);
     setHighlightedIndex(-1);
@@ -104,7 +105,7 @@ const MachineCombobox: React.FC<MachineComboboxProps> = ({
     inputRef.current?.focus();
   };
 
-  const selectedMachine = machines.find((m) => m.machine_id === value);
+  const selectedMachine = machines.find((m) => value === `${m.modelo_maquina} ${m.serie}` || value === m.machine_id);
 
   return (
     <div ref={containerRef} className="relative w-full">

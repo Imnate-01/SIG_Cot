@@ -15,6 +15,7 @@ export default function DashboardCotizaciones() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const t = useTranslations("Cotizaciones");
+  const tCommon = useTranslations("Common");
 
   useRealtimeNotifications();
 
@@ -22,6 +23,7 @@ export default function DashboardCotizaciones() {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
+  const [filtroPais, setFiltroPais] = useState<"todos" | "MX" | "US">("todos");
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -45,6 +47,11 @@ export default function DashboardCotizaciones() {
       (cot.clientes?.empresa || "").toLowerCase().includes(texto) ||
       (cot.descripcion || "").toLowerCase().includes(texto);
     const coincideEstado = filtroEstado === "todos" || cot.estado === filtroEstado;
+    const entidad = (cot as any).condiciones?.entidad || "MX";
+    const coincidePais =
+      filtroPais === "todos" ||
+      (filtroPais === "MX" && (entidad === "MX" || !entidad)) ||
+      (filtroPais === "US" && (entidad === "US" || entidad === "CA"));
     let coincideFecha = true;
     if (fechaInicio) {
       coincideFecha = coincideFecha && new Date(cot.fecha_creacion) >= new Date(fechaInicio);
@@ -54,7 +61,7 @@ export default function DashboardCotizaciones() {
       fin.setHours(23, 59, 59);
       coincideFecha = coincideFecha && new Date(cot.fecha_creacion) <= fin;
     }
-    return coincideTexto && coincideEstado && coincideFecha;
+    return coincideTexto && coincideEstado && coincidePais && coincideFecha;
   });
 
   const limpiarFiltros = () => {
@@ -62,6 +69,7 @@ export default function DashboardCotizaciones() {
     setFechaInicio("");
     setFechaFin("");
     setFiltroEstado("todos");
+    setFiltroPais("todos");
   };
 
   const handleExportar = async () => {
@@ -183,7 +191,26 @@ export default function DashboardCotizaciones() {
               </div>
             </div>
 
-            {(busqueda || fechaInicio || fechaFin || filtroEstado !== "todos") && (
+            {/* Country filter pills */}
+            <div className="w-full md:w-auto flex flex-col">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 block">{tCommon("countryRegion")}</label>
+              <div className="flex gap-1">
+                {(["todos", "MX", "US"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setFiltroPais(p)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${filtroPais === p
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-white dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-blue-400"
+                      }`}
+                  >
+                    {p === "todos" ? `🌎 ${tCommon("all")}` : p === "MX" ? "MX" : "US"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(busqueda || fechaInicio || fechaFin || filtroEstado !== "todos" || filtroPais !== "todos") && (
               <button
                 onClick={limpiarFiltros}
                 className="px-4 py-2.5 text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
@@ -203,6 +230,7 @@ export default function DashboardCotizaciones() {
                   <tr>
                     <th className="px-6 py-4">{t("tableId")}</th>
                     <th className="px-6 py-4">{t("tableClient")}</th>
+                    <th className="px-6 py-4">{tCommon("region")}</th>
                     <th className="px-6 py-4">{t("tableCreatedBy")}</th>
                     <th className="px-6 py-4">{t("tableDate")}</th>
                     <th className="px-6 py-4">{t("tableStatus")}</th>
@@ -229,6 +257,20 @@ export default function DashboardCotizaciones() {
                               {cot.descripcion}
                             </div>
                           )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const ent = (cot as any).condiciones?.entidad || "MX";
+                            const isUS = ent === "US" || ent === "CA";
+                            return (
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full border inline-block whitespace-nowrap ${isUS
+                                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                                  : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                                }`}>
+                                {isUS ? "US" : "MX"}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4">{cot.creado_por_nombre}</td>
                         <td className="px-6 py-4">{new Date(cot.fecha_creacion).toLocaleDateString()}</td>
@@ -264,6 +306,11 @@ export default function DashboardCotizaciones() {
 
             <div className="p-4 border-t border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 text-xs text-gray-500 dark:text-gray-500 flex justify-between items-center">
               <span>{t("showingOf", { count: cotizacionesFiltradas.length, total: cotizaciones.length })}</span>
+              {filtroPais !== "todos" && (
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  {tCommon("filterActive")} {filtroPais === "MX" ? tCommon("mexico") : tCommon("unitedStates")}
+                </span>
+              )}
             </div>
           </div>
         ) : (

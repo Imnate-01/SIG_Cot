@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import api from "@/services/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -8,21 +8,77 @@ import {
 import { DollarSign, TrendingUp, FileCheck, AlertCircle, Brain, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+// ── Helper: re-compute all metrics from a raw array filtered by country ─────
+function computeMetrics(rawCotizaciones: any[]) {
+  let totalCotizado = 0;
+  let totalVendido = 0;
+  const conteoPorEstado: Record<string, number> = { borrador: 0, aceptada: 0, rechazada: 0 };
+  const ventasPorMes: Record<string, any> = {};
+  const ventasPorCliente: Record<string, number> = {};
+
+  rawCotizaciones.forEach((cot: any) => {
+    const monto = Number(cot.total) || 0;
+    const estado = cot.estado || "borrador";
+    const fecha = new Date(cot.fecha_creacion);
+    const mesKey = `${fecha.getFullYear()}-${fecha.getMonth() + 1}`;
+    const nombreMes = fecha.toLocaleString("es-MX", { month: "short" });
+
+    totalCotizado += monto;
+    if (estado === "aceptada") {
+      totalVendido += monto;
+      const cliente = cot.cliente || "Desconocido";
+      ventasPorCliente[cliente] = (ventasPorCliente[cliente] || 0) + monto;
+    }
+    conteoPorEstado[estado] = (conteoPorEstado[estado] || 0) + 1;
+
+    if (!ventasPorMes[mesKey]) {
+      ventasPorMes[mesKey] = { name: nombreMes, cotizado: 0, ganado: 0, orden: fecha.getTime() };
+    }
+    ventasPorMes[mesKey].cotizado += monto;
+    if (estado === "aceptada") ventasPorMes[mesKey].ganado += monto;
+  });
+
+  const chartData = Object.values(ventasPorMes).sort((a: any, b: any) => a.orden - b.orden);
+  const topClientes = Object.entries(ventasPorCliente)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a: any, b: any) => b.value - a.value)
+    .slice(0, 5);
+  const pieData = [
+    { name: "Ganadas", value: conteoPorEstado.aceptada, color: "#10B981" },
+    { name: "Pendientes", value: conteoPorEstado.borrador, color: "#F59E0B" },
+    { name: "Perdidas", value: conteoPorEstado.rechazada, color: "#EF4444" },
+  ];
+
+  return {
+    kpis: {
+      totalCotizado,
+      totalVendido,
+      tasaConversion: totalCotizado > 0 ? ((totalVendido / totalCotizado) * 100).toFixed(1) : 0,
+      totalCotizaciones: rawCotizaciones.length,
+    },
+    chartData,
+    pieData,
+    topClientes,
+  };
+}
+
 export default function ReportesPage() {
   const t = useTranslations("Reportes");
+  const tCommon = useTranslations("Common");
 
-  const [data, setData] = useState<any>(null);
+  const [serverData, setServerData] = useState<any>(null);
   const [prediction, setPrediction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [query, setQuery] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [filtroPais, setFiltroPais] = useState<"todos" | "MX" | "US">("todos");
 
   useEffect(() => {
     const cargarDatos = async () => {
       try {
         const { data: dashboardData } = await api.get("/reportes/dashboard");
-        setData(dashboardData.data);
+        setServerData(dashboardData.data);
       } catch (error) {
         console.error(error);
       } finally {
@@ -31,6 +87,30 @@ export default function ReportesPage() {
     };
     cargarDatos();
   }, []);
+
+  // ── Derived: filter rawCotizaciones by country, then re-compute ───────────
+  const data = useMemo(() => {
+    if (!serverData) return null;
+
+    // If "todos" or no rawCotizaciones yet, use pre-computed server data
+    if (filtroPais === "todos" || !serverData.rawCotizaciones) {
+      return {
+        kpis: serverData.kpis,
+        chartData: serverData.chartData,
+        pieData: serverData.pieData,
+        topClientes: serverData.topClientes,
+      };
+    }
+
+    const filtered = serverData.rawCotizaciones.filter((c: any) => {
+      const ent = c.entidad || "MX";
+      if (filtroPais === "MX") return ent === "MX";
+      if (filtroPais === "US") return ent === "US" || ent === "CA";
+      return true;
+    });
+
+    return computeMetrics(filtered);
+  }, [serverData, filtroPais]);
 
   const handleGeneratePrediction = async () => {
     setGenerating(true);
@@ -42,16 +122,13 @@ export default function ReportesPage() {
       if (predictionRes.success) {
         setPrediction(predictionRes.data);
 
-        const combinedChart = [...data.chartData];
-        const cleanChart = combinedChart.filter(item => !item.name.includes("(Est)"));
+        const combinedChart = [...(data?.chartData || [])];
+        const cleanChart = combinedChart.filter((item: any) => !item.name.includes("(Est)"));
 
         predictionRes.data.prediction.forEach((p: any) => {
-          const [y, m] = p.mes.split('-');
+          const [y, m] = p.mes.split("-");
           const date = new Date(parseInt(y), parseInt(m) - 1, 1);
-          // Always format date using a locale-aware approach or predefined in dashboard,
-          // but for simplicity keeping es-MX if it's the backend logic, though ideal is current locale.
-          const mesNombre = date.toLocaleString('es-MX', { month: 'short' });
-
+          const mesNombre = date.toLocaleString("es-MX", { month: "short" });
           cleanChart.push({
             name: mesNombre + " (Est)",
             pronostico: p.venta_estimada,
@@ -60,7 +137,7 @@ export default function ReportesPage() {
           });
         });
 
-        setData((prev: any) => ({ ...prev, chartData: cleanChart }));
+        setServerData((prev: any) => ({ ...prev, chartData: cleanChart }));
         setShowInput(false);
       }
     } catch (error) {
@@ -79,9 +156,35 @@ export default function ReportesPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
 
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{t("title")}</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">{t("subtitle")}</p>
+        {/* Header + Country Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{t("title")}</h1>
+            <p className="text-gray-500 dark:text-gray-400">{t("subtitle")}</p>
+          </div>
 
+          {/* Country filter pills */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{tCommon("analysisScope")}</span>
+            <div className="flex gap-1.5">
+              {(["todos", "MX", "US"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFiltroPais(p)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                    filtroPais === p
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                      : "bg-white dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-blue-400"
+                  }`}
+                >
+                  {p === "todos" ? `🌎 ${tCommon("allRegions")}` : p === "MX" ? tCommon("mxOnly") : tCommon("usOnly")}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* AI Panel */}
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-100 dark:border-purple-800 p-6 rounded-2xl mb-8 relative overflow-hidden transition-all">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
             <Brain size={120} className="text-purple-600" />
@@ -95,9 +198,7 @@ export default function ReportesPage() {
 
             {!prediction && !generating && !showInput && (
               <div className="flex flex-col items-start gap-4">
-                <p className="text-gray-600 dark:text-gray-300 max-w-2xl">
-                  {t("aiDesc")}
-                </p>
+                <p className="text-gray-600 dark:text-gray-300 max-w-2xl">{t("aiDesc")}</p>
                 <button
                   onClick={() => setShowInput(true)}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2"
@@ -126,9 +227,7 @@ export default function ReportesPage() {
                     className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {generating ? (
-                      <>
-                        <Sparkles className="animate-spin" size={18} /> {t("aiAnalyzing")}
-                      </>
+                      <><Sparkles className="animate-spin" size={18} /> {t("aiAnalyzing")}</>
                     ) : (
                       <>{t("aiGenerate")}</>
                     )}
@@ -150,9 +249,7 @@ export default function ReportesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <h4 className="text-sm font-bold text-purple-700 dark:text-purple-400 mb-2 uppercase tracking-wider">{t("aiStrategicReq")}</h4>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4 text-lg">
-                      {prediction.analisis}
-                    </p>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4 text-lg">{prediction.analisis}</p>
                     {prediction.alerta && (
                       <div className="flex items-start gap-3 bg-white/60 dark:bg-black/40 p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-100">
                         <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={20} />
@@ -175,16 +272,12 @@ export default function ReportesPage() {
                     <div className="space-y-4">
                       {prediction.prediction.map((p: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-end border-b border-gray-200 dark:border-gray-700 pb-2 last:border-0">
-                          <span className="text-base font-medium text-gray-600 dark:text-gray-400 capitalize">
-                            {p.mes}
-                          </span>
+                          <span className="text-base font-medium text-gray-600 dark:text-gray-400 capitalize">{p.mes}</span>
                           <span className="text-xl font-bold text-purple-700 dark:text-purple-400">${p.venta_estimada.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-4 text-xs text-center text-gray-400">
-                      {t("aiForecastNote")}
-                    </div>
+                    <div className="mt-4 text-xs text-center text-gray-400">{t("aiForecastNote")}</div>
                   </div>
                 </div>
               </div>
@@ -192,29 +285,26 @@ export default function ReportesPage() {
           </div>
         </div>
 
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-
           <CardKPI
             title={t("kpiTotalWon")}
             value={`$${data.kpis.totalVendido.toLocaleString()}`}
             icon={<DollarSign className="text-green-600 dark:text-green-400" />}
             color="bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800"
           />
-
           <CardKPI
             title={t("kpiPipeline")}
             value={`$${data.kpis.totalCotizado.toLocaleString()}`}
             icon={<TrendingUp className="text-blue-600 dark:text-blue-400" />}
             color="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800"
           />
-
           <CardKPI
             title={t("kpiConversion")}
             value={`${data.kpis.tasaConversion}%`}
             icon={<FileCheck className="text-indigo-600 dark:text-indigo-400" />}
             color="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800"
           />
-
           <CardKPI
             title={t("kpiTotalQuotes")}
             value={data.kpis.totalCotizaciones}
@@ -223,20 +313,27 @@ export default function ReportesPage() {
           />
         </div>
 
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-
           <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">{t("chartMonthly")}</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">{t("chartMonthly")}</h3>
+              {filtroPais !== "todos" && (
+                <span className="text-xs font-bold px-2 py-1 rounded-full border bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                  {filtroPais === "MX" ? "México" : "US"}
+                </span>
+              )}
+            </div>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" className="opacity-30" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF' }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatMoney} tick={{ fill: '#9CA3AF' }} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#9CA3AF" }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatMoney} tick={{ fill: "#9CA3AF" }} />
                   <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', backgroundColor: '#18181b', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                    formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`, ''] : ['', '']}
+                    contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)", backgroundColor: "#18181b", color: "#fff" }}
+                    itemStyle={{ color: "#fff" }}
+                    formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`, ""] : ["", ""]}
                   />
                   <Legend />
                   <Bar dataKey="cotizado" name={t("chartQuoted")} fill="#93C5FD" radius={[4, 4, 0, 0]} />
@@ -279,6 +376,7 @@ export default function ReportesPage() {
           </div>
         </div>
 
+        {/* Top Clients */}
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">{t("topClients")}</h3>
           <div className="space-y-4">
@@ -296,8 +394,8 @@ export default function ReportesPage() {
                     <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${(cliente.value / data.kpis.totalVendido) * 100}%` }}
-                      ></div>
+                        style={{ width: `${data.kpis.totalVendido > 0 ? (cliente.value / data.kpis.totalVendido) * 100 : 0}%` }}
+                      />
                     </div>
                   </div>
                 </div>

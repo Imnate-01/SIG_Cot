@@ -123,6 +123,14 @@ export default function Sidebar() {
                     <FilePlus size={18} />
                     {t("newQuotation")}
                   </Link>
+                  <Link href="/cotizaciones-us" className={linkClass("/cotizaciones-us")}>
+                    <LayoutDashboard size={18} />
+                    US Standard Quotes
+                  </Link>
+                  <Link href="/cotizaciones-us/nueva" className={linkClass("/cotizaciones-us/nueva")}>
+                    <FilePlus size={18} />
+                    New US Quote
+                  </Link>
                 </div>
               </div>
 

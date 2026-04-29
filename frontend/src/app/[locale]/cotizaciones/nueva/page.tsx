@@ -166,20 +166,25 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
   const pdfStyles = buildPdfStyles(itemsServicio.length);
   const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
   const total = subtotal;
-  const fecha = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const isUS = formData.condiciones.entidad === "US" || formData.condiciones.entidad === "CA";
+  const fecha = new Date().toLocaleDateString(isUS ? "en-US" : "es-MX", { day: "numeric", month: "long", year: "numeric" });
 
   const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
 
   const puestoUsuarioRaw = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
   const nombreUsuarioCheck = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.nombre || "";
-  const puestoUsuario = nombreUsuarioCheck.toLowerCase().includes("eduardo") ? "Back Office Manager" : puestoUsuarioRaw;
-  const displayFolio = folio ? folio : "BORRADOR";
+  let puestoUsuario = puestoUsuarioRaw;
+  if (nombreUsuarioCheck.toLowerCase().includes("eduardo")) {
+    puestoUsuario = "Back Office Manager";
+  } else if (nombreUsuarioCheck.toLowerCase().includes("santoyo") || nombreUsuarioCheck.toLowerCase().includes("jonh") || nombreUsuarioCheck.toLowerCase().includes("john")) {
+    puestoUsuario = "Service Sales Manager";
+  }
+  const displayFolio = folio ? folio : (isUS ? "DRAFT" : "BORRADOR");
   const formatCurrency = (val: number) => val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
   const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
   const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
-  const isUS = formData.condiciones.entidad === "US" || formData.condiciones.entidad === "CA";
 
   return (
     <Document>
@@ -211,35 +216,35 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
           </View>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.sectionTitle}>{isUS ? "BILL TO (SOLD TO):" : "FACTURAR A (SOLD TO):"}</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.direccion || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.colonia || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>{formData.facturarA.ciudad || (isUS ? "Not specified" : "No especificado")}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text>
+            {formData.facturarA.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre}</Text> : null}
+            {formData.facturarA.direccion ? <Text style={pdfStyles.value}>{formData.facturarA.direccion}</Text> : null}
+            {formData.facturarA.colonia ? <Text style={pdfStyles.value}>{formData.facturarA.colonia}</Text> : null}
+            {(formData.facturarA.ciudad || formData.facturarA.cp) ? <Text style={pdfStyles.value}>{formData.facturarA.ciudad}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text> : null}
           </View>
         </View>
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.sectionTitle}>{isUS ? "SERVICE LOCATION (SHIP TO):" : "LUGAR DEL SERVICIO (SHIP TO):"}</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>{shipToData.direccion || ""}</Text>
-            <Text style={pdfStyles.value}>{shipToData.colonia || ""}</Text>
-            <Text style={pdfStyles.value}>{shipToData.ciudad || ""}{shipToData.cp ? `, C.P. ${shipToData.cp}` : ""}</Text>
+            {shipToData.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre}</Text> : null}
+            {shipToData.direccion ? <Text style={pdfStyles.value}>{shipToData.direccion}</Text> : null}
+            {shipToData.colonia ? <Text style={pdfStyles.value}>{shipToData.colonia}</Text> : null}
+            {(shipToData.ciudad || shipToData.cp) ? <Text style={pdfStyles.value}>{shipToData.ciudad}{shipToData.cp ? `, C.P. ${shipToData.cp}` : ""}</Text> : null}
           </View>
         </View>
 
         <View style={pdfStyles.row}>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>{isUS ? "From:" : "De:"}</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
+            {formData.contactoPrincipal.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre}</Text> : null}
+            {formData.contactoPrincipal.email ? <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email}</Text> : null}
+            {formData.contactoPrincipal.telefono ? <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono}</Text> : null}
           </View>
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>{isUS ? "Contact:" : "Contacto:"}</Text>
-            <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email || (isUS ? "Not specified" : "No especificado")}</Text>
-            <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono || (isUS ? "Not specified" : "No especificado")}</Text>
+            {formData.contactoSecundario.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre}</Text> : null}
+            {formData.contactoSecundario.email ? <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email}</Text> : null}
+            {formData.contactoSecundario.telefono ? <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono}</Text> : null}
           </View>
         </View>
 
@@ -362,7 +367,7 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
             <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
             {isUS ? " to the attention of " : " con atención a "}{nombreUsuario}.
           </Text>
-          <Image style={pdfStyles.signatureImage} src={nombreUsuario.toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : "/firma_julio.png"} />
+          <Image style={pdfStyles.signatureImage} src={nombreUsuario.toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : (nombreUsuario.toLowerCase().includes("santoyo") || nombreUsuario.toLowerCase().includes("jonh") || nombreUsuario.toLowerCase().includes("john")) ? "/santoyo.png" : "/firma_julio.png"} />
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{nombreUsuario}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
@@ -1486,7 +1491,7 @@ const NuevaCotizacionPage: React.FC = () => {
                   placeholder={shipToSeleccionadoId ? "Buscar máquina de esta planta..." : "Selecciona un Ship To para filtrar máquinas..."}
                 />
               ) : (
-                <input type="text" value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("machinePlaceholder")} />
+                <textarea rows={2} value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={formData.condiciones.entidad === "US" ? "CFA 406-32\n850451014" : t("machinePlaceholder")} />
               )}
               {shipToSeleccionadoId && maquinasFiltradas.length > 0 && (
                 <p className="text-xs text-teal-600 dark:text-teal-400 mt-1.5 flex items-center gap-1">

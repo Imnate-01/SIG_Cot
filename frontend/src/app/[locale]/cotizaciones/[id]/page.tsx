@@ -122,9 +122,12 @@ const CotizacionDocument = ({ data }: { data: any }) => {
   // 2. Si no, buscar el puesto en la lista de usuarios del sistema por email del contactoPrincipal
   // 3. Fallback: puesto del join de BD, luego "Coordinador de Servicio Técnico"
   const nombreContacto = (contactoPrincipal.nombre || "").toLowerCase();
-  const puestoUsuario = nombreContacto.includes("eduardo")
-    ? "Back Office Manager"
-    : (usuario.puesto || "Coordinador de Servicio Técnico");
+  let puestoUsuario = usuario.puesto || "Coordinador de Servicio Técnico";
+  if (nombreContacto.includes("eduardo")) {
+    puestoUsuario = "Back Office Manager";
+  } else if (nombreContacto.includes("santoyo") || nombreContacto.includes("jonh") || nombreContacto.includes("john")) {
+    puestoUsuario = "Service Sales Manager";
+  }
 
   const subtotal = items.reduce((sum: number, i: any) => sum + Number(i.subtotal || i.total), 0);
   const totalGuardado = Number(data.total);
@@ -302,7 +305,7 @@ const CotizacionDocument = ({ data }: { data: any }) => {
             <Text style={{ color: "blue" }}>{contactoPrincipal.email || ""}</Text>
             {condiciones.entidad === "US" ? " to the attention of " : " con atención a "}{contactoPrincipal.nombre || "Representante SIG"}.
           </Text>
-          <Image style={pdfStyles.signatureImage} src={(contactoPrincipal.nombre || "").toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : "/firma_julio.png"} />
+          <Image style={pdfStyles.signatureImage} src={(contactoPrincipal.nombre || "").toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : ((contactoPrincipal.nombre || "").toLowerCase().includes("santoyo") || (contactoPrincipal.nombre || "").toLowerCase().includes("jonh") || (contactoPrincipal.nombre || "").toLowerCase().includes("john")) ? "/santoyo.png" : "/firma_julio.png"} />
           <View style={pdfStyles.signatureLine} />
           <Text style={pdfStyles.signatureName}>{contactoPrincipal.nombre || "Representante SIG"}</Text>
           <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>

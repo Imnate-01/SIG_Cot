@@ -38,6 +38,7 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [filtroPais, setFiltroPais] = useState<"todos" | "MX" | "US">("todos");
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
@@ -158,11 +159,20 @@ export default function ClientesPage() {
     }
   };
 
-  const clientesFiltrados = clientes.filter((c) =>
-    (c.nombre || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-    (c.empresa || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-    (c.contacto_nombre || "").toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const clientesFiltrados = clientes.filter((c) => {
+    const coincideTexto =
+      (c.nombre || "").toLowerCase().includes(busqueda.toLowerCase()) ||
+      (c.empresa || "").toLowerCase().includes(busqueda.toLowerCase()) ||
+      (c.contacto_nombre || "").toLowerCase().includes(busqueda.toLowerCase());
+    const coincidePais =
+      filtroPais === "todos" ||
+      (filtroPais === "MX" && (!c.pais || c.pais === "MX")) ||
+      (filtroPais === "US" && (c.pais === "US" || c.pais === "CA"));
+    return coincideTexto && coincidePais;
+  });
+
+  const conteoMX = clientes.filter(c => !c.pais || c.pais === "MX").length;
+  const conteoUS = clientes.filter(c => c.pais === "US" || c.pais === "CA").length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
@@ -170,7 +180,14 @@ export default function ClientesPage() {
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{t("title")}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{t("subtitle")}</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              {t("subtitle")}
+              {filtroPais !== "todos" && (
+                <span className="ml-2 text-sm font-semibold">
+                  — {filtroPais === "MX" ? `${conteoMX} MX` : `${conteoUS} US`}
+                </span>
+              )}
+            </p>
           </div>
           <button
             onClick={() => abrirModal()}
@@ -181,15 +198,30 @@ export default function ClientesPage() {
           </button>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 mb-6 flex items-center gap-3">
-          <Search className="text-gray-400 dark:text-gray-500" />
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 mb-6 flex flex-col sm:flex-row items-center gap-3">
+          <Search className="text-gray-400 dark:text-gray-500 shrink-0" />
           <input
             type="text"
             placeholder={t("searchPlaceholder")}
-            className="flex-1 outline-none text-gray-700 dark:text-gray-200 bg-transparent placeholder-gray-400 dark:placeholder-gray-500"
+            className="flex-1 outline-none text-gray-700 dark:text-gray-200 bg-transparent placeholder-gray-400 dark:placeholder-gray-500 w-full"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
+          {/* Country filter pills */}
+          <div className="flex gap-1 shrink-0">
+            {(["todos", "MX", "US"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setFiltroPais(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${filtroPais === p
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    : "bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-blue-400"
+                  }`}
+              >
+                {p === "todos" ? "Todos" : p === "MX" ? "MX" : "US"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -204,8 +236,17 @@ export default function ClientesPage() {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-6 hover:shadow-md transition-all group"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
-                    {(cliente.nombre || "C").charAt(0)}
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
+                      {(cliente.nombre || "C").charAt(0)}
+                    </div>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full border inline-block whitespace-nowrap"
+                      style={(!cliente.pais || cliente.pais === "MX")
+                        ? { background: "#e8f5e9", color: "#2e7d32", borderColor: "#a5d6a7" }
+                        : { background: "#e3f2fd", color: "#1565c0", borderColor: "#90caf9" }
+                      }>
+                      {(!cliente.pais || cliente.pais === "MX") ? "MX" : "US"}
+                    </span>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -247,8 +288,8 @@ export default function ClientesPage() {
                           </span>
                           {(dir.contacto_nombre || dir.contacto_correo) && (
                             <div className="flex flex-col gap-0.5 mt-1.5 text-[11px] text-gray-500">
-                              {dir.contacto_nombre && <span className="truncate flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><User size={11} className="shrink-0"/>{dir.contacto_nombre}</span>}
-                              {dir.contacto_correo && <span className="truncate flex items-center gap-1.5"><Mail size={11} className="shrink-0"/>{dir.contacto_correo}</span>}
+                              {dir.contacto_nombre && <span className="truncate flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><User size={11} className="shrink-0" />{dir.contacto_nombre}</span>}
+                              {dir.contacto_correo && <span className="truncate flex items-center gap-1.5"><Mail size={11} className="shrink-0" />{dir.contacto_correo}</span>}
                             </div>
                           )}
                         </div>

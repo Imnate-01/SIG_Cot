@@ -24,7 +24,16 @@
         "action": "Action",
         "noResults": "No results found.",
         "internalPlatform": "Internal platform",
-        "copyright": "© {year} SIG Combibloc • SIG Quotations"
+        "copyright": "© {year} SIG Combibloc • SIG Quotations",
+        "filterActive": "Active filter:",
+        "countryRegion": "Country / Region",
+        "region": "Region",
+        "mexico": "Mexico",
+        "unitedStates": "United States",
+        "mxOnly": "Mexico Only",
+        "usOnly": "US Only",
+        "allRegions": "MX + US",
+        "analysisScope": "Analysis scope"
     },
     "Landing": {
         "hero": {

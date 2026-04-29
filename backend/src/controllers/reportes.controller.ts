@@ -15,7 +15,7 @@ export class ReportesController {
       const { data: cotizaciones, error } = await supabaseUser
         .from('cotizaciones')
         .select(`
-          id, total, estado, fecha_creacion, tipo_servicio,
+          id, total, estado, fecha_creacion, tipo_servicio, condiciones,
           clientes ( nombre )
         `)
         .order('fecha_creacion', { ascending: true })
@@ -94,7 +94,16 @@ export class ReportesController {
           },
           chartData: historyData,
           pieData,
-          topClientes
+          topClientes,
+          // Raw data for frontend country filtering (null/missing entidad = MX legacy)
+          rawCotizaciones: (cotizaciones || []).map((c: any) => ({
+            id: c.id,
+            total: c.total,
+            estado: c.estado,
+            fecha_creacion: c.fecha_creacion,
+            entidad: c.condiciones?.entidad || 'MX',
+            cliente: c.clientes?.nombre || 'Desconocido'
+          }))
         }
       })
 
