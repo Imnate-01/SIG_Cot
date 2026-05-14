@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { createClientForUser, supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
+import { getBrowser } from '../utils/browserManager';
 
 // ─── Helper: extrae y valida el usuario del token ───────────────────────────
 async function getUserFromToken(req: Request, res: Response) {
@@ -189,37 +190,43 @@ export class FoodSafetyAuditController {
 
         const existingMap = new Map((existingCop || []).map((e: any) => [e.seccion_cop, e.id]));
 
-        for (const key of Object.keys(copFindings)) {
-          const finding = copFindings[key];
-          const existingId = finding.cop_db_id || existingMap.get(finding.seccion_cop);
+        // FIX #6: ejecutar todas las operaciones COP en paralelo (Promise.all)
+        // en lugar de un bucle secuencial — elimina el patrón N+1
+        const copKeys = Object.keys(copFindings);
+        const copResults = await Promise.all(
+          copKeys.map(async (key) => {
+            const finding = copFindings[key];
+            const existingId = finding.cop_db_id || existingMap.get(finding.seccion_cop);
 
-          const payload = {
-            audit_id: Number(id),
-            seccion_cop: finding.seccion_cop,
-            cam_on: finding.cam_on || null,
-            cam_off: finding.cam_off || null,
-            descripcion: finding.descripcion || '',
-            tiene_falla: finding.tiene_falla || false
-          };
+            const payload = {
+              audit_id: Number(id),
+              seccion_cop: finding.seccion_cop,
+              cam_on: finding.cam_on || null,
+              cam_off: finding.cam_off || null,
+              descripcion: finding.descripcion || '',
+              tiene_falla: finding.tiene_falla || false
+            };
 
-          if (existingId) {
-            const { data } = await supabaseUser
-              .from('audit_cop_findings')
-              .update(payload)
-              .eq('id', existingId)
-              .select('id')
-              .single();
-            if (data) finding.cop_db_id = data.id;
-          } else {
-            const { data } = await supabaseUser
-              .from('audit_cop_findings')
-              .insert(payload)
-              .select('id')
-              .single();
-            if (data) finding.cop_db_id = data.id;
-          }
-          savedCopFindings[key] = finding;
-        }
+            if (existingId) {
+              const { data } = await supabaseUser
+                .from('audit_cop_findings')
+                .update(payload)
+                .eq('id', existingId)
+                .select('id')
+                .single();
+              return { key, finding: { ...finding, cop_db_id: data?.id ?? finding.cop_db_id } };
+            } else {
+              const { data } = await supabaseUser
+                .from('audit_cop_findings')
+                .insert(payload)
+                .select('id')
+                .single();
+              return { key, finding: { ...finding, cop_db_id: data?.id } };
+            }
+          })
+        );
+
+        copResults.forEach(({ key, finding }) => { savedCopFindings[key] = finding; });
       }
 
       // ── 2. Guardar resto del wizard en JSONB ──
@@ -299,33 +306,8 @@ export class FoodSafetyAuditController {
       // Generar HTML y templates de encabezado/pie de página
       const { html, headerTemplate, footerTemplate } = buildFsaPdfHtml(report);
 
-      // 1. Cargar puppeteer-core
-      const puppeteer = await import('puppeteer-core');
-
-      // 2. Detectar entorno: local (Windows) vs producción (Linux/Render)
-      const isLocal = process.platform === 'win32';
-      let browser;
-
-      if (isLocal) {
-        const LOCAL_CHROME = process.env.CHROME_EXECUTABLE_PATH
-          || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-        browser = await puppeteer.default.launch({
-          executablePath: LOCAL_CHROME,
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
-          defaultViewport: { width: 1280, height: 900 },
-        });
-      } else {
-        // Producción en Render: usar @sparticuz/chromium (optimizado para serverless)
-        const chromium = (await import('@sparticuz/chromium')).default;
-        browser = await puppeteer.default.launch({
-          args: chromium.args,
-          defaultViewport: { width: 1280, height: 900 },
-          executablePath: await chromium.executablePath(),
-          headless: true,
-        });
-      }
-
+      // FIX #5: usar el browser singleton en lugar de crear/destruir uno por request
+      const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });
       await new Promise(r => setTimeout(r, 800));
@@ -339,7 +321,8 @@ export class FoodSafetyAuditController {
         footerTemplate,
       });
 
-      await browser.close();
+      // Cerrar solo la página (no el browser) para mantener el singleton activo
+      await page.close();
 
       const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0, 10)}.pdf`;
       res.set({

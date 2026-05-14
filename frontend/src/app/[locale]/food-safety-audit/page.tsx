@@ -4,12 +4,96 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { 
-  ShieldCheck, Plus, Search, Filter, Eye, FileText, 
+  ShieldCheck, Plus, Search, Filter,
   Loader2, RefreshCw, Trash2, ChevronRight, BarChart3,
-  Clock, CheckCircle2
+  Clock, CheckCircle2, FileText, AlertTriangle, X
 } from "lucide-react";
 import { foodSafetyAuditApi } from "@/services/foodSafetyAudit";
 
+// ─── Modal de confirmación personalizado (Fix #11) ──────────────────────────
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmModal({ isOpen, title, description, confirmLabel = "Eliminar", onConfirm, onCancel }: ConfirmModalProps) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    if (isOpen) document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      {/* Dialog */}
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+        <button
+          onClick={onCancel}
+          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-start gap-4 mb-5">
+          <div className="p-3 bg-red-50 rounded-xl flex-shrink-0">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">{description}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Toast de error simple ───────────────────────────────────────────────────
+interface ToastProps { message: string; onClose: () => void; }
+function ErrorToast({ message, onClose }: ToastProps) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-red-600 text-white px-5 py-3 rounded-2xl shadow-xl max-w-sm animate-in slide-in-from-bottom-4 duration-300">
+      <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+      <span className="text-sm font-medium">{message}</span>
+      <button onClick={onClose} className="ml-2 text-red-200 hover:text-white">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Página principal ────────────────────────────────────────────────────────
 export default function FoodSafetyAuditPage() {
   const t = useTranslations("FoodSafetyAudit");
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,6 +101,12 @@ export default function FoodSafetyAuditPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  // Fix #11 — estado del modal de confirmación y toast de error
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean; id: number | null; folio: string;
+  }>({ isOpen: false, id: null, folio: "" });
+  const [toastError, setToastError] = useState<string | null>(null);
 
   const fetchReports = async () => {
     setIsLoading(true);
@@ -35,47 +125,45 @@ export default function FoodSafetyAuditPage() {
     }
   };
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  useEffect(() => { fetchReports(); }, []);
 
-  const handleDelete = async (id: number, folio: string) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar el reporte ${folio}?\n\nEsta acción no se puede deshacer.`)) {
-      return;
-    }
-    
+  // Fix #11: abre el modal en lugar de window.confirm
+  const handleDeleteClick = (id: number, folio: string) => {
+    setConfirmModal({ isOpen: true, id, folio });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { id } = confirmModal;
+    if (!id) return;
+    setConfirmModal({ isOpen: false, id: null, folio: "" });
     setIsDeleting(id);
     try {
       const res = await foodSafetyAuditApi.delete(id);
       if (res.data?.success) {
         setReports(prev => prev.filter(r => r.id !== id));
       } else {
-        alert(res.data?.error || "Error al eliminar el reporte");
+        setToastError(res.data?.error || "Error al eliminar el reporte");
       }
     } catch (err: any) {
-      alert(err.message || "Error al conectar con el servidor");
+      setToastError(err.message || "Error al conectar con el servidor");
     } finally {
       setIsDeleting(null);
     }
   };
 
-  const filteredReports = useMemo(() => {
-    return reports.filter(r => 
+  const filteredReports = useMemo(() =>
+    reports.filter(r =>
       r.folio?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.cliente_empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.llenadora?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [reports, searchTerm]);
+    ), [reports, searchTerm]);
 
-  // Estadísticas calculadas
-  const stats = useMemo(() => {
-    return {
-      total: reports.length,
-      borrador: reports.filter(r => r.estado === 'borrador').length,
-      revision: reports.filter(r => r.estado === 'en_revision').length,
-      finalizado: reports.filter(r => r.estado === 'finalizado').length,
-    };
-  }, [reports]);
+  const stats = useMemo(() => ({
+    total: reports.length,
+    borrador: reports.filter(r => r.estado === 'borrador').length,
+    revision: reports.filter(r => r.estado === 'en_revision').length,
+    finalizado: reports.filter(r => r.estado === 'finalizado').length,
+  }), [reports]);
 
   const getInitials = (name: string) => {
     if (!name) return "N/A";
@@ -86,6 +174,22 @@ export default function FoodSafetyAuditPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto min-h-screen bg-slate-50/50">
+
+      {/* Fix #11: Modal de confirmación personalizado */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title="Eliminar reporte"
+        description={`¿Estás seguro de que deseas eliminar el reporte ${confirmModal.folio}? Esta acción no se puede deshacer.`}
+        confirmLabel="Sí, eliminar"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, id: null, folio: "" })}
+      />
+
+      {/* Fix #11: Toast de error */}
+      {toastError && (
+        <ErrorToast message={toastError} onClose={() => setToastError(null)} />
+      )}
+
       {/* ── HEADER & HERO SECTION ── */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
@@ -276,8 +380,9 @@ export default function FoodSafetyAuditPage() {
                     </td>
                     <td className="p-5">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Fix #11: usa modal personalizado en lugar de window.confirm */}
                         <button
-                          onClick={() => handleDelete(report.id, report.folio)}
+                          onClick={() => handleDeleteClick(report.id, report.folio)}
                           disabled={isDeleting === report.id}
                           className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
                           title="Eliminar reporte"

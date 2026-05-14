@@ -33,8 +33,6 @@ export const foodSafetyAuditApi = {
   create:  (data: CreateAuditDto)         => api.post(`${BASE}`, data),
   update:  (id: number, data: Partial<CreateAuditDto>) => api.put(`${BASE}/${id}`, data),
   saveWizard:(id: number, data: any)              => api.put(`${BASE}/${id}/wizard`, data),
-  submit:  (id: number)                   => api.post(`${BASE}/${id}/submit`),
-  approve: (id: number)                   => api.post(`${BASE}/${id}/approve`),
   pdf:     (id: number)                   => api.get(`${BASE}/${id}/pdf`, { responseType: 'blob' }),
   delete:  (id: number)                   => api.delete(`${BASE}/${id}`),
 
