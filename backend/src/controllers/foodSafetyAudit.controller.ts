@@ -310,7 +310,6 @@ export class FoodSafetyAuditController {
           defaultViewport: { width: 1280, height: 900 },
           executablePath: await chromium.executablePath(),
           headless: true,
-          ignoreHTTPSErrors: true,
         });
       }
 
