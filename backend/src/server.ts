@@ -18,6 +18,7 @@ import reportesTecnicosRoutes from './routes/reportes-tecnicos.routes';
 import iaRoutes from './routes/iaRoutes';
 import tarifasClienteRoutes from './routes/tarifas-cliente.routes';
 import cotizacionesUsRoutes from './routes/cotizaciones-us.routes';
+import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -59,6 +60,7 @@ app.use('/api/ia', iaRoutes);
 app.use('/api/reportes-tecnicos', reportesTecnicosRoutes);
 app.use('/api/tarifas-cliente', tarifasClienteRoutes);
 app.use('/api/cotizaciones-us', cotizacionesUsRoutes);
+app.use('/api/food-safety-audit', foodSafetyAuditRoutes);
 
 
 // --- INICIAR SERVIDOR ---

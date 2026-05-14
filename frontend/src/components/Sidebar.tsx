@@ -17,7 +17,8 @@ import {
   HelpCircle,
   Menu,
   X,
-  Wrench
+  Wrench,
+  ShieldCheck
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
@@ -150,17 +151,17 @@ export default function Sidebar() {
             </>
           )}
 
-          {/* --- SECCIÓN DE REPORTES TÉCNICOS --- */}
+          {/* --- SECCIÓN FOOD SAFETY AUDIT --- */}
           <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{t("technicalService")}</p>
+            <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Auditoría (FSA)</p>
             <div className="space-y-1">
-              <Link href="/reportestec" className={linkClass("/reportestec")}>
-                <Wrench size={18} />
-                {esIngeniero ? t("myReports") : t("technicalReports")}
+              <Link href="/food-safety-audit" className={linkClass("/food-safety-audit")}>
+                <ShieldCheck size={18} />
+                Food Safety Audit
               </Link>
 
               {esIngeniero && (
-                <Link href="/reportestec/nuevo" className={linkClass("/reportestec/nuevo")}>
+                <Link href="/food-safety-audit/nuevo" className={linkClass("/food-safety-audit/nuevo")}>
                   <FilePlus size={18} />
                   {t("newReport")}
                 </Link>

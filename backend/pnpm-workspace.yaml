@@ -1,0 +1,9 @@
+# ============================================================
+# Workspace y Seguridad pnpm - Backend
+# ============================================================
+
+# Lista EXPLÍCITA de paquetes que pueden ejecutar lifecycle scripts
+allowBuilds:
+  '0': sharp
+  '1': bcryptjs
+  sharp: true
