@@ -2,6 +2,22 @@ import { Request, Response } from 'express';
 import { createClientForUser, supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
 
+// ─── Helper: extrae y valida el usuario del token ───────────────────────────
+async function getUserFromToken(req: Request, res: Response) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    res.status(401).json({ success: false, error: 'No autorizado: falta token' });
+    return null;
+  }
+  const supabaseUser = createClientForUser(token);
+  const { data: { user }, error } = await supabaseUser.auth.getUser();
+  if (error || !user) {
+    res.status(401).json({ success: false, error: 'Token inválido o expirado' });
+    return null;
+  }
+  return { supabaseUser, user };
+}
+
 export class FoodSafetyAuditController {
 
   // ---------------------------------------------------------
@@ -9,42 +25,25 @@ export class FoodSafetyAuditController {
   // ---------------------------------------------------------
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' });
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser, user } = auth;
 
-      const supabaseUser = createClientForUser(token);
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-      if (authError || !user) {
-        return res.status(401).json({ success: false, message: 'Token inválido o expirado' });
-      }
-
-      const auditor_id = user.id;
       const payload = req.body;
-
-      // Generar Folio: FSA-{AÑO}-XXXX
-      // Para generar el secuencial de forma segura y evitar colisiones, podemos contar cuántos reportes van este año
       const currentYear = new Date().getFullYear();
 
-      // Consultar el último folio del año para generar el siguiente
-      const { data: lastReport, error: countError } = await supabaseUser
+      // Generar folio de forma segura usando supabaseAdmin para el conteo
+      // (evita problemas de RLS al contar y garantiza una lectura consistente)
+      const { count } = await supabaseAdmin
         .from('food_safety_audit_reports')
-        .select('folio')
-        .ilike('folio', `FSA-${currentYear}-%`)
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .select('id', { count: 'exact', head: true })
+        .ilike('folio', `FSA-${currentYear}-%`);
 
-      let nextNumber = 1;
-      if (lastReport && lastReport.folio) {
-        const parts = lastReport.folio.split('-');
-        if (parts.length === 3) {
-          nextNumber = parseInt(parts[2], 10) + 1;
-        }
-      }
+      const nextNumber = (count ?? 0) + 1;
       const folio = `FSA-${currentYear}-${nextNumber.toString().padStart(4, '0')}`;
 
-      // Insertar portada
+      // Insertar portada — el campo UNIQUE en `folio` actúa como red de seguridad
+      // ante una eventual colisión por concurrencia
       const { data: newReport, error: insertError } = await supabaseUser
         .from('food_safety_audit_reports')
         .insert({
@@ -62,7 +61,7 @@ export class FoodSafetyAuditController {
           autorizacion_cliente_nombre: payload.autorizacion_cliente?.nombre,
           autorizacion_cliente_puesto: payload.autorizacion_cliente?.puesto,
           autorizacion_cliente_empresa: payload.autorizacion_cliente?.empresa,
-          auditor_id: auditor_id,
+          auditor_id: user.id,
           estado: 'borrador'
         })
         .select()
@@ -90,10 +89,9 @@ export class FoodSafetyAuditController {
   // ---------------------------------------------------------
   async list(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser } = auth;
 
       const { data, error } = await supabaseUser
         .from('food_safety_audit_reports')
@@ -118,23 +116,25 @@ export class FoodSafetyAuditController {
   }
 
   // ---------------------------------------------------------
-  // 3. OBTENER POR ID
+  // 3. OBTENER POR ID  (FIX #1: verifica propiedad via auditor_id)
   // ---------------------------------------------------------
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser, user } = auth;
       const { id } = req.params;
 
       const { data, error } = await supabaseUser
         .from('food_safety_audit_reports')
         .select('*')
         .eq('id', id)
+        .eq('auditor_id', user.id)   // ← FIX #1: solo el propietario puede leerlo
         .single();
 
-      if (error) throw error;
+      if (error || !data) {
+        return res.status(404).json({ success: false, error: 'Reporte no encontrado o sin acceso' });
+      }
 
       res.json({ success: true, data });
     } catch (error: any) {
@@ -143,15 +143,27 @@ export class FoodSafetyAuditController {
   }
 
   // ---------------------------------------------------------
-  // 4. GUARDAR WIZARD (AUTO-SAVE) — persiste todos los pasos
+  // 4. GUARDAR WIZARD (AUTO-SAVE)  (FIX #1: verifica propiedad)
   // ---------------------------------------------------------
   async saveWizard(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser, user } = auth;
       const { id } = req.params;
+
+      // Verificar propiedad antes de guardar
+      const { data: existing, error: ownerErr } = await supabaseUser
+        .from('food_safety_audit_reports')
+        .select('id')
+        .eq('id', id)
+        .eq('auditor_id', user.id)   // ← FIX #1
+        .maybeSingle();
+
+      if (ownerErr || !existing) {
+        return res.status(404).json({ success: false, error: 'Reporte no encontrado o sin acceso' });
+      }
+
       const {
         copFindings,
         dedusterValues,
@@ -242,34 +254,38 @@ export class FoodSafetyAuditController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
   // ---------------------------------------------------------
-  // 5. GENERAR PDF
+  // 5. GENERAR PDF  (FIX #1, #2, #9)
   // ---------------------------------------------------------
   async generatePdf(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser, user } = auth;
       const { id } = req.params;
 
-      // Marcar reporte como completado al generar el PDF
+      // FIX #9: PRIMERO obtener el reporte y verificar propiedad (FIX #1),
+      // LUEGO actualizar estado — si el reporte no existe, retorna 404 limpio
+      const { data: report, error } = await supabaseUser
+        .from('food_safety_audit_reports')
+        .select('*')
+        .eq('id', id)
+        .eq('auditor_id', user.id)   // ← FIX #1
+        .single();
+
+      if (error || !report) {
+        return res.status(404).json({ success: false, error: 'Reporte no encontrado o sin acceso' });
+      }
+
+      // Ahora sí, marcar como finalizado (sabemos que existe y pertenece al usuario)
       await supabaseUser
         .from('food_safety_audit_reports')
         .update({ estado: 'finalizado' })
         .eq('id', id);
 
-      // Obtener reporte completo
-      const { data: report, error } = await supabaseUser
-        .from('food_safety_audit_reports')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !report) return res.status(404).json({ success: false, error: 'Reporte no encontrado' });
-
-      // Obtener hallazgos COP con imágenes
-      const { data: copFindings } = await supabaseAdmin
+      // FIX #2: usar supabaseUser en lugar de supabaseAdmin para respetar RLS
+      const { data: copFindings } = await supabaseUser
         .from('audit_cop_findings')
         .select('*, audit_evidence_images(*)')
         .eq('audit_id', id)
@@ -286,15 +302,13 @@ export class FoodSafetyAuditController {
       // 1. Cargar puppeteer-core
       const puppeteer = await import('puppeteer-core');
 
-      // 2. Definir si estamos en local (Windows) o en producción (Linux/Render)
+      // 2. Detectar entorno: local (Windows) vs producción (Linux/Render)
       const isLocal = process.platform === 'win32';
       let browser;
 
       if (isLocal) {
-        // Uso local: Chrome instalado en Windows
-        const LOCAL_CHROME = process.env.CHROME_EXECUTABLE_PATH 
+        const LOCAL_CHROME = process.env.CHROME_EXECUTABLE_PATH
           || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-          
         browser = await puppeteer.default.launch({
           executablePath: LOCAL_CHROME,
           headless: true,
@@ -302,9 +316,8 @@ export class FoodSafetyAuditController {
           defaultViewport: { width: 1280, height: 900 },
         });
       } else {
-        // Producción en Render: usar @sparticuz/chromium
+        // Producción en Render: usar @sparticuz/chromium (optimizado para serverless)
         const chromium = (await import('@sparticuz/chromium')).default;
-        
         browser = await puppeteer.default.launch({
           args: chromium.args,
           defaultViewport: { width: 1280, height: 900 },
@@ -315,7 +328,6 @@ export class FoodSafetyAuditController {
 
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });
-      // Pequeña pausa adicional por seguridad
       await new Promise(r => setTimeout(r, 800));
 
       const pdfBuffer = await page.pdf({
@@ -344,20 +356,21 @@ export class FoodSafetyAuditController {
   }
 
   // ---------------------------------------------------------
-  // 6. ELIMINAR REPORTE
+  // 6. ELIMINAR REPORTE  (FIX #1: verifica propiedad)
   // ---------------------------------------------------------
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const auth = await getUserFromToken(req, res);
+      if (!auth) return;
+      const { supabaseUser, user } = auth;
       const { id } = req.params;
 
+      // FIX #1: solo el propietario puede eliminar su reporte
       const { error } = await supabaseUser
         .from('food_safety_audit_reports')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('auditor_id', user.id);
 
       if (error) throw error;
 
