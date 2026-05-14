@@ -304,7 +304,7 @@ export class FoodSafetyAuditController {
       });
 
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'load' });
       // Pequeña pausa adicional por seguridad
       await new Promise(r => setTimeout(r, 800));
 
