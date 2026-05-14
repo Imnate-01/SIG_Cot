@@ -3,7 +3,7 @@ import { createClientForUser, supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
 
 export class FoodSafetyAuditController {
-  
+
   // ---------------------------------------------------------
   // 1. CREAR REPORTE (Paso 0 - Portada)
   // ---------------------------------------------------------
@@ -14,7 +14,7 @@ export class FoodSafetyAuditController {
 
       const supabaseUser = createClientForUser(token);
       const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-      
+
       if (authError || !user) {
         return res.status(401).json({ success: false, message: 'Token inválido o expirado' });
       }
@@ -25,7 +25,7 @@ export class FoodSafetyAuditController {
       // Generar Folio: FSA-{AÑO}-XXXX
       // Para generar el secuencial de forma segura y evitar colisiones, podemos contar cuántos reportes van este año
       const currentYear = new Date().getFullYear();
-      
+
       // Consultar el último folio del año para generar el siguiente
       const { data: lastReport, error: countError } = await supabaseUser
         .from('food_safety_audit_reports')
@@ -92,9 +92,9 @@ export class FoodSafetyAuditController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      
+
       const supabaseUser = createClientForUser(token);
-      
+
       const { data, error } = await supabaseUser
         .from('food_safety_audit_reports')
         .select(`
@@ -124,7 +124,7 @@ export class FoodSafetyAuditController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      
+
       const supabaseUser = createClientForUser(token);
       const { id } = req.params;
 
@@ -149,7 +149,7 @@ export class FoodSafetyAuditController {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      
+
       const supabaseUser = createClientForUser(token);
       const { id } = req.params;
       const {
@@ -212,16 +212,16 @@ export class FoodSafetyAuditController {
 
       // ── 2. Guardar resto del wizard en JSONB ──
       const wizardData = {
-        dedusterValues:    dedusterValues    || {},
-        h2o2Values:        h2o2Values        || {},
-        h2o2Proveedor:     h2o2Proveedor     || '',
-        h2o2Tipo:          h2o2Tipo          || '',
+        dedusterValues: dedusterValues || {},
+        h2o2Values: h2o2Values || {},
+        h2o2Proveedor: h2o2Proveedor || '',
+        h2o2Tipo: h2o2Tipo || '',
         h2o2Concentracion: h2o2Concentracion ?? null,
-        preheatingValues:  preheatingValues  || {},
-        cipValues:         cipValues         || {},
-        cipFlows:          cipFlows          || [],
-        miscValues:        miscValues        || {},
-        observacionesGen:  observacionesGen  || '',
+        preheatingValues: preheatingValues || {},
+        cipValues: cipValues || {},
+        cipFlows: cipFlows || [],
+        miscValues: miscValues || {},
+        observacionesGen: observacionesGen || '',
       };
 
       await supabaseUser
@@ -233,9 +233,9 @@ export class FoodSafetyAuditController {
         })
         .eq('id', id);
 
-      res.json({ 
-        success: true, 
-        data: { copFindings: savedCopFindings } 
+      res.json({
+        success: true,
+        data: { copFindings: savedCopFindings }
       });
 
     } catch (error: any) {
@@ -283,25 +283,36 @@ export class FoodSafetyAuditController {
       // Generar HTML y templates de encabezado/pie de página
       const { html, headerTemplate, footerTemplate } = buildFsaPdfHtml(report);
 
-      // Detectar Chrome local vs entorno serverless
+      // 1. Cargar puppeteer-core
       const puppeteer = await import('puppeteer-core');
 
-      // En Windows local usamos el Chrome instalado
-      const LOCAL_CHROME = process.env.CHROME_EXECUTABLE_PATH
-        || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+      // 2. Definir si estamos en local (Windows) o en producción (Linux/Render)
+      const isLocal = process.platform === 'win32';
+      let browser;
 
-      const browser = await puppeteer.default.launch({
-        executablePath: LOCAL_CHROME,
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-first-run',
-        ],
-        defaultViewport: { width: 1280, height: 900 },
-      });
+      if (isLocal) {
+        // Uso local: Chrome instalado en Windows
+        const LOCAL_CHROME = process.env.CHROME_EXECUTABLE_PATH 
+          || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+          
+        browser = await puppeteer.default.launch({
+          executablePath: LOCAL_CHROME,
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          defaultViewport: { width: 1280, height: 900 },
+        });
+      } else {
+        // Producción en Render: usar @sparticuz/chromium
+        const chromium = (await import('@sparticuz/chromium')).default;
+        
+        browser = await puppeteer.default.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+          ignoreHTTPSErrors: true,
+        });
+      }
 
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });
@@ -319,7 +330,7 @@ export class FoodSafetyAuditController {
 
       await browser.close();
 
-      const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0,10)}.pdf`;
+      const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0, 10)}.pdf`;
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

@@ -6,4 +6,5 @@
 allowBuilds:
   '0': sharp
   '1': bcryptjs
+  puppeteer: set this to true or false
   sharp: true

@@ -15,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@sparticuz/chromium": "^148.0.0",
     "@sparticuz/chromium-min": "^148.0.0",
     "@supabase/supabase-js": "^2.83.0",
     "@types/multer": "^2.1.0",
@@ -26,7 +27,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "pg": "^8.16.3",
-    "puppeteer-core": "^24.43.1",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
@@ -38,5 +38,10 @@
     "@types/pg": "^8.15.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "puppeteer"
+    ]
   }
 }
