@@ -1,0 +1,11 @@
+{
+  "name": "supabase-sql-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node rpc_escrituras_atomicas.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17"
+  }
+}

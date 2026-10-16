@@ -299,20 +299,24 @@ export class FoodSafetyAuditController {
               tiene_falla: finding.tiene_falla || false
             };
 
+            // Antes los errores se ignoraban y el autosave respondía "éxito"
+            // aunque el hallazgo no se hubiera guardado.
             if (existingId) {
-              const { data } = await supabaseUser
+              const { data, error } = await supabaseUser
                 .from('audit_cop_findings')
                 .update(payload)
                 .eq('id', existingId)
                 .select('id')
                 .single();
+              if (error) throw error;
               return { key, finding: { ...finding, cop_db_id: data?.id ?? finding.cop_db_id } };
             } else {
-              const { data } = await supabaseUser
+              const { data, error } = await supabaseUser
                 .from('audit_cop_findings')
                 .insert(payload)
                 .select('id')
                 .single();
+              if (error) throw error;
               return { key, finding: { ...finding, cop_db_id: data?.id } };
             }
           })
@@ -335,7 +339,7 @@ export class FoodSafetyAuditController {
         observacionesGen: observacionesGen || '',
       };
 
-      await supabaseUser
+      const { error: errorWizard } = await supabaseUser
         .from('food_safety_audit_reports')
         .update({
           wizard_data: wizardData,
@@ -343,6 +347,7 @@ export class FoodSafetyAuditController {
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
+      if (errorWizard) throw errorWizard;
 
       res.json({
         success: true,
@@ -376,12 +381,6 @@ export class FoodSafetyAuditController {
       if (error || !report) {
         return res.status(404).json({ success: false, error: 'Reporte no encontrado o sin acceso' });
       }
-
-      // Ahora sí, marcar como finalizado (sabemos que existe y pertenece al usuario)
-      await supabaseUser
-        .from('food_safety_audit_reports')
-        .update({ estado: 'finalizado' })
-        .eq('id', id);
 
       // FIX #2: usar supabaseUser en lugar de supabaseAdmin para respetar RLS
       const { data: copFindings } = await supabaseUser
@@ -432,6 +431,17 @@ export class FoodSafetyAuditController {
         // Cerrar solo la página (no el browser) para mantener el singleton activo.
         // Va en finally: si algo falla, la pestaña no se queda abierta consumiendo memoria.
         await page.close().catch(() => {});
+      }
+
+      // Marcar como finalizado SOLO cuando el PDF ya se generó (antes se marcaba
+      // primero y, si Chromium fallaba, el reporte quedaba finalizado sin PDF).
+      const { error: errorEstado } = await supabaseUser
+        .from('food_safety_audit_reports')
+        .update({ estado: 'finalizado' })
+        .eq('id', id);
+      if (errorEstado) {
+        // No bloqueamos la descarga: el PDF es válido; solo queda registro.
+        console.error('[FSA PDF] No se pudo marcar como finalizado:', errorEstado.message);
       }
 
       const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0, 10)}.pdf`;

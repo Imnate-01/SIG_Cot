@@ -1,7 +1,86 @@
 import { Request, Response } from 'express'
-// CAMBIO IMPORTANTE: Importamos la función para crear clientes seguros, no la instancia global
+import type { SupabaseClient } from '@supabase/supabase-js'
+// Importamos la función para crear clientes seguros, no la instancia global
 import { createClientForUser } from '../config/supabase'
-import { verificarCotizacion, registrarDiferencias, PRICING_ENFORCE } from '../services/verificacionPrecios'
+import { verificarCotizacion, registrarDiferencias, PRICING_ENFORCE, type ResultadoVerificacion } from '../services/verificacionPrecios'
+import {
+  buscarOCrearCliente,
+  crearCotizacionConPartidas,
+  actualizarCotizacionConPartidas,
+  eliminarCotizacion,
+  type CabeceraCotizacion,
+  type PartidaCotizacion,
+} from '../repositories/cotizaciones.repository'
+
+// ─── Helpers compartidos por crear y editar ─────────────────────────────────
+
+/** Folio visible: SIG-{MX|US|CA}-{id} */
+export function formatearFolio(cot: { id: number | string; condiciones?: { entidad?: string } | null }): string {
+  return `SIG-${cot.condiciones?.entidad || 'MX'}-${cot.id}`
+}
+
+/** Descripción corta: sin espacios sobrantes, máximo 120 caracteres, null si vacía. */
+function sanitizarDescripcion(descripcion: unknown): string | null {
+  return (typeof descripcion === 'string' && descripcion.trim().length > 0)
+    ? descripcion.trim().slice(0, 120)
+    : null
+}
+
+/** Texto plano de notas (compatibilidad con cotizaciones antiguas). */
+function construirNotas(body: any): string {
+  const { proveedor, facturarA, contactoPrincipal, contactoSecundario, condiciones } = body
+  return `
+PROVEEDOR:
+${proveedor?.nombre || ''}
+${proveedor?.direccion || ''}
+
+FACTURAR A:
+${facturarA?.nombre || ''}
+
+CONTACTOS:
+Principal: ${contactoPrincipal?.nombre || ''} (${contactoPrincipal?.email || ''})
+Secundario: ${contactoSecundario?.nombre || ''} (${contactoSecundario?.email || ''})
+
+CONDICIONES:
+Precios: ${condiciones?.precios || ''}
+Moneda: ${condiciones?.moneda || 'USD'}
+Observaciones: ${condiciones?.observaciones || ''}
+      `.trim()
+}
+
+/**
+ * cliente_id del body si es numérico; si no, busca/crea el cliente por el
+ * nombre de "Facturar a". Devuelve null si no hay datos de cliente.
+ */
+async function resolverCliente(supabase: SupabaseClient, body: any): Promise<number | string | null> {
+  const { cliente_id, facturarA, contactoSecundario, condiciones } = body
+  if (cliente_id && !isNaN(Number(cliente_id))) return cliente_id
+  if (!facturarA?.nombre || !String(facturarA.nombre).trim()) return null
+
+  return buscarOCrearCliente(supabase, {
+    nombre: String(facturarA.nombre),
+    direccion: facturarA.direccion,
+    colonia: facturarA.colonia,
+    ciudad: facturarA.ciudad,
+    cp: facturarA.cp,
+    correo: contactoSecundario?.email,
+    telefono: contactoSecundario?.telefono,
+    pais: condiciones?.entidad || 'MX',
+  })
+}
+
+/** Partidas del formulario → filas de cotizacion_items. */
+function mapearPartidas(itemsServicio: any[], verificacion: ResultadoVerificacion): PartidaCotizacion[] {
+  return itemsServicio.map((item: any, idx: number) => ({
+    concepto: item.concepto || 'Servicio',
+    cantidad: item.cantidad || 1,
+    precio_unitario: item.precioUnitario || 0,
+    subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
+    detalles: item.detalles || null,
+    desglose: item.desglose || [],   // horas por ingeniero (servicios de viaje)
+    ingenieros: item.ingenieros || 1,
+  }))
+}
 
 export class CotizacionesController {
 
@@ -23,154 +102,56 @@ export class CotizacionesController {
         return res.status(401).json({ success: false, message: 'Token inválido o expirado' })
       }
 
-      const creado_por = user.id
-
       // D. Recibir datos
-      let {
+      const {
         cliente_id,
         facturarA,
-        contactoPrincipal,
         contactoSecundario,
         condiciones,
         itemsServicio,
         total,
         estado = 'borrador',
         tipo_servicio = 'TM',
-        proveedor,
-        descripcion, // ← AGREGAR
+        descripcion,
         datos_forma
       } = req.body
 
-      // Validar partidas ANTES de insertar nada (antes, si faltaban, quedaba
-      // una cotización sin partidas porque el error ocurría después del insert)
+      // Validar partidas ANTES de escribir nada
       if (!Array.isArray(itemsServicio) || itemsServicio.length === 0) {
         return res.status(400).json({ success: false, message: 'La cotización debe tener al menos una partida' })
       }
 
       // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
       const verificacion = verificarCotizacion(itemsServicio, total)
-      registrarDiferencias(`crear cotización (usuario ${creado_por})`, verificacion.diferencias)
-      const totalFinal = PRICING_ENFORCE ? verificacion.total : total
+      registrarDiferencias(`crear cotización (usuario ${user.id})`, verificacion.diferencias)
 
-      // Sanitizar descripción
-      const descripcionFinal: string | null =
-        (typeof descripcion === 'string' && descripcion.trim().length > 0)
-          ? descripcion.trim().slice(0, 120)
-          : null;
+      // E. Cliente: el seleccionado, o buscar/crear por nombre exacto
+      const clienteIdFinal = await resolverCliente(supabaseUser, req.body)
 
-      // E. Lógica de Cliente Inteligente (Evita duplicados y maneja IDs de texto)
-      if (!cliente_id || isNaN(Number(cliente_id))) {
-        cliente_id = null;
+      // F. Cabecera + partidas en una sola transacción
+      const cabecera: CabeceraCotizacion = {
+        cliente_id: clienteIdFinal,
+        creado_por: user.id,
+        total: PRICING_ENFORCE ? verificacion.total : total,
+        estado,
+        // Guardamos notas por compatibilidad, pero el PDF usa 'condiciones'
+        notas: construirNotas(req.body),
+        tipo_servicio,
+        descripcion: sanitizarDescripcion(descripcion),
+        estatus_po: 'pendiente',
+        condiciones: condiciones || {},
+        datos_forma: datos_forma || null,
       }
-
-      let clienteIdFinal = cliente_id;
-
-      // Si no hay ID numérico, buscamos o creamos
-      if (!clienteIdFinal && facturarA?.nombre) {
-        // 1. Buscar si existe usando el cliente seguro
-        const { data: clienteExistente } = await supabaseUser
-          .from('clientes')
-          .select('id')
-          .ilike('nombre', `%${facturarA.nombre}%`)
-          .maybeSingle()
-
-        if (clienteExistente) {
-          clienteIdFinal = clienteExistente.id;
-        } else {
-          // 2. Crear cliente nuevo
-          const { data: nuevoCliente, error: errorCliente } = await supabaseUser
-            .from('clientes')
-            .insert({
-              nombre: facturarA.nombre,
-              empresa: facturarA.nombre,
-              direccion: facturarA.direccion || '',
-              colonia: facturarA.colonia || '',
-              ciudad: facturarA.ciudad || '',
-              cp: facturarA.cp || '',
-              correo: contactoSecundario?.email || '',
-              telefono: contactoSecundario?.telefono || '',
-              pais: condiciones?.entidad || 'MX'
-            })
-            .select()
-            .single()
-
-          if (errorCliente) throw errorCliente
-          clienteIdFinal = nuevoCliente.id
-        }
-      }
-
-      // F. Generar texto de Notas
-      const notas = `
-PROVEEDOR:
-${proveedor?.nombre || ''}
-${proveedor?.direccion || ''}
-
-FACTURAR A:
-${facturarA?.nombre || ''}
-
-CONTACTOS:
-Principal: ${contactoPrincipal?.nombre || ''} (${contactoPrincipal?.email || ''})
-Secundario: ${contactoSecundario?.nombre || ''} (${contactoSecundario?.email || ''})
-
-CONDICIONES:
-Precios: ${condiciones?.precios || ''}
-Moneda: ${condiciones?.moneda || 'USD'}
-Observaciones: ${condiciones?.observaciones || ''}
-      `.trim()
-
-      // G. Insertar la Cotización Maestra
-      const { data: cotizacion, error: errorCotizacion } = await supabaseUser
-        .from('cotizaciones')
-        .insert({
-          cliente_id: clienteIdFinal,
-          creado_por: creado_por,
-          total: totalFinal,
-          estado: estado,
-          // Guardamos notas por compatibilidad, pero usaremos 'condiciones' para el PDF nuevo
-          notas: notas,
-          tipo_servicio: tipo_servicio,
-          descripcion: descripcionFinal, // Insertar descripción sanitizada
-          estatus_po: 'pendiente',
-          // agregamos esta línea para guardar el objeto condiciones completo
-          condiciones: condiciones || {},
-          datos_forma: datos_forma || null
-        })
-        .select()
-        .single()
-
-      if (errorCotizacion) throw errorCotizacion
-
-      // H. Insertar los Items
-      const itemsConCotizacionId = itemsServicio.map((item: any, idx: number) => ({
-        cotizacion_id: cotizacion.id,
-        concepto: item.concepto || 'Servicio',
-        cantidad: item.cantidad || 1,
-        precio_unitario: item.precioUnitario || 0,
-        subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
-        // AQUÍ ESTÁ LA CORRECCIÓN: Guardamos lo que faltaba
-        detalles: item.detalles || null,
-        desglose: item.desglose || [],          // Guardamos el array de ingenieros
-        //  NUEVO: Guardamos la cantidad de ingenieros explícitamente
-        ingenieros: item.ingenieros || 1
-      }))
-
-      const { error: errorItems } = await supabaseUser
-        .from('cotizacion_items')
-        .insert(itemsConCotizacionId)
-
-      if (errorItems) throw errorItems
-
-      // I. Calcular el folio (SIG-[MX/US]-{ID})
-      const entidad = condiciones?.entidad || 'MX';
-      const numero_cotizacion = `SIG-${entidad}-${cotizacion.id}`;
+      const partidas = mapearPartidas(itemsServicio, verificacion)
+      const cotizacion = await crearCotizacionConPartidas(supabaseUser, cabecera, partidas)
 
       res.status(201).json({
         success: true,
         message: 'Cotización creada exitosamente',
         data: {
           ...cotizacion,
-          numero_cotizacion,
-          items: itemsConCotizacionId
+          numero_cotizacion: formatearFolio(cotizacion),
+          items: partidas.map((p) => ({ ...p, cotizacion_id: cotizacion.id }))
         }
       })
 
@@ -205,10 +186,9 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       // Formatear con la nueva nomenclatura SIG-[ENTIDAD]-ID
       const cotizacionesFormateadas = data.map((cot: any) => {
-        const entidad = cot.condiciones?.entidad || 'MX';
         return {
           ...cot,
-          numero_cotizacion: `SIG-${entidad}-${cot.id}`,
+          numero_cotizacion: formatearFolio(cot),
           creado_por_nombre: cot.usuarios?.nombre || 'Desconocido'
         }
       })
@@ -247,7 +227,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         success: true,
         data: {
           ...data,
-          numero_cotizacion: `SIG-${data.condiciones?.entidad || 'MX'}-${data.id}`
+          numero_cotizacion: formatearFolio(data)
         }
       })
     } catch (error: any) {
@@ -319,19 +299,13 @@ Observaciones: ${condiciones?.observaciones || ''}
         return res.status(400).json({ success: false, message: 'Solo se pueden editar cotizaciones en estado borrador.' });
       }
 
-      // C. Recibir datos completos
-      let {
-        cliente_id,
-        facturarA,
-        contactoPrincipal,
-        contactoSecundario,
+      // C. Recibir datos (el estado no se cambia aquí, solo datos)
+      const {
         condiciones,
         itemsServicio,
         total,
-        // estado, // No permitimos cambiar estado aquí, solo datos
         tipo_servicio = 'TM',
-        descripcion = null, // Nuevo campo
-        proveedor,
+        descripcion = null,
         datos_forma
       } = req.body
 
@@ -342,106 +316,25 @@ Observaciones: ${condiciones?.observaciones || ''}
       // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
       const verificacion = verificarCotizacion(itemsServicio, total)
       registrarDiferencias(`editar cotización ${id}`, verificacion.diferencias)
-      const totalFinal = PRICING_ENFORCE ? verificacion.total : total
 
-      // D. Lógica de Cliente (Igual que Create)
-      if (!cliente_id || isNaN(Number(cliente_id))) {
-        cliente_id = null;
-      }
-      let clienteIdFinal = cliente_id;
+      // D. Cliente (misma lógica que al crear)
+      const clienteIdFinal = await resolverCliente(supabaseUser, req.body)
 
-      if (!clienteIdFinal && facturarA?.nombre) {
-        const { data: clienteExistente } = await supabaseUser
-          .from('clientes')
-          .select('id')
-          .ilike('nombre', `%${facturarA.nombre}%`)
-          .maybeSingle()
-
-        if (clienteExistente) {
-          clienteIdFinal = clienteExistente.id;
-        } else {
-          const { data: nuevoCliente, error: errorCliente } = await supabaseUser
-            .from('clientes')
-            .insert({
-              nombre: facturarA.nombre,
-              empresa: facturarA.nombre,
-              direccion: facturarA.direccion || '',
-              colonia: facturarA.colonia || '',
-              ciudad: facturarA.ciudad || '',
-              cp: facturarA.cp || '',
-              correo: contactoSecundario?.email || '',
-              telefono: contactoSecundario?.telefono || '',
-              pais: condiciones?.entidad || 'MX'
-            })
-            .select()
-            .single()
-
-          if (errorCliente) throw errorCliente
-          clienteIdFinal = nuevoCliente.id
-        }
-      }
-
-      // E. Construir Notas
-      const notas = `
-PROVEEDOR:
-${proveedor?.nombre || ''}
-${proveedor?.direccion || ''}
-
-FACTURAR A:
-${facturarA?.nombre || ''}
-
-CONTACTOS:
-Principal: ${contactoPrincipal?.nombre || ''} (${contactoPrincipal?.email || ''})
-Secundario: ${contactoSecundario?.nombre || ''} (${contactoSecundario?.email || ''})
-
-CONDICIONES:
-Precios: ${condiciones?.precios || ''}
-Moneda: ${condiciones?.moneda || 'USD'}
-Observaciones: ${condiciones?.observaciones || ''}
-      `.trim()
-
-      // F. Actualizar Cabecera
-      const { error: errorUpdate } = await supabaseUser
-        .from('cotizaciones')
-        .update({
+      // E. Cabecera + reemplazo de partidas en una sola transacción
+      await actualizarCotizacionConPartidas(
+        supabaseUser,
+        id,
+        {
           cliente_id: clienteIdFinal,
-          total: totalFinal,
-          notas: notas,
-          tipo_servicio: tipo_servicio,
-          descripcion: descripcion, // Actualizar descripción
+          total: PRICING_ENFORCE ? verificacion.total : total,
+          notas: construirNotas(req.body),
+          tipo_servicio,
+          descripcion: sanitizarDescripcion(descripcion),
           condiciones: condiciones || {},
-          datos_forma: datos_forma || null
-        })
-        .eq('id', id);
-
-      if (errorUpdate) throw errorUpdate;
-
-      // G. Estrategia DELETE + INSERT para Items
-      // 1. Borrar anteriores
-      const { error: errorDeleteItems } = await supabaseUser
-        .from('cotizacion_items')
-        .delete()
-        .eq('cotizacion_id', id);
-
-      if (errorDeleteItems) throw errorDeleteItems;
-
-      // 2. Insertar nuevos
-      const itemsConCotizacionId = itemsServicio.map((item: any, idx: number) => ({
-        cotizacion_id: id,
-        concepto: item.concepto || 'Servicio',
-        cantidad: item.cantidad || 1,
-        precio_unitario: item.precioUnitario || 0,
-        subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
-        detalles: item.detalles || null,
-        desglose: item.desglose || [],
-        ingenieros: item.ingenieros || 1
-      }))
-
-      const { error: errorInsertItems } = await supabaseUser
-        .from('cotizacion_items')
-        .insert(itemsConCotizacionId);
-
-      if (errorInsertItems) throw errorInsertItems;
+          datos_forma: datos_forma || null,
+        },
+        mapearPartidas(itemsServicio, verificacion),
+      )
 
       res.json({
         success: true,
@@ -469,15 +362,8 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       const { id } = req.params
 
-      // Primero borramos items para mantener integridad referencial (si no está en cascada)
-      await supabaseUser.from('cotizacion_items').delete().eq('cotizacion_id', id);
-
-      const { error } = await supabaseUser
-        .from('cotizaciones')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      // Partidas y cabecera en una sola transacción
+      await eliminarCotizacion(supabaseUser, id)
 
       res.json({ success: true, message: 'Cotización eliminada correctamente' })
     } catch (error: any) {
