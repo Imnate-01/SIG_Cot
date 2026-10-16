@@ -53,7 +53,14 @@
     "emptyFields": "Empty fields",
     "emptyFieldsDesc": "Please enter your email and password.",
     "connectionError": "Connection error",
-    "resetPassword": "Reset password"
+    "resetPassword": "Reset password",
+    "title": "Sign in",
+    "appName": "Quotations",
+    "appTagline": "Technical service",
+    "moduleQuotes": "MX and US quotations",
+    "moduleReports": "Technical service reports",
+    "moduleFsa": "Food Safety Audit",
+    "internalUse": "Internal use · SIG"
   },
   "Register": {
     "title": "Create your new",

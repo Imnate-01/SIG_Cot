@@ -67,6 +67,8 @@ function redirectToLogin(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.ico$).*)',
+    // Excluye cualquier archivo con extensión (.webp, .svg, .jpg, …). Antes solo
+    // se excluían .png e .ico, y el resto de /public respondía 404.
+    '/((?!api|_next/static|_next/image|_vercel|.*\\..*).*)',
   ],
 };

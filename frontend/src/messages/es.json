@@ -53,7 +53,14 @@
     "emptyFields": "Campos vacíos",
     "emptyFieldsDesc": "Por favor ingresa tu correo y contraseña.",
     "connectionError": "Error de conexión",
-    "resetPassword": "Restablecer contraseña"
+    "resetPassword": "Restablecer contraseña",
+    "title": "Iniciar sesión",
+    "appName": "Cotizaciones",
+    "appTagline": "Servicio técnico",
+    "moduleQuotes": "Cotizaciones MX y US",
+    "moduleReports": "Reportes técnicos de servicio",
+    "moduleFsa": "Food Safety Audit",
+    "internalUse": "Uso interno · SIG"
   },
   "Register": {
     "title": "Crea tu nueva",

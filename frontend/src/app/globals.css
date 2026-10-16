@@ -14,6 +14,21 @@
   
   --color-card: #ffffff;
   --color-card-fg: #1f2937; /* gray-800 */
+
+  /* ── Identidad visual SIG (misma paleta que los otros proyectos internos de SIG) ── */
+  --sig-blue: #145EFC;        /* acción primaria, enlaces */
+  --sig-blue-hover: #0B4FE0;
+  --sig-blue-focus: #C9D9FE;  /* anillo de foco */
+  --sig-blue-soft: #EEF3FF;
+  --sig-ink: #000000;         /* títulos y texto principal */
+  --sig-muted: #73706D;       /* texto secundario */
+  --sig-sand: #F2EFEB;        /* paneles laterales */
+  --sig-line: #E5DFD9;        /* bordes suaves */
+  --sig-line-strong: #BFBAB5; /* bordes de inputs y botones secundarios */
+  --sig-success: #167665;  --sig-success-soft: #E4F1ED;
+  --sig-warning: #A09B05;  --sig-warning-soft: #F7F5C6;
+  --sig-danger: #C4262E;   --sig-danger-soft: #FBE4E6;
+  --font-sig: 'PP SIG Flow', Arial, Helvetica, sans-serif;
 }
 
 @theme inline {
@@ -25,6 +40,24 @@
   --color-card: var(--color-card);
   --color-card-fg: var(--color-card-fg);
   
+  /* Clases Tailwind: bg-sig-sand, text-sig-muted, border-sig-line, font-sig, … */
+  --color-sig-blue: var(--sig-blue);
+  --color-sig-blue-hover: var(--sig-blue-hover);
+  --color-sig-blue-focus: var(--sig-blue-focus);
+  --color-sig-blue-soft: var(--sig-blue-soft);
+  --color-sig-ink: var(--sig-ink);
+  --color-sig-muted: var(--sig-muted);
+  --color-sig-sand: var(--sig-sand);
+  --color-sig-line: var(--sig-line);
+  --color-sig-line-strong: var(--sig-line-strong);
+  --color-sig-success: var(--sig-success);
+  --color-sig-success-soft: var(--sig-success-soft);
+  --color-sig-warning: var(--sig-warning);
+  --color-sig-warning-soft: var(--sig-warning-soft);
+  --color-sig-danger: var(--sig-danger);
+  --color-sig-danger-soft: var(--sig-danger-soft);
+  --font-sig: var(--font-sig);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
