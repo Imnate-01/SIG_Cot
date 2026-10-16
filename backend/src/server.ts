@@ -20,6 +20,11 @@ import tarifasClienteRoutes from './routes/tarifas-cliente.routes';
 import cotizacionesUsRoutes from './routes/cotizaciones-us.routes';
 import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
 const app = express();
+
+// El backend corre detrás del proxy de Render: sin esto, req.ip es la IP del proxy
+// y los rate limiters (p. ej. el de PDFs) cuentan a TODOS los usuarios como uno solo.
+// TRUST_PROXY permite ajustar el número de saltos (0 = sin proxy).
+app.set('trust proxy', process.env.TRUST_PROXY !== undefined ? Number(process.env.TRUST_PROXY) : 1);
 const PORT = process.env.PORT || 3001;
 
 // --- MIDDLEWARES ---
