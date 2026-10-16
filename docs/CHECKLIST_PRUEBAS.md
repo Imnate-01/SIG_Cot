@@ -42,3 +42,13 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] Autosave del wizard en cada paso
 - [ ] Generar PDF: portada, hallazgos COP con fotos, secciones 2-6 y firmas
 - [ ] Texto con caracteres especiales (`<`, `>`, `&`, comillas) se ve literal en el PDF
+
+## Agregado tras el refactor (fases 2–6)
+- [ ] Abrir una cotización con 2+ ingenieros en "Editar" → el total NO cambia al cargar
+- [ ] Editar una cotización con precio manual o "sin contrato" → se conserva al abrirla
+- [ ] Cambiar rápido entre dos clientes con tarifas especiales → se aplican las del último elegido
+- [ ] Mover una tarjeta en el Kanban con el backend apagado → la tarjeta regresa a su columna
+- [ ] Log del backend: no aparecen avisos `[precios]` en cotizaciones normales
+- [ ] Log del backend: no aparece `[migración pendiente]` (si ya aplicaste la migración)
+- [ ] Con `ROLES_GESTION_CATALOGO` definido, un usuario sin ese rol recibe 403 al editar un servicio
+- [ ] Sin sesión, /es/food-safety-audit redirige al login
