@@ -1,6 +1,17 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/services/api";
+import {
+  precioUnitario as calcularPrecioUnitario,
+  precioCatalogo,
+  totalLinea,
+  recalcularLinea,
+  ajustarDesgloseAIngenieros,
+  cantidadParaGuardar,
+  sumarTotales,
+  conceptoRequiereDesglose,
+  esCostoVuelo as esTarifaCostoVuelo,
+} from "@/features/cotizaciones/pricing";
 import { useDropzone } from "react-dropzone";
 import { PDFDocument } from "pdf-lib";
 import MachineCombobox from "@/components/MachineCombobox";
@@ -164,7 +175,7 @@ interface CotizacionPDFProps {
 
 const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
   const pdfStyles = buildPdfStyles(itemsServicio.length);
-  const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
+  const subtotal = sumarTotales(itemsServicio);
   const total = subtotal;
   const isUS = formData.condiciones.entidad === "US" || formData.condiciones.entidad === "CA";
   const fecha = new Date().toLocaleDateString(isUS ? "en-US" : "es-MX", { day: "numeric", month: "long", year: "numeric" });
@@ -260,16 +271,9 @@ const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, 
 
           {itemsServicio.map((item) => {
             const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
-            const esCostoVuelo = tarifa?.concepto.toLowerCase().includes('costo de vuelo');
+            const esCostoVuelo = esTarifaCostoVuelo(tarifa);
             // Bug 3 fix: use client contract rate if available
-            let precioUnitario: number;
-            if (item.esPrecioManual && item.precioManual !== undefined) {
-              precioUnitario = item.precioManual;
-            } else if (item.conContrato && tarifasCliente[item.tarifaId]) {
-              precioUnitario = tarifasCliente[item.tarifaId];
-            } else {
-              precioUnitario = item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0;
-            }
+            const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
 
             // Bug 5 fix: prioritize item.ingenieros
             const numIngenieros = item.ingenieros ? item.ingenieros : (tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0 ? item.desglose.length : 1);
@@ -465,7 +469,7 @@ const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, fo
   const generarCorreo = async () => {
     setGenerandoCorreo(true);
     try {
-      const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
+      const subtotal = sumarTotales(itemsServicio);
       const total = subtotal;
 
       const { data } = await api.post("/ia/generar-correo", {
@@ -650,15 +654,7 @@ const NuevaCotizacionPage: React.FC = () => {
         const tarifa = tarifasDisponibles.find((t) => String(t.id) === item.tarifaId);
         if (!tarifa) return item;
 
-        const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
-          ? item.precioManual
-          : (item.conContrato && tarifasCliente[item.tarifaId]
-            ? tarifasCliente[item.tarifaId]
-            : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato));
-
-        const expectedTotal = tarifa.requiere_desglose
-          ? precioUnitario * item.cantidad
-          : precioUnitario * item.ingenieros * item.cantidad;
+        const expectedTotal = totalLinea(item, tarifa, tarifasCliente);
 
         if (item.total !== expectedTotal) {
           changed = true;
@@ -701,7 +697,7 @@ const NuevaCotizacionPage: React.FC = () => {
           precio_sin_contrato: Number(s.precio_sin_contrato),
           precio_con_contrato: Number(s.precio_con_contrato),
           moneda: s.moneda,
-          requiere_desglose: s.concepto.toLowerCase().includes('viaje') || s.concepto.toLowerCase().includes('travel'),
+          requiere_desglose: conceptoRequiereDesglose(s.concepto),
           categoria: s.categoria || 'Servicio Técnico'
         }));
         setTarifasDisponibles(lista);
@@ -726,7 +722,7 @@ const NuevaCotizacionPage: React.FC = () => {
         precio_sin_contrato: Number(s.precio_sin_contrato),
         precio_con_contrato: Number(s.precio_con_contrato),
         moneda: s.moneda,
-        requiere_desglose: s.concepto.toLowerCase().includes('viaje') || s.concepto.toLowerCase().includes('travel'),
+        requiere_desglose: conceptoRequiereDesglose(s.concepto),
         categoria: s.categoria || 'Servicio Técnico'
       }));
       setTarifasDisponibles(lista);
@@ -752,15 +748,9 @@ const NuevaCotizacionPage: React.FC = () => {
 
       const itemsFormateados = itemsServicio.map(item => {
         const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
-        const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
-          ? item.precioManual
-          : (item.conContrato && tarifasCliente[item.tarifaId]
-            ? tarifasCliente[item.tarifaId]
-            : (item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0));
+        const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
 
-        const cantidadReal = tarifa?.requiere_desglose
-          ? item.cantidad
-          : (item.cantidad * (item.ingenieros || 1));
+        const cantidadReal = cantidadParaGuardar(item, tarifa);
 
         return {
           concepto: tarifa?.concepto || 'Servicio no especificado',
@@ -785,9 +775,9 @@ const NuevaCotizacionPage: React.FC = () => {
         itemsServicio: itemsFormateados,
         descripcion: formData.descripcion,
         tipo_servicio: formData.tipo_servicio,
-        subtotal: itemsServicio.reduce((sum, i) => sum + i.total, 0),
+        subtotal: sumarTotales(itemsServicio),
         iva: 0,
-        total: itemsServicio.reduce((sum, i) => sum + i.total, 0),
+        total: sumarTotales(itemsServicio),
         estado: 'borrador',
         datos_forma: formData
       }
@@ -1039,7 +1029,7 @@ const NuevaCotizacionPage: React.FC = () => {
       if (campo === "tarifaId") {
         updated.tarifaId = String(valor);
         const t = tarifasDisponibles.find((x) => String(x.id) === updated.tarifaId);
-        if (t && t.concepto.toLowerCase().includes("costo de vuelo")) {
+        if (esTarifaCostoVuelo(t)) {
           updated.esPrecioManual = true;
           if (updated.precioManual === undefined) {
             updated.precioManual = 0;
@@ -1052,7 +1042,9 @@ const NuevaCotizacionPage: React.FC = () => {
         updated.esPrecioManual = Boolean(valor);
         if (updated.esPrecioManual && updated.precioManual === undefined) {
           const t = tarifasDisponibles.find((x) => String(x.id) === updated.tarifaId);
-          updated.precioManual = updated.conContrato && tarifasCliente[updated.tarifaId] ? tarifasCliente[updated.tarifaId] : (updated.conContrato ? t?.precio_con_contrato : t?.precio_sin_contrato);
+          updated.precioManual = t || (updated.conContrato && tarifasCliente[updated.tarifaId])
+            ? precioCatalogo(updated, t, tarifasCliente)
+            : undefined;
         }
       }
       else if (campo === "precioManual") updated.precioManual = Number(valor);
@@ -1069,41 +1061,12 @@ const NuevaCotizacionPage: React.FC = () => {
       }
 
       const tarifa = tarifasDisponibles.find((t) => String(t.id) === updated.tarifaId);
-      const requiereDesglose = tarifa?.requiere_desglose;
-
-      if ((campo === "ingenieros" || campo === "tarifaId") && requiereDesglose) {
-        const diff = updated.ingenieros - updated.desglose.length;
-        if (diff > 0) { for (let i = 0; i < diff; i++) updated.desglose.push({ uid: Math.random().toString(), nombre: '', horas: 0 }); }
-        else if (diff < 0) { updated.desglose = updated.desglose.slice(0, updated.ingenieros); }
+      if ((campo === "ingenieros" || campo === "tarifaId") && tarifa?.requiere_desglose) {
+        // Una fila de horas por ingeniero (arreglo nuevo: no se muta el estado anterior)
+        updated.desglose = ajustarDesgloseAIngenieros(updated.desglose, updated.ingenieros, () => ({ uid: Math.random().toString(), nombre: '', horas: 0 }));
       }
-      if (tarifa) {
-        const esCostoVuelo = tarifa.concepto.toLowerCase().includes('costo de vuelo');
-        if (esCostoVuelo) {
-          // Para Costo de Vuelo: precio único = precio manual. No aplica ingenieros ni horas.
-          updated.ingenieros = 1;
-          updated.cantidad = 1;
-          updated.esPrecioManual = true;
-          updated.total = updated.precioManual || 0;
-        } else {
-          // Use client-specific contract rate if available, otherwise generic
-          let precioUnitario: number;
-          if (updated.esPrecioManual && updated.precioManual !== undefined) {
-            precioUnitario = updated.precioManual;
-          } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
-            precioUnitario = tarifasCliente[updated.tarifaId];
-          } else {
-            precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-          }
-          if (requiereDesglose) {
-            const totalHoras = updated.desglose.reduce((acc, curr) => acc + curr.horas, 0);
-            updated.cantidad = totalHoras;
-            updated.total = precioUnitario * totalHoras;
-          } else {
-            updated.total = precioUnitario * updated.ingenieros * updated.cantidad;
-          }
-        }
-      } else { updated.total = 0; }
-      return updated;
+      // Reglas de precio (vuelo, desglose, contrato, manual) en features/cotizaciones/pricing.ts
+      return recalcularLinea(updated, tarifa, tarifasCliente);
     })
     );
   };
@@ -1118,20 +1081,8 @@ const NuevaCotizacionPage: React.FC = () => {
 
       const tarifa = tarifasDisponibles.find(t => String(t.id) === updated.tarifaId);
       if (tarifa && tarifa.requiere_desglose) {
-        const totalHoras = nuevoDesglose.reduce((acc, curr) => acc + curr.horas, 0);
-        updated.cantidad = totalHoras;
-
-        // Use client-specific contract rate if available, otherwise generic
-        let precioUnitario: number;
-        if (updated.esPrecioManual && updated.precioManual !== undefined) {
-          precioUnitario = updated.precioManual;
-        } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
-          precioUnitario = tarifasCliente[updated.tarifaId];
-        } else {
-          precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-        }
-
-        updated.total = precioUnitario * totalHoras;
+        // cantidad = suma de horas del desglose; total = precio × horas
+        return recalcularLinea(updated, tarifa, tarifasCliente);
       }
       return updated;
     }));
@@ -1169,7 +1120,7 @@ const NuevaCotizacionPage: React.FC = () => {
     } catch (error) { toast.error(t("toastExtractError")); } finally { setExtrayendoCliente(false); }
   }
 
-  const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
+  const subtotalServicios = sumarTotales(itemsServicio);
   const totalServicios = subtotalServicios;
 
   // Filter machines by selected Ship To
@@ -1413,7 +1364,7 @@ const NuevaCotizacionPage: React.FC = () => {
               // USAR TARIFAS DINÁMICAS
               const tarifa = tarifasDisponibles.find((t) => String(t.id) === item.tarifaId);
               const esViaje = tarifa?.requiere_desglose;
-              const esCostoVuelo = tarifa?.concepto.toLowerCase().includes('costo de vuelo');
+              const esCostoVuelo = esTarifaCostoVuelo(tarifa);
 
               return (
                 <div key={item.id} className="border border-gray-200 dark:border-zinc-700 rounded-xl p-5 bg-gray-50 dark:bg-zinc-800/50 relative">
@@ -1459,13 +1410,13 @@ const NuevaCotizacionPage: React.FC = () => {
                       {item.esPrecioManual && (
                         <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg px-3 py-1.5 transition-all shadow-sm">
                           <span className="text-blue-700 dark:text-blue-400 font-bold text-sm">$</span>
-                          <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (item.conContrato && tarifa && tarifasCliente[tarifa.id] ? tarifasCliente[tarifa.id] : (item.conContrato ? tarifa?.precio_con_contrato : tarifa?.precio_sin_contrato))} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
+                          <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (tarifa ? precioCatalogo(item, tarifa, tarifasCliente) : undefined)} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
                         </div>
                       )}
 
                       {tarifa && !item.esPrecioManual && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 hidden sm:inline">
-                          (${(item.conContrato && tarifasCliente[tarifa.id] ? tarifasCliente[tarifa.id] : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato)).toFixed(2)} / {tarifa.unidad})
+                          (${precioCatalogo(item, tarifa, tarifasCliente).toFixed(2)} / {tarifa.unidad})
                           {item.conContrato && tarifasCliente[tarifa.id] && <span className="ml-1 text-blue-500 font-bold">{t("specialRate")}</span>}
                         </span>
                       )}

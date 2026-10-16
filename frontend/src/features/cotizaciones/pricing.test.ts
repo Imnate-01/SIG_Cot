@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- las funciones legacy* son copias literales del código anterior */
 /**
  * Pruebas de caracterización: comparan el módulo nuevo contra copias LITERALES
  * del código que había en nueva/page.tsx y editar/[id]/page.tsx antes del
