@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { createClientForUser } from '../config/supabase';
+import { verificarCotizacionUS, registrarDiferencias, PRICING_ENFORCE } from '../services/verificacionPrecios';
 
 export class CotizacionesUsController {
   
@@ -35,6 +36,15 @@ export class CotizacionesUsController {
         datos_forma = {}
       } = req.body;
 
+      // Recalcular subtotales con las tarifas enviadas (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacionUS(req.body);
+      if (verificacion) registrarDiferencias(`crear cotización US (usuario ${user.id})`, verificacion.diferencias);
+      const usarServidor = PRICING_ENFORCE && verificacion;
+
+      // Las tarifas no se guardaban: sin ellas no se puede reproducir ni auditar el
+      // cálculo después. Se agregan a datos_forma (columna JSON existente).
+      const datosFormaFinal = verificacion ? { ...datos_forma, rates: verificacion.rates } : datos_forma;
+
       // Insertar en la BD
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
@@ -51,10 +61,10 @@ export class CotizacionesUsController {
           expenses_amount,
           calibration_amount,
           sales_accommodation_amount,
-          travel_subtotal,
-          labor_subtotal,
-          grand_total,
-          datos_forma,
+          travel_subtotal: usarServidor ? verificacion.totales.travel_subtotal : travel_subtotal,
+          labor_subtotal: usarServidor ? verificacion.totales.labor_subtotal : labor_subtotal,
+          grand_total: usarServidor ? verificacion.totales.grand_total : grand_total,
+          datos_forma: datosFormaFinal,
           estado: 'borrador',
           creado_por: user.id
         })
@@ -155,6 +165,14 @@ export class CotizacionesUsController {
 
       const updateData = req.body;
 
+      const verificacion = verificarCotizacionUS(updateData);
+      if (verificacion) registrarDiferencias(`editar cotización US ${id}`, verificacion.diferencias);
+      const usarServidor = PRICING_ENFORCE && verificacion;
+      // Solo se toca datos_forma si el body lo trae (para no borrar lo guardado)
+      const datosFormaFinal = verificacion && updateData.datos_forma
+        ? { ...updateData.datos_forma, rates: verificacion.rates }
+        : updateData.datos_forma;
+
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
         .update({
@@ -170,10 +188,10 @@ export class CotizacionesUsController {
           expenses_amount: updateData.expenses_amount,
           calibration_amount: updateData.calibration_amount,
           sales_accommodation_amount: updateData.sales_accommodation_amount,
-          travel_subtotal: updateData.travel_subtotal,
-          labor_subtotal: updateData.labor_subtotal,
-          grand_total: updateData.grand_total,
-          datos_forma: updateData.datos_forma
+          travel_subtotal: usarServidor ? verificacion.totales.travel_subtotal : updateData.travel_subtotal,
+          labor_subtotal: usarServidor ? verificacion.totales.labor_subtotal : updateData.labor_subtotal,
+          grand_total: usarServidor ? verificacion.totales.grand_total : updateData.grand_total,
+          datos_forma: datosFormaFinal
         })
         .eq('id', id)
         .select()

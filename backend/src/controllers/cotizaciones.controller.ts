@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 // CAMBIO IMPORTANTE: Importamos la función para crear clientes seguros, no la instancia global
 import { createClientForUser } from '../config/supabase'
+import { verificarCotizacion, registrarDiferencias, PRICING_ENFORCE } from '../services/verificacionPrecios'
 
 export class CotizacionesController {
 
@@ -39,6 +40,17 @@ export class CotizacionesController {
         descripcion, // ← AGREGAR
         datos_forma
       } = req.body
+
+      // Validar partidas ANTES de insertar nada (antes, si faltaban, quedaba
+      // una cotización sin partidas porque el error ocurría después del insert)
+      if (!Array.isArray(itemsServicio) || itemsServicio.length === 0) {
+        return res.status(400).json({ success: false, message: 'La cotización debe tener al menos una partida' })
+      }
+
+      // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacion(itemsServicio, total)
+      registrarDiferencias(`crear cotización (usuario ${creado_por})`, verificacion.diferencias)
+      const totalFinal = PRICING_ENFORCE ? verificacion.total : total
 
       // Sanitizar descripción
       const descripcionFinal: string | null =
@@ -112,7 +124,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         .insert({
           cliente_id: clienteIdFinal,
           creado_por: creado_por,
-          total: total,
+          total: totalFinal,
           estado: estado,
           // Guardamos notas por compatibilidad, pero usaremos 'condiciones' para el PDF nuevo
           notas: notas,
@@ -129,12 +141,12 @@ Observaciones: ${condiciones?.observaciones || ''}
       if (errorCotizacion) throw errorCotizacion
 
       // H. Insertar los Items
-      const itemsConCotizacionId = itemsServicio.map((item: any) => ({
+      const itemsConCotizacionId = itemsServicio.map((item: any, idx: number) => ({
         cotizacion_id: cotizacion.id,
         concepto: item.concepto || 'Servicio',
         cantidad: item.cantidad || 1,
         precio_unitario: item.precioUnitario || 0,
-        subtotal: item.total || 0,
+        subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
         // AQUÍ ESTÁ LA CORRECCIÓN: Guardamos lo que faltaba
         detalles: item.detalles || null,
         desglose: item.desglose || [],          // Guardamos el array de ingenieros
@@ -323,6 +335,15 @@ Observaciones: ${condiciones?.observaciones || ''}
         datos_forma
       } = req.body
 
+      if (!Array.isArray(itemsServicio) || itemsServicio.length === 0) {
+        return res.status(400).json({ success: false, message: 'La cotización debe tener al menos una partida' })
+      }
+
+      // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacion(itemsServicio, total)
+      registrarDiferencias(`editar cotización ${id}`, verificacion.diferencias)
+      const totalFinal = PRICING_ENFORCE ? verificacion.total : total
+
       // D. Lógica de Cliente (Igual que Create)
       if (!cliente_id || isNaN(Number(cliente_id))) {
         cliente_id = null;
@@ -384,7 +405,7 @@ Observaciones: ${condiciones?.observaciones || ''}
         .from('cotizaciones')
         .update({
           cliente_id: clienteIdFinal,
-          total: total,
+          total: totalFinal,
           notas: notas,
           tipo_servicio: tipo_servicio,
           descripcion: descripcion, // Actualizar descripción
@@ -405,12 +426,12 @@ Observaciones: ${condiciones?.observaciones || ''}
       if (errorDeleteItems) throw errorDeleteItems;
 
       // 2. Insertar nuevos
-      const itemsConCotizacionId = itemsServicio.map((item: any) => ({
+      const itemsConCotizacionId = itemsServicio.map((item: any, idx: number) => ({
         cotizacion_id: id,
         concepto: item.concepto || 'Servicio',
         cantidad: item.cantidad || 1,
         precio_unitario: item.precioUnitario || 0,
-        subtotal: item.total || 0,
+        subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
         detalles: item.detalles || null,
         desglose: item.desglose || [],
         ingenieros: item.ingenieros || 1
