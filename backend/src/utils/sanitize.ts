@@ -37,9 +37,20 @@ export const dateOrNull = (v: any): string | null => {
 export const boolOrFalse = (v: any): boolean =>
   v === true || v === "true" || v === 1 || v === "1";
 
+// Columnas que el servidor controla: nunca se aceptan desde datos_generales
+const CAMPOS_PROTEGIDOS_REPORTE = [
+  'id', 'folio', 'usuario_id', 'estado', 'created_at', 'updated_at', 'borrador_data',
+];
+
+const omitirProtegidos = (dg: any) => {
+  const copia = { ...(dg || {}) };
+  for (const campo of CAMPOS_PROTEGIDOS_REPORTE) delete copia[campo];
+  return copia;
+};
+
 // Sanitiza el objeto datos_generales para insert/update en reportes_tecnicos
 export const sanitizeDatosGenerales = (dg: any) => ({
-  ...dg,
+  ...omitirProtegidos(dg),
 
   // IDs (por si llegan aquí desde frontend)
   cliente_id: bigintOrNull(dg?.cliente_id),

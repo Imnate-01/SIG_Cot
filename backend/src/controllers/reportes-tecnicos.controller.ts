@@ -69,7 +69,7 @@ class ReportesTecnicosController {
 
       // ✅ BIGINT SANITIZE
       const clienteId = bigintOrNull(cliente_id);
-      const cotizacionId = bigintOrNull(cotizacion_id);
+      const cotizacionId = bigintOrNull(cotizacion_id ?? datos_generales?.cotizacion_id);
 
       if (!clienteId) {
         return res.status(400).json({ success: false, message: "cliente_id es requerido" });
@@ -85,13 +85,17 @@ class ReportesTecnicosController {
         perdidas: cierre?.perdidas ?? datos_generales?.perdidas ?? null,
       });
 
+      // Ojo con el orden: el spread de safeDG va PRIMERO para que los campos que
+      // controla el servidor (folio, usuario, cliente, cotización) no se sobrescriban.
+      // Antes, safeDG.cliente_id (null, porque datos_generales no lo trae) pisaba al
+      // cliente_id real y los reportes finalizados quedaban sin cliente.
       const cabeceraInsert: any = {
+        ...safeDG,
+
         folio,
         cliente_id: clienteId,
         cotizacion_id: cotizacionId,
         usuario_id: user.id,
-
-        ...safeDG,
 
         // si todavía no subes firmas a storage:
         firma_cliente_url: safeDG?.firma_cliente_url ?? null,
@@ -183,11 +187,11 @@ class ReportesTecnicosController {
       const draftId = bigintOrNull(draft_id);
 
       const base: any = {
+        ...safeDG,
+
         usuario_id: user.id,
         cliente_id: clienteId,
         cotizacion_id: cotizacionId,
-
-        ...safeDG,
 
         // requiere que exista columna JSONB borrador_data
         borrador_data: payload || {},

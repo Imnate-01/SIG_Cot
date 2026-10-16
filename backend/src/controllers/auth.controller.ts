@@ -30,7 +30,10 @@ export const refreshToken = async (req: Request, res: Response) => {
 // POST /api/auth/register
 export const registrarUsuario = async (req: Request, res: Response) => {
   try {
-    const { nombre, email, password, rol, departamento } = req.body;
+    // El rol NO se acepta del body: todo registro nuevo es "vendedor".
+    // Los roles superiores se asignan desde la base de datos por un administrador.
+    const { nombre, email, password, departamento } = req.body;
+    const rol = "vendedor";
 
     if (!email.endsWith("@sig.biz")) {
       return res.status(400).json({ message: "Solo correos @sig.biz" });
@@ -66,7 +69,7 @@ export const registrarUsuario = async (req: Request, res: Response) => {
         id: authData.user.id,
         nombre,
         email,
-        rol: rol || "vendedor",
+        rol,
         departamento: departamento
       });
 

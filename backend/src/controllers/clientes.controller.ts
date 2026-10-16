@@ -1,5 +1,12 @@
 import { Request, Response } from 'express'
 import { createClientForUser } from '../config/supabase' // Importamos la función segura
+import { pickFields } from '../utils/pickFields'
+
+// Columnas de `clientes` que se pueden modificar desde el formulario
+const CAMPOS_EDITABLES_CLIENTE = [
+  'nombre', 'empresa', 'contacto_nombre', 'direccion', 'colonia',
+  'ciudad', 'cp', 'correo', 'telefono', 'pais',
+] as const
 
 export class ClientesController {
 
@@ -82,7 +89,8 @@ export class ClientesController {
       const supabaseUser = createClientForUser(token);
 
       const { id } = req.params
-      const { cliente_direcciones, cliente_maquinas, ...updates } = req.body
+      const { cliente_direcciones } = req.body
+      const updates = pickFields(req.body, CAMPOS_EDITABLES_CLIENTE)
 
       const { data, error } = await supabaseUser
         .from('clientes')

@@ -1,5 +1,12 @@
 import { Request, Response } from 'express'
 import { createClientForUser, supabaseAdmin } from '../config/supabase'
+import { pickFields } from '../utils/pickFields'
+
+// Columnas que el usuario puede modificar en un servicio del catálogo
+const CAMPOS_EDITABLES_SERVICIO = [
+  'concepto', 'unidad', 'precio_sin_contrato', 'precio_con_contrato',
+  'moneda', 'categoria', 'region', 'activo',
+] as const
 
 export class ServiciosController {
 
@@ -63,7 +70,10 @@ export class ServiciosController {
 
       const supabaseUser = createClientForUser(token);
       const { id } = req.params
-      const updates = req.body
+      const updates = pickFields(req.body, CAMPOS_EDITABLES_SERVICIO)
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ success: false, error: 'No hay campos válidos para actualizar' })
+      }
 
       const { data, error } = await supabaseUser
         .from('servicios')
