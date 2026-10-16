@@ -1,20 +1,16 @@
 import { Request, Response } from 'express';
-import { createClientForUser } from '../config/supabase';
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { verificarCotizacionUS, registrarDiferencias, PRICING_ENFORCE } from '../services/verificacionPrecios';
 
 export class CotizacionesUsController {
   
   // 1. CREAR COTIZACIÓN US STANDARD
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-      if (authError || !user) {
-        return res.status(401).json({ success: false, message: 'Token inválido o expirado' });
-      }
+      const { user } = contextoAuth(req);
 
       const {
         customer,
@@ -35,6 +31,15 @@ export class CotizacionesUsController {
         datos_forma = {}
       } = req.body;
 
+      // Recalcular subtotales con las tarifas enviadas (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacionUS(req.body);
+      if (verificacion) registrarDiferencias(`crear cotización US (usuario ${user.id})`, verificacion.diferencias);
+      const usarServidor = PRICING_ENFORCE && verificacion;
+
+      // Las tarifas no se guardaban: sin ellas no se puede reproducir ni auditar el
+      // cálculo después. Se agregan a datos_forma (columna JSON existente).
+      const datosFormaFinal = verificacion ? { ...datos_forma, rates: verificacion.rates } : datos_forma;
+
       // Insertar en la BD
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
@@ -51,10 +56,10 @@ export class CotizacionesUsController {
           expenses_amount,
           calibration_amount,
           sales_accommodation_amount,
-          travel_subtotal,
-          labor_subtotal,
-          grand_total,
-          datos_forma,
+          travel_subtotal: usarServidor ? verificacion.totales.travel_subtotal : travel_subtotal,
+          labor_subtotal: usarServidor ? verificacion.totales.labor_subtotal : labor_subtotal,
+          grand_total: usarServidor ? verificacion.totales.grand_total : grand_total,
+          datos_forma: datosFormaFinal,
           estado: 'borrador',
           creado_por: user.id
         })
@@ -81,17 +86,14 @@ export class CotizacionesUsController {
 
     } catch (error: any) {
       console.error('Error al crear cotización US:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 2. OBTENER TODAS
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
@@ -102,17 +104,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 3. OBTENER POR ID
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const { data, error } = await supabaseUser
@@ -125,17 +124,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 4. ACTUALIZAR
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       // Verificar que existe y es borrador
@@ -155,6 +151,14 @@ export class CotizacionesUsController {
 
       const updateData = req.body;
 
+      const verificacion = verificarCotizacionUS(updateData);
+      if (verificacion) registrarDiferencias(`editar cotización US ${id}`, verificacion.diferencias);
+      const usarServidor = PRICING_ENFORCE && verificacion;
+      // Solo se toca datos_forma si el body lo trae (para no borrar lo guardado)
+      const datosFormaFinal = verificacion && updateData.datos_forma
+        ? { ...updateData.datos_forma, rates: verificacion.rates }
+        : updateData.datos_forma;
+
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
         .update({
@@ -170,10 +174,10 @@ export class CotizacionesUsController {
           expenses_amount: updateData.expenses_amount,
           calibration_amount: updateData.calibration_amount,
           sales_accommodation_amount: updateData.sales_accommodation_amount,
-          travel_subtotal: updateData.travel_subtotal,
-          labor_subtotal: updateData.labor_subtotal,
-          grand_total: updateData.grand_total,
-          datos_forma: updateData.datos_forma
+          travel_subtotal: usarServidor ? verificacion.totales.travel_subtotal : updateData.travel_subtotal,
+          labor_subtotal: usarServidor ? verificacion.totales.labor_subtotal : updateData.labor_subtotal,
+          grand_total: usarServidor ? verificacion.totales.grand_total : updateData.grand_total,
+          datos_forma: datosFormaFinal
         })
         .eq('id', id)
         .select()
@@ -183,17 +187,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 5. ELIMINAR
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const { error } = await supabaseUser
@@ -205,7 +206,7 @@ export class CotizacionesUsController {
 
       res.json({ success: true, message: 'Eliminada correctamente' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 }

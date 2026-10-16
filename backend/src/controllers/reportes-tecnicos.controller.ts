@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { createClientForUser } from "../config/supabase";
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 
 // ✅ SANITIZERS
 import { sanitizeDatosGenerales, bigintOrNull } from "../utils/sanitize";
@@ -10,10 +11,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getCatalogos(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       const { data: secciones, error: errSecc } = await supabase
         .from("catalogo_secciones")
@@ -38,7 +36,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data: catalogoCompleto });
     } catch (error: any) {
       console.error("Error catalogos:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -47,15 +45,8 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-
-      const user = userResp?.user;
-      if (!user) return res.status(401).json({ success: false, message: "Usuario no identificado" });
+      const supabase = contextoAuth(req).supabase;
+      const { user } = contextoAuth(req);
 
       const {
         cliente_id,
@@ -64,12 +55,11 @@ class ReportesTecnicosController {
         detalles,
         acciones,
         cierre,
-        meta,
       } = req.body;
 
       // ✅ BIGINT SANITIZE
       const clienteId = bigintOrNull(cliente_id);
-      const cotizacionId = bigintOrNull(cotizacion_id);
+      const cotizacionId = bigintOrNull(cotizacion_id ?? datos_generales?.cotizacion_id);
 
       if (!clienteId) {
         return res.status(400).json({ success: false, message: "cliente_id es requerido" });
@@ -85,13 +75,17 @@ class ReportesTecnicosController {
         perdidas: cierre?.perdidas ?? datos_generales?.perdidas ?? null,
       });
 
+      // Ojo con el orden: el spread de safeDG va PRIMERO para que los campos que
+      // controla el servidor (folio, usuario, cliente, cotización) no se sobrescriban.
+      // Antes, safeDG.cliente_id (null, porque datos_generales no lo trae) pisaba al
+      // cliente_id real y los reportes finalizados quedaban sin cliente.
       const cabeceraInsert: any = {
+        ...safeDG,
+
         folio,
         cliente_id: clienteId,
         cotizacion_id: cotizacionId,
         usuario_id: user.id,
-
-        ...safeDG,
 
         // si todavía no subes firmas a storage:
         firma_cliente_url: safeDG?.firma_cliente_url ?? null,
@@ -154,7 +148,7 @@ class ReportesTecnicosController {
       });
     } catch (error: any) {
       console.error("Error create reporte:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -163,15 +157,8 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async saveDraft(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-
-      const user = userResp?.user;
-      if (!user) return res.status(401).json({ success: false, message: "Usuario no identificado" });
+      const supabase = contextoAuth(req).supabase;
+      const { user } = contextoAuth(req);
 
       const { datos_generales, payload, cliente_id, draft_id, cotizacion_id } = req.body;
 
@@ -183,11 +170,11 @@ class ReportesTecnicosController {
       const draftId = bigintOrNull(draft_id);
 
       const base: any = {
+        ...safeDG,
+
         usuario_id: user.id,
         cliente_id: clienteId,
         cotizacion_id: cotizacionId,
-
-        ...safeDG,
 
         // requiere que exista columna JSONB borrador_data
         borrador_data: payload || {},
@@ -222,7 +209,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data });
     } catch (error: any) {
       console.error("Error save draft:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -231,10 +218,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getListado(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       // 1) Intento principal: VIEW
       const { data, error } = await supabase
@@ -302,7 +286,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data: mapped });
     } catch (e: any) {
       console.error("Error getListado(unhandled):", e);
-      return res.status(500).json({ success: false, error: e.message || "Error interno" });
+      return responderError(res, e);
     }
   }
 
@@ -311,10 +295,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       const { data, error } = await supabase
         .from("reportes_tecnicos")
@@ -325,7 +306,7 @@ class ReportesTecnicosController {
 
       return res.json({ success: true, data });
     } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -334,10 +315,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const reportId = bigintOrNull(id);
@@ -374,7 +352,7 @@ class ReportesTecnicosController {
         },
       });
     } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 }

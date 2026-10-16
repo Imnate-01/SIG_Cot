@@ -5,7 +5,8 @@ import { jwtVerify } from 'jose';
 import { routing } from './i18n/routing';
 
 // Rutas protegidas (sin prefijo de locale)
-const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda'];
+// '/cotizaciones' cubre también '/cotizaciones-us'
+const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda', '/food-safety-audit', '/usuarios'];
 
 const SUPABASE_JWT_SECRET = new TextEncoder().encode(
   process.env.SUPABASE_JWT_SECRET || ''
@@ -66,6 +67,8 @@ function redirectToLogin(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.ico$).*)',
+    // Excluye cualquier archivo con extensión (.webp, .svg, .jpg, …). Antes solo
+    // se excluían .png e .ico, y el resto de /public respondía 404.
+    '/((?!api|_next/static|_next/image|_vercel|.*\\..*).*)',
   ],
 };

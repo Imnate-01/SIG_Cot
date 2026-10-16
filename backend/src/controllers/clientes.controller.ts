@@ -1,5 +1,30 @@
 import { Request, Response } from 'express'
-import { createClientForUser } from '../config/supabase' // Importamos la función segura
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { pickFields } from '../utils/pickFields'
+import { actualizarClienteConDirecciones, type DireccionCliente } from '../repositories/cotizaciones.repository'
+
+/** Dirección del formulario → fila de cliente_direcciones (sin cliente_id). */
+function mapearDireccion(d: any): DireccionCliente {
+  return {
+    empresa_planta_nombre: d.empresa_planta_nombre || d.nombre_ubicacion || 'Principal',
+    tipo: d.tipo || 'ship_to',
+    direccion: d.direccion,
+    colonia: d.colonia,
+    ciudad: d.ciudad,
+    cp: d.cp,
+    contacto_nombre: d.contacto_nombre || null,
+    contacto_correo: d.contacto_correo || null,
+    contacto_telefono: d.contacto_telefono || null,
+    activo: d.activo !== undefined ? d.activo : true,
+  }
+}
+
+// Columnas de `clientes` que se pueden modificar desde el formulario
+const CAMPOS_EDITABLES_CLIENTE = [
+  'nombre', 'empresa', 'contacto_nombre', 'direccion', 'colonia',
+  'ciudad', 'cp', 'correo', 'telefono', 'pais',
+] as const
 
 export class ClientesController {
 
@@ -7,14 +32,7 @@ export class ClientesController {
   async getAll(req: Request, res: Response) {
     try {
       // A. Extraer el token del header (Bearer token)
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        return res.status(401).json({ success: false, error: "No autorizado: Falta token" });
-      }
-
-      // B. Crear cliente seguro para este usuario
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // C. Consultar usando el cliente seguro (RLS se aplicará automáticamente)
       const { data, error } = await supabaseUser
@@ -25,16 +43,14 @@ export class ClientesController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 2. CREAR CLIENTE
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { nombre, empresa, direccion, colonia, ciudad, cp, correo, telefono, cliente_direcciones, pais } = req.body
 
@@ -51,84 +67,45 @@ export class ClientesController {
       if (error) throw error
 
       if (cliente_direcciones && Array.isArray(cliente_direcciones) && cliente_direcciones.length > 0) {
-        const direccionesToInsert = cliente_direcciones.map((d: any) => ({
-          cliente_id: data.id,
-          empresa_planta_nombre: d.empresa_planta_nombre || d.nombre_ubicacion || 'Principal',
-          tipo: d.tipo || 'ship_to',
-          direccion: d.direccion,
-          colonia: d.colonia,
-          ciudad: d.ciudad,
-          cp: d.cp,
-          contacto_nombre: d.contacto_nombre || null,
-          contacto_correo: d.contacto_correo || null,
-          contacto_telefono: d.contacto_telefono || null,
-          activo: d.activo !== undefined ? d.activo : true
-        }));
+        const direccionesToInsert = cliente_direcciones.map((d: any) => ({ ...mapearDireccion(d), cliente_id: data.id }));
         const { error: insertError } = await supabaseUser.from('cliente_direcciones').insert(direccionesToInsert);
         if (insertError) throw insertError;
       }
 
       res.status(201).json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 3. ACTUALIZAR CLIENTE
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
-      const { cliente_direcciones, cliente_maquinas, ...updates } = req.body
+      const { cliente_direcciones } = req.body
+      const updates = pickFields(req.body, CAMPOS_EDITABLES_CLIENTE)
 
-      const { data, error } = await supabaseUser
-        .from('clientes')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
+      // null = no tocar direcciones (el body no las trae)
+      const direcciones = Array.isArray(cliente_direcciones)
+        ? cliente_direcciones.map(mapearDireccion)
+        : null
 
-      if (error) throw error
-
-      if (cliente_direcciones && Array.isArray(cliente_direcciones)) {
-        // Simple sync strategy: Delete existing and insert new ones
-        const { error: deleteError } = await supabaseUser.from('cliente_direcciones').delete().eq('cliente_id', id);
-        if (deleteError) throw deleteError;
-        
-        if (cliente_direcciones.length > 0) {
-          const direccionesToInsert = cliente_direcciones.map((d: any) => ({
-            cliente_id: id,
-            empresa_planta_nombre: d.empresa_planta_nombre || d.nombre_ubicacion || 'Principal',
-            tipo: d.tipo || 'ship_to',
-            direccion: d.direccion,
-            colonia: d.colonia,
-            ciudad: d.ciudad,
-            cp: d.cp,
-            contacto_nombre: d.contacto_nombre || null,
-            contacto_correo: d.contacto_correo || null,
-            contacto_telefono: d.contacto_telefono || null,
-            activo: d.activo !== undefined ? d.activo : true
-          }));
-          const { error: insertError } = await supabaseUser.from('cliente_direcciones').insert(direccionesToInsert);
-          if (insertError) throw insertError;
-        }
-      }
+      // Cliente + direcciones en una sola transacción (antes: si fallaba el
+      // insert, el cliente se quedaba sin direcciones)
+      const data = await actualizarClienteConDirecciones(supabaseUser, id, updates, direcciones)
 
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 4. ELIMINAR CLIENTE
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
       const { error } = await supabaseUser.from('clientes').delete().eq('id', id)
@@ -136,7 +113,7 @@ export class ClientesController {
       if (error) throw error
       res.json({ success: true, message: 'Cliente eliminado' })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }

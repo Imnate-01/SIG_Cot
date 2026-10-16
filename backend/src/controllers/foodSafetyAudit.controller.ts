@@ -1,21 +1,39 @@
 import { Request, Response } from 'express';
-import { createClientForUser, supabaseAdmin } from '../config/supabase';
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
 import { getBrowser } from '../utils/browserManager';
 
-// ─── Helper: extrae y valida el usuario del token ───────────────────────────
-async function getUserFromToken(req: Request, res: Response) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    res.status(401).json({ success: false, error: 'No autorizado: falta token' });
-    return null;
+// ─── Helper: recursos que Chromium puede cargar al generar el PDF ──────────
+// Solo data: URIs y hosts de confianza: el de Supabase (imágenes de
+// evidencia) más los que se agreguen en PDF_ALLOWED_HOSTS (separados por coma).
+const PDF_ALLOWED_HOSTS: string[] = (() => {
+  const hosts = (process.env.PDF_ALLOWED_HOSTS || '')
+    .split(',')
+    .map(h => h.trim().toLowerCase())
+    .filter(Boolean);
+  try {
+    if (process.env.SUPABASE_URL) hosts.push(new URL(process.env.SUPABASE_URL).host.toLowerCase());
+  } catch { /* SUPABASE_URL mal formada: se ignora */ }
+  return hosts;
+})();
+
+function isAllowedPdfResource(url: string): boolean {
+  if (url.startsWith('data:') || url === 'about:blank') return true;
+  try {
+    const parsed = new URL(url);
+    const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return isHttp && PDF_ALLOWED_HOSTS.includes(parsed.host.toLowerCase());
+  } catch {
+    return false;
   }
-  const supabaseUser = createClientForUser(token);
-  const { data: { user }, error } = await supabaseUser.auth.getUser();
-  if (error || !user) {
-    res.status(401).json({ success: false, error: 'Token inválido o expirado' });
-    return null;
-  }
+}
+
+// ─── Helper: usuario y cliente de Supabase validados por requireAuth ───────
+// (se conserva la firma para no tocar cada método del controlador)
+async function getUserFromToken(req: Request, _res: Response) {
+  const { supabase: supabaseUser, user } = contextoAuth(req);
   return { supabaseUser, user };
 }
 
@@ -116,10 +134,7 @@ export class FoodSafetyAuditController {
 
     } catch (error: any) {
       console.error('Error al crear reporte FSA:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al crear reporte FSA'
-      });
+      responderError(res, error);
     }
   }
 
@@ -150,7 +165,7 @@ export class FoodSafetyAuditController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -206,7 +221,7 @@ export class FoodSafetyAuditController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -274,20 +289,24 @@ export class FoodSafetyAuditController {
               tiene_falla: finding.tiene_falla || false
             };
 
+            // Antes los errores se ignoraban y el autosave respondía "éxito"
+            // aunque el hallazgo no se hubiera guardado.
             if (existingId) {
-              const { data } = await supabaseUser
+              const { data, error } = await supabaseUser
                 .from('audit_cop_findings')
                 .update(payload)
                 .eq('id', existingId)
                 .select('id')
                 .single();
+              if (error) throw error;
               return { key, finding: { ...finding, cop_db_id: data?.id ?? finding.cop_db_id } };
             } else {
-              const { data } = await supabaseUser
+              const { data, error } = await supabaseUser
                 .from('audit_cop_findings')
                 .insert(payload)
                 .select('id')
                 .single();
+              if (error) throw error;
               return { key, finding: { ...finding, cop_db_id: data?.id } };
             }
           })
@@ -310,7 +329,7 @@ export class FoodSafetyAuditController {
         observacionesGen: observacionesGen || '',
       };
 
-      await supabaseUser
+      const { error: errorWizard } = await supabaseUser
         .from('food_safety_audit_reports')
         .update({
           wizard_data: wizardData,
@@ -318,6 +337,7 @@ export class FoodSafetyAuditController {
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
+      if (errorWizard) throw errorWizard;
 
       res.json({
         success: true,
@@ -325,7 +345,7 @@ export class FoodSafetyAuditController {
       });
 
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -352,12 +372,6 @@ export class FoodSafetyAuditController {
         return res.status(404).json({ success: false, error: 'Reporte no encontrado o sin acceso' });
       }
 
-      // Ahora sí, marcar como finalizado (sabemos que existe y pertenece al usuario)
-      await supabaseUser
-        .from('food_safety_audit_reports')
-        .update({ estado: 'finalizado' })
-        .eq('id', id);
-
       // FIX #2: usar supabaseUser en lugar de supabaseAdmin para respetar RLS
       const { data: copFindings } = await supabaseUser
         .from('audit_cop_findings')
@@ -376,20 +390,49 @@ export class FoodSafetyAuditController {
       // FIX #5: usar el browser singleton en lugar de crear/destruir uno por request
       const browser = await getBrowser();
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load' });
-      await new Promise(r => setTimeout(r, 800));
+      let pdfBuffer: Uint8Array;
+      try {
+        // Seguridad: Chromium solo puede cargar recursos inline (data:) y las
+        // imágenes de nuestro Storage. Cualquier otra URL que se colara en el
+        // contenido (red interna, metadata del servidor, etc.) se bloquea.
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+          const url = request.url();
+          if (isAllowedPdfResource(url)) {
+            request.continue();
+          } else {
+            console.warn('[FSA PDF] Recurso bloqueado:', url.slice(0, 200));
+            request.abort();
+          }
+        });
 
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '28mm', bottom: '22mm', left: '16mm', right: '16mm' },
-        displayHeaderFooter: true,
-        headerTemplate,
-        footerTemplate,
-      });
+        await page.setContent(html, { waitUntil: 'load' });
+        await new Promise(r => setTimeout(r, 800));
 
-      // Cerrar solo la página (no el browser) para mantener el singleton activo
-      await page.close();
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: { top: '28mm', bottom: '22mm', left: '16mm', right: '16mm' },
+          displayHeaderFooter: true,
+          headerTemplate,
+          footerTemplate,
+        });
+      } finally {
+        // Cerrar solo la página (no el browser) para mantener el singleton activo.
+        // Va en finally: si algo falla, la pestaña no se queda abierta consumiendo memoria.
+        await page.close().catch(() => {});
+      }
+
+      // Marcar como finalizado SOLO cuando el PDF ya se generó (antes se marcaba
+      // primero y, si Chromium fallaba, el reporte quedaba finalizado sin PDF).
+      const { error: errorEstado } = await supabaseUser
+        .from('food_safety_audit_reports')
+        .update({ estado: 'finalizado' })
+        .eq('id', id);
+      if (errorEstado) {
+        // No bloqueamos la descarga: el PDF es válido; solo queda registro.
+        console.error('[FSA PDF] No se pudo marcar como finalizado:', errorEstado.message);
+      }
 
       const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0, 10)}.pdf`;
       res.set({
@@ -401,7 +444,7 @@ export class FoodSafetyAuditController {
 
     } catch (error: any) {
       console.error('Error al generar PDF FSA:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -427,7 +470,7 @@ export class FoodSafetyAuditController {
       res.json({ success: true, message: 'Reporte eliminado correctamente' });
     } catch (error: any) {
       console.error('Error al eliminar reporte FSA:', error);
-      res.status(500).json({ success: false, error: error.message || 'Error al eliminar reporte' });
+      responderError(res, error);
     }
   }
 }

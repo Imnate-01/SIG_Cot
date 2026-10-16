@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { Calendar, DollarSign, User, Building2 } from 'lucide-react';
+import { Calendar, DollarSign, User } from 'lucide-react';
 import Link from 'next/link';
 
 export interface Cotizacion {

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { X, ChevronRight, ChevronLeft, Sparkles, FilePlus, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Sparkles, FilePlus, LayoutDashboard, ShieldCheck, Rocket } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
@@ -32,7 +32,6 @@ interface TourStep {
   position: TooltipPosition;
   action?: () => void; // Optional guided action
   actionLabel?: string;
-  gradient: string;
 }
 
 export default function Onboarding() {
@@ -58,25 +57,22 @@ export default function Onboarding() {
       targetSelector: null,
       title: t("step1Title"),
       description: t("step1Desc"),
-      icon: <Sparkles size={32} className="text-amber-300" />,
-      position: "center",
-      gradient: "from-blue-600 via-indigo-600 to-violet-600"
+      icon: <Sparkles size={32} className="text-sig-blue" />,
+      position: "center"
     },
     {
       targetSelector: 'a[href*="/cotizaciones"]:not([href*="nueva"]):not([href*="editar"])',
       title: t("step2Title"),
       description: t("step2Desc"),
-      icon: <LayoutDashboard size={24} className="text-blue-400" />,
-      position: "right",
-      gradient: "from-blue-500 to-cyan-500"
+      icon: <LayoutDashboard size={24} className="text-sig-blue" />,
+      position: "right"
     },
     {
       targetSelector: 'a[href*="/cotizaciones/nueva"]',
       title: t("step3Title"),
       description: t("step3Desc"),
-      icon: <FilePlus size={24} className="text-emerald-400" />,
+      icon: <FilePlus size={24} className="text-sig-blue" />,
       position: "right",
-      gradient: "from-emerald-500 to-teal-500",
       action: () => router.push("/cotizaciones/nueva"),
       actionLabel: t("step3Action")
     },
@@ -84,17 +80,15 @@ export default function Onboarding() {
       targetSelector: 'a[href*="/clientes"]',
       title: t("step4Title"),
       description: t("step4Desc"),
-      icon: <LayoutDashboard size={24} className="text-purple-400" />,
-      position: "right",
-      gradient: "from-purple-500 to-fuchsia-500"
+      icon: <LayoutDashboard size={24} className="text-sig-blue" />,
+      position: "right"
     },
     {
       targetSelector: null,
       title: userName ? t("step5Title", { name: userName }) : t("step5TitleGeneric"),
       description: t("step5Desc"),
-      icon: <div className="text-3xl">🚀</div>,
-      position: "center",
-      gradient: "from-amber-500 via-orange-500 to-rose-500"
+      icon: <Rocket size={32} className="text-sig-blue" />,
+      position: "center"
     }
   ];
 
@@ -104,25 +98,22 @@ export default function Onboarding() {
       targetSelector: null,
       title: t("fsa_step1Title"),
       description: t("fsa_step1Desc"),
-      icon: <Sparkles size={32} className="text-emerald-300" />,
-      position: "center",
-      gradient: "from-emerald-600 via-teal-600 to-cyan-600"
+      icon: <Sparkles size={32} className="text-sig-blue" />,
+      position: "center"
     },
     {
       targetSelector: 'a[href*="/food-safety-audit"]:not([href*="nuevo"]):not([href*="editar"])',
       title: t("fsa_step2Title"),
       description: t("fsa_step2Desc"),
-      icon: <ShieldCheck size={24} className="text-emerald-400" />,
-      position: "right",
-      gradient: "from-emerald-500 to-teal-500"
+      icon: <ShieldCheck size={24} className="text-sig-blue" />,
+      position: "right"
     },
     {
       targetSelector: 'a[href*="/food-safety-audit/nuevo"]',
       title: t("fsa_step3Title"),
       description: t("fsa_step3Desc"),
-      icon: <FilePlus size={24} className="text-cyan-400" />,
+      icon: <FilePlus size={24} className="text-sig-blue" />,
       position: "right",
-      gradient: "from-cyan-500 to-blue-500",
       action: () => router.push("/food-safety-audit/nuevo"),
       actionLabel: t("fsa_step3Action")
     },
@@ -130,9 +121,8 @@ export default function Onboarding() {
       targetSelector: null,
       title: userName ? t("fsa_step4Title", { name: userName }) : t("fsa_step4TitleGeneric"),
       description: t("fsa_step4Desc"),
-      icon: <div className="text-3xl">🚀</div>,
-      position: "center",
-      gradient: "from-teal-500 via-emerald-500 to-green-500"
+      icon: <Rocket size={32} className="text-sig-blue" />,
+      position: "center"
     }
   ];
 
@@ -238,13 +228,13 @@ export default function Onboarding() {
     const padding = 6;
     return (
       <div
-        className="fixed z-[101] rounded-xl border-2 border-blue-400/50 pointer-events-none transition-all duration-500 ease-out"
+        className="fixed z-[101] rounded-xl border-2 border-sig-blue pointer-events-none transition-all duration-500 ease-out"
         style={{
           top: targetRect.top - padding,
           left: targetRect.left - padding,
           width: targetRect.width + padding * 2,
           height: targetRect.height + padding * 2,
-          boxShadow: "0 0 0 9999px rgba(0,0,0,0.6), 0 0 30px 4px rgba(59,130,246,0.4)",
+          boxShadow: "0 0 0 9999px rgba(0,0,0,0.6), 0 0 30px 4px rgba(20,94,252,0.35)",
         }}
       />
     );
@@ -257,7 +247,7 @@ export default function Onboarding() {
       {/* Backdrop — only full overlay on centered steps */}
       {isCentered && (
         <div
-          className="absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity duration-500"
+          className="absolute inset-0 bg-black/65 transition-opacity duration-500"
           onClick={handleClose}
         />
       )}
@@ -268,7 +258,7 @@ export default function Onboarding() {
       {/* Progress bar at top */}
       <div className="fixed top-0 left-0 right-0 z-[110] h-1 bg-black/20">
         <div
-          className={`h-full bg-gradient-to-r ${currentStep.gradient} transition-all duration-700 ease-out`}
+          className={`h-full bg-sig-blue transition-all duration-700 ease-out`}
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -279,23 +269,20 @@ export default function Onboarding() {
         className={`z-[110] transition-all duration-300 ${isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
         style={getTooltipStyle()}
       >
-        <div className={`bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-zinc-700/50 ${isCentered ? "w-[min(460px,90vw)]" : "w-[min(380px,85vw)]"}`}>
+        <div className={`bg-white dark:bg-zinc-900 rounded-md shadow-xl overflow-hidden border border-sig-line dark:border-zinc-700 ${isCentered ? "w-[min(460px,90vw)]" : "w-[min(380px,85vw)]"}`}>
 
           {/* Colored header */}
-          <div className={`bg-gradient-to-r ${currentStep.gradient} px-6 ${isCentered ? "py-8" : "py-5"} relative overflow-hidden`}>
-            {/* Decorative circles */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/10 rounded-full blur-lg" />
+          <div className={`bg-sig-sand dark:bg-zinc-800 border-b border-sig-line dark:border-zinc-700 px-6 ${isCentered ? "py-8" : "py-5"} relative`}>
 
             <div className="relative z-10 flex items-center gap-4">
-              <div className={`${isCentered ? "w-14 h-14" : "w-10 h-10"} bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0`}>
+              <div className={`${isCentered ? "w-14 h-14" : "w-10 h-10"} bg-white dark:bg-zinc-900 border border-sig-line dark:border-zinc-700 rounded flex items-center justify-center flex-shrink-0`}>
                 {currentStep.icon}
               </div>
               <div>
-                <h2 className={`font-bold text-white ${isCentered ? "text-xl" : "text-base"} leading-tight`}>
+                <h2 className={`font-bold text-black dark:text-white ${isCentered ? "text-xl" : "text-base"} leading-tight`}>
                   {currentStep.title}
                 </h2>
-                <p className="text-white/70 text-xs mt-0.5">
+                <p className="text-sig-muted text-xs mt-0.5">
                   {t("stepOf", { current: step + 1, total: totalSteps })}
                 </p>
               </div>
@@ -304,7 +291,7 @@ export default function Onboarding() {
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="absolute top-3 right-3 p-1.5 text-white/60 hover:text-white hover:bg-white/20 rounded-full transition-colors"
+              className="absolute top-3 right-3 p-1.5 text-sig-muted hover:text-black hover:bg-white rounded transition-colors"
               aria-label="Close"
             >
               <X size={16} />
@@ -324,7 +311,7 @@ export default function Onboarding() {
                   currentStep.action?.();
                   handleClose();
                 }}
-                className={`mt-4 w-full py-2.5 rounded-xl text-white font-semibold text-sm bg-gradient-to-r ${currentStep.gradient} hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2`}
+                className={`mt-4 w-full py-2.5 rounded text-white font-semibold text-sm bg-sig-blue hover:bg-sig-blue-hover transition-colors flex items-center justify-center gap-2`}
               >
                 {currentStep.actionLabel}
                 <ChevronRight size={16} />
@@ -348,7 +335,7 @@ export default function Onboarding() {
                   }}
                   className={`transition-all duration-300 rounded-full ${
                     i === step
-                      ? `w-6 h-2 bg-gradient-to-r ${currentStep.gradient}`
+                      ? `w-6 h-2 bg-sig-blue`
                       : i < step
                         ? "w-2 h-2 bg-blue-300 dark:bg-blue-600"
                         : "w-2 h-2 bg-gray-200 dark:bg-zinc-700"
@@ -371,7 +358,7 @@ export default function Onboarding() {
               {step < totalSteps - 1 ? (
                 <button
                   onClick={handleNext}
-                  className={`px-4 py-2 rounded-xl text-white font-semibold text-sm bg-gradient-to-r ${currentStep.gradient} hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5`}
+                  className={`px-4 py-2 rounded text-white font-semibold text-sm bg-sig-blue hover:bg-sig-blue-hover transition-colors flex items-center gap-1.5`}
                 >
                   {t("btnNext")}
                   <ChevronRight size={16} />
@@ -379,7 +366,7 @@ export default function Onboarding() {
               ) : (
                 <button
                   onClick={handleClose}
-                  className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm bg-gradient-to-r ${currentStep.gradient} hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all`}
+                  className={`px-5 py-2.5 rounded text-white font-semibold text-sm bg-sig-blue hover:bg-sig-blue-hover transition-colors`}
                 >
                   {t("btnStart")}
                 </button>

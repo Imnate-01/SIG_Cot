@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "@/services/api";
-import { Eye, Search, Filter, X, Calendar, Download, LayoutGrid, List } from "lucide-react";
+import { Eye, Search, X, Download, LayoutGrid, List } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { exportToExcel } from "../../../utils/exportCotizaciones";
@@ -25,19 +25,20 @@ export default function DashboardCotizaciones() {
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroPais, setFiltroPais] = useState<"todos" | "MX" | "US">("todos");
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const { data } = await api.get("/cotizaciones");
-        setCotizaciones(data.data);
-      } catch (error) {
-        console.error("Error cargando cotizaciones:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargarDatos();
+  const cargarDatos = useCallback(async () => {
+    try {
+      const { data } = await api.get("/cotizaciones");
+      setCotizaciones(data.data);
+    } catch (error) {
+      console.error("Error cargando cotizaciones:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const cotizacionesFiltradas = cotizaciones.filter((cot) => {
     const texto = busqueda.toLowerCase();
@@ -94,7 +95,7 @@ export default function DashboardCotizaciones() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
@@ -123,7 +124,7 @@ export default function DashboardCotizaciones() {
 
             <button
               onClick={handleExportar}
-              className="bg-green-600 dark:bg-green-700 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 dark:hover:bg-green-600 transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-white dark:bg-zinc-800 text-black dark:text-gray-100 border border-sig-line-strong dark:border-zinc-700 px-5 py-2.5 rounded-xl hover:bg-sig-sand dark:hover:bg-zinc-700 font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading || cotizacionesFiltradas.length === 0}
             >
               <Download size={20} />
@@ -204,7 +205,7 @@ export default function DashboardCotizaciones() {
                         : "bg-white dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-blue-400"
                       }`}
                   >
-                    {p === "todos" ? `🌎 ${tCommon("all")}` : p === "MX" ? "MX" : "US"}
+                    {p === "todos" ? `${tCommon("all")}` : p === "MX" ? "MX" : "US"}
                   </button>
                 ))}
               </div>
@@ -283,7 +284,7 @@ export default function DashboardCotizaciones() {
                           {cot.estado === 'aceptada' ? (
                             cot.estatus_po === 'completada'
                               ? <span className="text-green-600 dark:text-green-400 font-bold flex items-center gap-1 text-xs bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded border border-green-100 dark:border-green-900/30">✔ {t("poCompleted")}</span>
-                              : <span className="text-orange-500 dark:text-orange-400 font-bold flex items-center gap-1 text-xs bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded border border-orange-100 dark:border-orange-900/30">⏳ {t("poPending")}</span>
+                              : <span className="text-orange-500 dark:text-orange-400 font-bold flex items-center gap-1 text-xs bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded border border-orange-100 dark:border-orange-900/30">{t("poPending")}</span>
                           ) : (
                             <span className="text-gray-300 dark:text-zinc-600">-</span>
                           )}
@@ -317,9 +318,9 @@ export default function DashboardCotizaciones() {
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <KanbanBoard
               cotizaciones={cotizacionesFiltradas}
-              onStatusChange={() => {
-                console.log("Kanban status changed");
-              }}
+              // Si falla el cambio de estado en el Kanban, se recarga la lista
+              // para deshacer el movimiento optimista (antes no hacía nada)
+              onStatusChange={cargarDatos}
             />
           </div>
         )}

@@ -4,10 +4,22 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { 
-  ShieldCheck, Plus, Search, Filter,
-  Loader2, RefreshCw, Trash2, ChevronRight, BarChart3,
-  Clock, CheckCircle2, FileText, AlertTriangle, X, PlayCircle, Download
+import {
+  ShieldCheck,
+  Plus,
+  Search,
+  Filter,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  ChevronRight,
+  BarChart3,
+  Clock,
+  CheckCircle2,
+  FileText,
+  AlertTriangle,
+  X,
+  PlayCircle,
 } from "lucide-react";
 import { foodSafetyAuditApi } from "@/services/foodSafetyAudit";
 

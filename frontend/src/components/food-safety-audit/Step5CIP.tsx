@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, {  } from "react";
 import { ParameterRangeRow } from "./ParameterRangeRow";
 import { Plus, Trash2, Beaker, Camera } from "lucide-react";
 import { EvidenceUploader, EvidenceImageItem } from "./EvidenceUploader";

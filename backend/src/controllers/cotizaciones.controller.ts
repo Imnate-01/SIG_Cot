@@ -1,94 +1,35 @@
 import { Request, Response } from 'express'
-// CAMBIO IMPORTANTE: Importamos la función para crear clientes seguros, no la instancia global
-import { createClientForUser } from '../config/supabase'
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { verificarCotizacion, registrarDiferencias, PRICING_ENFORCE, type ResultadoVerificacion } from '../services/verificacionPrecios'
+import {
+  buscarOCrearCliente,
+  crearCotizacionConPartidas,
+  actualizarCotizacionConPartidas,
+  eliminarCotizacion,
+  type CabeceraCotizacion,
+  type PartidaCotizacion,
+} from '../repositories/cotizaciones.repository'
 
-export class CotizacionesController {
+// ─── Helpers compartidos por crear y editar ─────────────────────────────────
 
-  // ---------------------------------------------------------
-  // 1. CREAR COTIZACIÓN
-  // ---------------------------------------------------------
-  async create(req: Request, res: Response) {
-    try {
-      // A. Validar Token
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' })
+/** Folio visible: SIG-{MX|US|CA}-{id} */
+export function formatearFolio(cot: { id: number | string; condiciones?: { entidad?: string } | null }): string {
+  return `SIG-${cot.condiciones?.entidad || 'MX'}-${cot.id}`
+}
 
-      // B. Crear el cliente seguro (Identidad del Usuario)
-      const supabaseUser = createClientForUser(token);
+/** Descripción corta: sin espacios sobrantes, máximo 120 caracteres, null si vacía. */
+function sanitizarDescripcion(descripcion: unknown): string | null {
+  return (typeof descripcion === 'string' && descripcion.trim().length > 0)
+    ? descripcion.trim().slice(0, 120)
+    : null
+}
 
-      // C. Obtener el ID del usuario para el campo 'creado_por'
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-      if (authError || !user) {
-        return res.status(401).json({ success: false, message: 'Token inválido o expirado' })
-      }
-
-      const creado_por = user.id
-
-      // D. Recibir datos
-      let {
-        cliente_id,
-        facturarA,
-        contactoPrincipal,
-        contactoSecundario,
-        condiciones,
-        itemsServicio,
-        total,
-        estado = 'borrador',
-        tipo_servicio = 'TM',
-        proveedor,
-        descripcion, // ← AGREGAR
-        datos_forma
-      } = req.body
-
-      // Sanitizar descripción
-      const descripcionFinal: string | null =
-        (typeof descripcion === 'string' && descripcion.trim().length > 0)
-          ? descripcion.trim().slice(0, 120)
-          : null;
-
-      // E. Lógica de Cliente Inteligente (Evita duplicados y maneja IDs de texto)
-      if (!cliente_id || isNaN(Number(cliente_id))) {
-        cliente_id = null;
-      }
-
-      let clienteIdFinal = cliente_id;
-
-      // Si no hay ID numérico, buscamos o creamos
-      if (!clienteIdFinal && facturarA?.nombre) {
-        // 1. Buscar si existe usando el cliente seguro
-        const { data: clienteExistente } = await supabaseUser
-          .from('clientes')
-          .select('id')
-          .ilike('nombre', `%${facturarA.nombre}%`)
-          .maybeSingle()
-
-        if (clienteExistente) {
-          clienteIdFinal = clienteExistente.id;
-        } else {
-          // 2. Crear cliente nuevo
-          const { data: nuevoCliente, error: errorCliente } = await supabaseUser
-            .from('clientes')
-            .insert({
-              nombre: facturarA.nombre,
-              empresa: facturarA.nombre,
-              direccion: facturarA.direccion || '',
-              colonia: facturarA.colonia || '',
-              ciudad: facturarA.ciudad || '',
-              cp: facturarA.cp || '',
-              correo: contactoSecundario?.email || '',
-              telefono: contactoSecundario?.telefono || '',
-              pais: condiciones?.entidad || 'MX'
-            })
-            .select()
-            .single()
-
-          if (errorCliente) throw errorCliente
-          clienteIdFinal = nuevoCliente.id
-        }
-      }
-
-      // F. Generar texto de Notas
-      const notas = `
+/** Texto plano de notas (compatibilidad con cotizaciones antiguas). */
+function construirNotas(body: any): string {
+  const { proveedor, facturarA, contactoPrincipal, contactoSecundario, condiciones } = body
+  return `
 PROVEEDOR:
 ${proveedor?.nombre || ''}
 ${proveedor?.direccion || ''}
@@ -105,69 +46,108 @@ Precios: ${condiciones?.precios || ''}
 Moneda: ${condiciones?.moneda || 'USD'}
 Observaciones: ${condiciones?.observaciones || ''}
       `.trim()
+}
 
-      // G. Insertar la Cotización Maestra
-      const { data: cotizacion, error: errorCotizacion } = await supabaseUser
-        .from('cotizaciones')
-        .insert({
-          cliente_id: clienteIdFinal,
-          creado_por: creado_por,
-          total: total,
-          estado: estado,
-          // Guardamos notas por compatibilidad, pero usaremos 'condiciones' para el PDF nuevo
-          notas: notas,
-          tipo_servicio: tipo_servicio,
-          descripcion: descripcionFinal, // Insertar descripción sanitizada
-          estatus_po: 'pendiente',
-          // agregamos esta línea para guardar el objeto condiciones completo
-          condiciones: condiciones || {},
-          datos_forma: datos_forma || null
-        })
-        .select()
-        .single()
+/**
+ * cliente_id del body si es numérico; si no, busca/crea el cliente por el
+ * nombre de "Facturar a". Devuelve null si no hay datos de cliente.
+ */
+async function resolverCliente(supabase: SupabaseClient, body: any): Promise<number | string | null> {
+  const { cliente_id, facturarA, contactoSecundario, condiciones } = body
+  if (cliente_id && !isNaN(Number(cliente_id))) return cliente_id
+  if (!facturarA?.nombre || !String(facturarA.nombre).trim()) return null
 
-      if (errorCotizacion) throw errorCotizacion
+  return buscarOCrearCliente(supabase, {
+    nombre: String(facturarA.nombre),
+    direccion: facturarA.direccion,
+    colonia: facturarA.colonia,
+    ciudad: facturarA.ciudad,
+    cp: facturarA.cp,
+    correo: contactoSecundario?.email,
+    telefono: contactoSecundario?.telefono,
+    pais: condiciones?.entidad || 'MX',
+  })
+}
 
-      // H. Insertar los Items
-      const itemsConCotizacionId = itemsServicio.map((item: any) => ({
-        cotizacion_id: cotizacion.id,
-        concepto: item.concepto || 'Servicio',
-        cantidad: item.cantidad || 1,
-        precio_unitario: item.precioUnitario || 0,
-        subtotal: item.total || 0,
-        // AQUÍ ESTÁ LA CORRECCIÓN: Guardamos lo que faltaba
-        detalles: item.detalles || null,
-        desglose: item.desglose || [],          // Guardamos el array de ingenieros
-        //  NUEVO: Guardamos la cantidad de ingenieros explícitamente
-        ingenieros: item.ingenieros || 1
-      }))
+/** Partidas del formulario → filas de cotizacion_items. */
+function mapearPartidas(itemsServicio: any[], verificacion: ResultadoVerificacion): PartidaCotizacion[] {
+  return itemsServicio.map((item: any, idx: number) => ({
+    concepto: item.concepto || 'Servicio',
+    cantidad: item.cantidad || 1,
+    precio_unitario: item.precioUnitario || 0,
+    subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
+    detalles: item.detalles || null,
+    desglose: item.desglose || [],   // horas por ingeniero (viaje) o { tipo: "servicio_externo" }
+    ingenieros: item.ingenieros || 1,
+  }))
+}
 
-      const { error: errorItems } = await supabaseUser
-        .from('cotizacion_items')
-        .insert(itemsConCotizacionId)
+export class CotizacionesController {
 
-      if (errorItems) throw errorItems
+  // ---------------------------------------------------------
+  // 1. CREAR COTIZACIÓN
+  // ---------------------------------------------------------
+  async create(req: Request, res: Response) {
+    try {
+      // A. Validar Token
+      const supabaseUser = contextoAuth(req).supabase;
 
-      // I. Calcular el folio (SIG-[MX/US]-{ID})
-      const entidad = condiciones?.entidad || 'MX';
-      const numero_cotizacion = `SIG-${entidad}-${cotizacion.id}`;
+      // C. Obtener el ID del usuario para el campo 'creado_por'
+      const { user } = contextoAuth(req);
+
+      // D. Recibir datos
+      const {
+        condiciones,
+        itemsServicio,
+        total,
+        estado = 'borrador',
+        tipo_servicio = 'TM',
+        descripcion,
+        datos_forma
+      } = req.body
+
+      // Validar partidas ANTES de escribir nada
+      if (!Array.isArray(itemsServicio) || itemsServicio.length === 0) {
+        return res.status(400).json({ success: false, message: 'La cotización debe tener al menos una partida' })
+      }
+
+      // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacion(itemsServicio, total)
+      registrarDiferencias(`crear cotización (usuario ${user.id})`, verificacion.diferencias)
+
+      // E. Cliente: el seleccionado, o buscar/crear por nombre exacto
+      const clienteIdFinal = await resolverCliente(supabaseUser, req.body)
+
+      // F. Cabecera + partidas en una sola transacción
+      const cabecera: CabeceraCotizacion = {
+        cliente_id: clienteIdFinal,
+        creado_por: user.id,
+        total: PRICING_ENFORCE ? verificacion.total : total,
+        estado,
+        // Guardamos notas por compatibilidad, pero el PDF usa 'condiciones'
+        notas: construirNotas(req.body),
+        tipo_servicio,
+        descripcion: sanitizarDescripcion(descripcion),
+        estatus_po: 'pendiente',
+        condiciones: condiciones || {},
+        datos_forma: datos_forma || null,
+      }
+      const partidas = mapearPartidas(itemsServicio, verificacion)
+      const cotizacion = await crearCotizacionConPartidas(supabaseUser, cabecera, partidas)
 
       res.status(201).json({
         success: true,
         message: 'Cotización creada exitosamente',
         data: {
           ...cotizacion,
-          numero_cotizacion,
-          items: itemsConCotizacionId
+          numero_cotizacion: formatearFolio(cotizacion),
+          items: partidas.map((p) => ({ ...p, cotizacion_id: cotizacion.id }))
         }
       })
 
     } catch (error: any) {
       console.error('Error al crear cotización:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al crear cotización'
-      })
+      responderError(res, error);
     }
   }
 
@@ -176,9 +156,7 @@ Observaciones: ${condiciones?.observaciones || ''}
   // ---------------------------------------------------------
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('cotizaciones')
@@ -193,17 +171,16 @@ Observaciones: ${condiciones?.observaciones || ''}
 
       // Formatear con la nueva nomenclatura SIG-[ENTIDAD]-ID
       const cotizacionesFormateadas = data.map((cot: any) => {
-        const entidad = cot.condiciones?.entidad || 'MX';
         return {
           ...cot,
-          numero_cotizacion: `SIG-${entidad}-${cot.id}`,
+          numero_cotizacion: formatearFolio(cot),
           creado_por_nombre: cot.usuarios?.nombre || 'Desconocido'
         }
       })
 
       res.json({ success: true, data: cotizacionesFormateadas })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -212,9 +189,7 @@ Observaciones: ${condiciones?.observaciones || ''}
   // ---------------------------------------------------------
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
 
@@ -235,11 +210,11 @@ Observaciones: ${condiciones?.observaciones || ''}
         success: true,
         data: {
           ...data,
-          numero_cotizacion: `SIG-${data.condiciones?.entidad || 'MX'}-${data.id}`
+          numero_cotizacion: formatearFolio(data)
         }
       })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -248,9 +223,7 @@ Observaciones: ${condiciones?.observaciones || ''}
   // ---------------------------------------------------------
   async updateEstado(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
       const { estado, orden_compra, estatus_po } = req.body
@@ -276,7 +249,7 @@ Observaciones: ${condiciones?.observaciones || ''}
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -286,10 +259,7 @@ Observaciones: ${condiciones?.observaciones || ''}
   async update(req: Request, res: Response) {
     try {
       // A. Validar Token
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' })
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       // B. Verificar que exista y sea borrador
@@ -307,120 +277,42 @@ Observaciones: ${condiciones?.observaciones || ''}
         return res.status(400).json({ success: false, message: 'Solo se pueden editar cotizaciones en estado borrador.' });
       }
 
-      // C. Recibir datos completos
-      let {
-        cliente_id,
-        facturarA,
-        contactoPrincipal,
-        contactoSecundario,
+      // C. Recibir datos (el estado no se cambia aquí, solo datos)
+      const {
         condiciones,
         itemsServicio,
         total,
-        // estado, // No permitimos cambiar estado aquí, solo datos
         tipo_servicio = 'TM',
-        descripcion = null, // Nuevo campo
-        proveedor,
+        descripcion = null,
         datos_forma
       } = req.body
 
-      // D. Lógica de Cliente (Igual que Create)
-      if (!cliente_id || isNaN(Number(cliente_id))) {
-        cliente_id = null;
-      }
-      let clienteIdFinal = cliente_id;
-
-      if (!clienteIdFinal && facturarA?.nombre) {
-        const { data: clienteExistente } = await supabaseUser
-          .from('clientes')
-          .select('id')
-          .ilike('nombre', `%${facturarA.nombre}%`)
-          .maybeSingle()
-
-        if (clienteExistente) {
-          clienteIdFinal = clienteExistente.id;
-        } else {
-          const { data: nuevoCliente, error: errorCliente } = await supabaseUser
-            .from('clientes')
-            .insert({
-              nombre: facturarA.nombre,
-              empresa: facturarA.nombre,
-              direccion: facturarA.direccion || '',
-              colonia: facturarA.colonia || '',
-              ciudad: facturarA.ciudad || '',
-              cp: facturarA.cp || '',
-              correo: contactoSecundario?.email || '',
-              telefono: contactoSecundario?.telefono || '',
-              pais: condiciones?.entidad || 'MX'
-            })
-            .select()
-            .single()
-
-          if (errorCliente) throw errorCliente
-          clienteIdFinal = nuevoCliente.id
-        }
+      if (!Array.isArray(itemsServicio) || itemsServicio.length === 0) {
+        return res.status(400).json({ success: false, message: 'La cotización debe tener al menos una partida' })
       }
 
-      // E. Construir Notas
-      const notas = `
-PROVEEDOR:
-${proveedor?.nombre || ''}
-${proveedor?.direccion || ''}
+      // Recalcular totales en el servidor (ver services/verificacionPrecios.ts)
+      const verificacion = verificarCotizacion(itemsServicio, total)
+      registrarDiferencias(`editar cotización ${id}`, verificacion.diferencias)
 
-FACTURAR A:
-${facturarA?.nombre || ''}
+      // D. Cliente (misma lógica que al crear)
+      const clienteIdFinal = await resolverCliente(supabaseUser, req.body)
 
-CONTACTOS:
-Principal: ${contactoPrincipal?.nombre || ''} (${contactoPrincipal?.email || ''})
-Secundario: ${contactoSecundario?.nombre || ''} (${contactoSecundario?.email || ''})
-
-CONDICIONES:
-Precios: ${condiciones?.precios || ''}
-Moneda: ${condiciones?.moneda || 'USD'}
-Observaciones: ${condiciones?.observaciones || ''}
-      `.trim()
-
-      // F. Actualizar Cabecera
-      const { error: errorUpdate } = await supabaseUser
-        .from('cotizaciones')
-        .update({
+      // E. Cabecera + reemplazo de partidas en una sola transacción
+      await actualizarCotizacionConPartidas(
+        supabaseUser,
+        id,
+        {
           cliente_id: clienteIdFinal,
-          total: total,
-          notas: notas,
-          tipo_servicio: tipo_servicio,
-          descripcion: descripcion, // Actualizar descripción
+          total: PRICING_ENFORCE ? verificacion.total : total,
+          notas: construirNotas(req.body),
+          tipo_servicio,
+          descripcion: sanitizarDescripcion(descripcion),
           condiciones: condiciones || {},
-          datos_forma: datos_forma || null
-        })
-        .eq('id', id);
-
-      if (errorUpdate) throw errorUpdate;
-
-      // G. Estrategia DELETE + INSERT para Items
-      // 1. Borrar anteriores
-      const { error: errorDeleteItems } = await supabaseUser
-        .from('cotizacion_items')
-        .delete()
-        .eq('cotizacion_id', id);
-
-      if (errorDeleteItems) throw errorDeleteItems;
-
-      // 2. Insertar nuevos
-      const itemsConCotizacionId = itemsServicio.map((item: any) => ({
-        cotizacion_id: id,
-        concepto: item.concepto || 'Servicio',
-        cantidad: item.cantidad || 1,
-        precio_unitario: item.precioUnitario || 0,
-        subtotal: item.total || 0,
-        detalles: item.detalles || null,
-        desglose: item.desglose || [],
-        ingenieros: item.ingenieros || 1
-      }))
-
-      const { error: errorInsertItems } = await supabaseUser
-        .from('cotizacion_items')
-        .insert(itemsConCotizacionId);
-
-      if (errorInsertItems) throw errorInsertItems;
+          datos_forma: datos_forma || null,
+        },
+        mapearPartidas(itemsServicio, verificacion),
+      )
 
       res.json({
         success: true,
@@ -430,10 +322,7 @@ Observaciones: ${condiciones?.observaciones || ''}
 
     } catch (error: any) {
       console.error('Error al actualizar cotización:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al actualizar cotización'
-      })
+      responderError(res, error);
     }
   }
 
@@ -442,25 +331,16 @@ Observaciones: ${condiciones?.observaciones || ''}
   // ---------------------------------------------------------
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
 
-      // Primero borramos items para mantener integridad referencial (si no está en cascada)
-      await supabaseUser.from('cotizacion_items').delete().eq('cotizacion_id', id);
-
-      const { error } = await supabaseUser
-        .from('cotizaciones')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      // Partidas y cabecera en una sola transacción
+      await eliminarCotizacion(supabaseUser, id)
 
       res.json({ success: true, message: 'Cotización eliminada correctamente' })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -469,9 +349,7 @@ Observaciones: ${condiciones?.observaciones || ''}
   // ---------------------------------------------------------
   async getClientes(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('clientes')
@@ -481,15 +359,13 @@ Observaciones: ${condiciones?.observaciones || ''}
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   async getUsuarios(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('usuarios')
@@ -500,7 +376,7 @@ Observaciones: ${condiciones?.observaciones || ''}
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }

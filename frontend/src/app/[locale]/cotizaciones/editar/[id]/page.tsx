@@ -1,477 +1,50 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "@/services/api";
-import { useDropzone } from "react-dropzone";
-import { PDFDocument } from "pdf-lib";
+import {
+  precioUnitario as calcularPrecioUnitario,
+  precioCatalogo,
+  totalLinea,
+  recalcularLinea,
+  ajustarDesgloseAIngenieros,
+  cantidadParaGuardar,
+  sumarTotales,
+  esCostoVuelo as esTarifaCostoVuelo,
+  lineaDesdePartida,
+  horasTotalesLinea,
+  formatearHoras,
+  totalServiciosExternos,
+  servicioExternoCapturado,
+  partidaDesdeServicioExterno,
+  esPartidaServicioExterno,
+  servicioExternoDesdePartida,
+} from "@/features/cotizaciones/pricing";
+import type {
+  CotizacionFormData,
+  FacturarA,
+  ClientePredefinido,
+  UsuarioRegistrado,
+  Tarifa,
+  ServicioTarifado,
+  ServicioExternoForm,
+} from "@/features/cotizaciones/types";
+import { ServiciosExternosEditor } from "@/features/cotizaciones/components/ServiciosExternosEditor";
+import { ModalVistaPrevia } from "@/features/cotizaciones/components/ModalVistaPrevia";
+import { obtenerClientes, obtenerUsuarios, obtenerServicios, obtenerTarifasCliente } from "@/features/cotizaciones/api";
 import { useParams, useRouter } from "next/navigation"; // Added useParams, useRouter
 import {
-    Download,
     Eye,
     Save,
     Building2,
-    User,
     FileText,
-    Calculator,
-    X,
-    Users,
-    MapPin,
-    CheckSquare,
     Trash2,
     Sparkles,
-    Wand2,
-    Mail,
-    Copy,
-    Paperclip,
-    FileCheck,
     ArrowLeft,
-    Edit2
+    Edit2,
 } from "lucide-react";
 
-import {
-    Document,
-    Page,
-    Text,
-    View,
-    StyleSheet,
-    PDFDownloadLink,
-    Image
-} from "@react-pdf/renderer";
-import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import Link from "next/link"; // Added Link
-
-const PDFDownloadLinkDynamic = dynamic(
-    () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-    { ssr: false, loading: () => <p>Cargando...</p> }
-);
-
-interface Proveedor { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; rfc?: string; }
-interface FacturarA { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
-interface ShipTo { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
-interface Contacto { nombre: string; email: string; telefono: string; }
-interface Condiciones { precios: string; moneda: string; maquina: string; observaciones: string; entidad?: "MX" | "US" | "CA"; scopeOfVisit?: string; equipmentToService?: string; paymentTerms?: string; }
-interface CotizacionFormData {
-    proveedor: Proveedor;
-    facturarA: FacturarA;
-    shipTo: ShipTo;
-    shipToMismoQueFacturar: boolean;
-    contactoPrincipal: Contacto;
-    contactoSecundario: Contacto;
-    condiciones: Condiciones;
-    descripcion: string;
-    tipo_servicio: string;
-}
-interface ClientePredefinido {
-    id: string | number;
-    nombre: string;
-    empresa?: string;
-    contacto_nombre?: string; // ✅
-    correo?: string;
-    telefono?: string;
-    direccion: string;
-    colonia: string;
-    ciudad: string;
-    cp: string;
-    pais?: string;
-}
-interface UsuarioRegistrado { id: string; nombre: string; email: string; telefono: string; puesto?: string; departamento?: string; }
-interface Tarifa {
-    id: string | number;
-    concepto: string;
-    unidad: "hora" | "dia";
-    precio_sin_contrato: number;
-    precio_con_contrato: number;
-    moneda?: string;
-    requiere_desglose?: boolean;
-}
-interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
-interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; esPrecioManual?: boolean; precioManual?: number; }
-
-/* ===================== Estilos PDF Dinámicos ===================== */
-const buildPdfStyles = (itemCount: number) => {
-    const scale = itemCount <= 3 ? 1 : itemCount <= 5 ? 0.9 : itemCount <= 7 ? 0.8 : itemCount <= 9 ? 0.72 : 0.65;
-    return StyleSheet.create({
-        page: { padding: 30 * scale + 5, fontSize: 10 * scale, fontFamily: "Helvetica" },
-        header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 * scale, paddingBottom: 6 * scale, borderBottom: "2px solid #2563eb", alignItems: 'center' },
-        logo: { width: 50 * scale + 10, height: 50 * scale + 10, marginBottom: 3 * scale, objectFit: "contain" as const },
-        companyName: { fontSize: 13 * scale, fontWeight: "bold" },
-        headerRight: { textAlign: "right" as const },
-        section: { marginBottom: 6 * scale },
-        sectionTitle: { fontSize: 9 * scale, fontWeight: "bold", backgroundColor: "#f3f4f6", padding: 3 * scale, marginBottom: 2 * scale },
-        row: { flexDirection: "row" as const, marginBottom: 6 * scale },
-        column: { flex: 1, marginRight: 8 * scale },
-        label: { fontSize: 8 * scale, fontWeight: "bold", marginBottom: 1 },
-        value: { fontSize: 9 * scale, marginBottom: 1, lineHeight: 1.3 },
-        table: { marginTop: 6 * scale, marginBottom: 8 * scale },
-        tableHeader: { flexDirection: "row" as const, backgroundColor: "#f3f4f6", borderBottom: "1px solid #d1d5db", padding: 4 * scale, fontWeight: "bold", fontSize: 8 * scale },
-        tableRow: { flexDirection: "row" as const, borderBottom: "1px solid #e5e7eb", padding: 3 * scale, fontSize: 8 * scale },
-        colDesc: { flex: 2 },
-        colTiny: { width: 35, textAlign: "center" as const },
-        colSmall: { width: 55, textAlign: "center" as const },
-        total: { flexDirection: "row" as const, justifyContent: "space-between" as const, backgroundColor: "#dbeafe", padding: 4 * scale, marginTop: 2 * scale, fontWeight: "bold", fontSize: 9 * scale },
-        footer: { textAlign: "center" as const, fontSize: 7 * scale, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 5 * scale, marginTop: 8 * scale },
-        signatureSection: { marginTop: 10 * scale, marginBottom: 4 * scale },
-        signatureText: { fontSize: 9 * scale, marginBottom: 3 * scale, color: "#000", lineHeight: 1.3 },
-        signatureImage: { width: 80 * scale + 20, height: 40 * scale + 10, objectFit: "contain" as const, marginLeft: 0, marginBottom: 0 },
-        signatureLine: { borderBottom: "1px solid #000", width: 150 * scale + 30, marginTop: 3 * scale, marginBottom: 2 * scale },
-        signatureName: { fontSize: 9 * scale, fontWeight: "bold" },
-        signatureJob: { fontSize: 9 * scale, fontWeight: "bold" },
-        desgloseText: { fontSize: 7 * scale, color: "#4b5563", marginLeft: 4, marginTop: 1 },
-        notaText: { fontSize: 7 * scale, color: "#6b7280", fontStyle: "italic" as const, marginTop: 1 },
-        descripcionBadge: { fontSize: 8 * scale, color: "#4b5563", marginTop: 2, fontStyle: "italic" as const }
-    });
-};
-
-/* ===================== Componente PDF (Reused) ===================== */
-interface CotizacionPDFProps {
-    formData: CotizacionFormData;
-    itemsServicio: ServicioTarifado[];
-    tarifas: Tarifa[];
-    folio: string | null;
-    usuariosRegistrados: UsuarioRegistrado[];
-    tarifasCliente?: Record<string, number>;
-}
-const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
-    const pdfStyles = buildPdfStyles(itemsServicio.length);
-    const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-    const total = subtotal;
-    const isUS = formData.condiciones.entidad === "US" || formData.condiciones.entidad === "CA";
-    const fecha = new Date().toLocaleDateString(isUS ? "en-US" : "es-MX", { day: "numeric", month: "long", year: "numeric" });
-    const shipToData = formData.shipToMismoQueFacturar ? formData.facturarA : formData.shipTo;
-    const puestoUsuarioRaw = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.puesto || "Coordinador de Servicio Técnico";
-    const nombreUsuarioCheck = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email)?.nombre || "";
-    let puestoUsuario = puestoUsuarioRaw;
-    if (nombreUsuarioCheck.toLowerCase().includes("eduardo")) {
-      puestoUsuario = "Back Office Manager";
-    } else if (nombreUsuarioCheck.toLowerCase().includes("santoyo") || nombreUsuarioCheck.toLowerCase().includes("jonh") || nombreUsuarioCheck.toLowerCase().includes("john")) {
-      puestoUsuario = "Service Sales Manager";
-    }
-    const displayFolio = folio ? folio : (isUS ? "DRAFT" : "BORRADOR");
-    const formatCurrency = (val: number) => val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
-    const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
-    const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
-
-    return (
-        <Document>
-            <Page size="A4" style={pdfStyles.page}>
-                <View style={pdfStyles.header}>
-                    <View>
-                        <Image style={pdfStyles.logo} src="/SIG_logo.png" />
-                        <Text style={pdfStyles.companyName}>SIG Combibloc</Text>
-                    </View>
-                    <View style={pdfStyles.headerRight}>
-                        <Text style={{ fontSize: 9, marginBottom: 3 }}>
-                            <Text style={{ fontWeight: "bold" }}>{isUS ? "QUOTE No: " : "COTIZACIÓN No: "}</Text>
-                            {displayFolio}
-                        </Text>
-                        <Text style={{ fontSize: 9 }}><Text style={{ fontWeight: "bold" }}>{isUS ? "DATE: " : "FECHA: "}</Text>{fecha}</Text>
-                        {formData.descripcion && <Text style={pdfStyles.descripcionBadge}>{formData.descripcion}</Text>}
-                    </View>
-                </View>
-
-                <View style={pdfStyles.row}>
-                    <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>{isUS ? "VENDOR:" : "PROVEEDOR:"}</Text>
-                        <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.proveedor.nombre}</Text>
-                        <Text style={pdfStyles.value}>{formData.proveedor.direccion}</Text>
-                        <Text style={pdfStyles.value}>{formData.proveedor.ciudad}{formData.proveedor.cp ? `, C.P. ${formData.proveedor.cp}` : ""}</Text>
-                        {formData.proveedor.rfc && <Text style={pdfStyles.value}>RFC: {formData.proveedor.rfc}</Text>}
-                    </View>
-                    <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>{isUS ? "BILL TO (SOLD TO):" : "FACTURAR A (SOLD TO):"}</Text>
-                        {formData.facturarA.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.facturarA.nombre}</Text> : null}
-                        {formData.facturarA.direccion ? <Text style={pdfStyles.value}>{formData.facturarA.direccion}</Text> : null}
-                        {formData.facturarA.colonia ? <Text style={pdfStyles.value}>{formData.facturarA.colonia}</Text> : null}
-                        {(formData.facturarA.ciudad || formData.facturarA.cp) ? <Text style={pdfStyles.value}>{formData.facturarA.ciudad}{formData.facturarA.cp ? `, C.P. ${formData.facturarA.cp}` : ""}</Text> : null}
-                    </View>
-                </View>
-                <View style={pdfStyles.row}>
-                    <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.sectionTitle}>{isUS ? "SERVICE LOCATION (SHIP TO):" : "LUGAR DEL SERVICIO (SHIP TO):"}</Text>
-                        {shipToData.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{shipToData.nombre}</Text> : null}
-                        {shipToData.direccion ? <Text style={pdfStyles.value}>{shipToData.direccion}</Text> : null}
-                        {shipToData.colonia ? <Text style={pdfStyles.value}>{shipToData.colonia}</Text> : null}
-                        {(shipToData.ciudad || shipToData.cp) ? <Text style={pdfStyles.value}>{shipToData.ciudad}{shipToData.cp ? `, C.P. ${shipToData.cp}` : ""}</Text> : null}
-                    </View>
-                </View>
-                <View style={pdfStyles.row}>
-                    <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.label}>{isUS ? "From:" : "De:"}</Text>
-                        {formData.contactoPrincipal.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoPrincipal.nombre}</Text> : null}
-                        {formData.contactoPrincipal.email ? <Text style={pdfStyles.value}>E-mail: {formData.contactoPrincipal.email}</Text> : null}
-                        {formData.contactoPrincipal.telefono ? <Text style={pdfStyles.value}>Tel: {formData.contactoPrincipal.telefono}</Text> : null}
-                    </View>
-                    <View style={pdfStyles.column}>
-                        <Text style={pdfStyles.label}>{isUS ? "Contact:" : "Contacto:"}</Text>
-                        {formData.contactoSecundario.nombre ? <Text style={[pdfStyles.value, { fontWeight: "bold" }]}>{formData.contactoSecundario.nombre}</Text> : null}
-                        {formData.contactoSecundario.email ? <Text style={pdfStyles.value}>E-mail: {formData.contactoSecundario.email}</Text> : null}
-                        {formData.contactoSecundario.telefono ? <Text style={pdfStyles.value}>Tel: {formData.contactoSecundario.telefono}</Text> : null}
-                    </View>
-                </View>
-                <View style={pdfStyles.table}>
-                    <View style={pdfStyles.tableHeader}>
-                        <Text style={pdfStyles.colDesc}>{isUS ? "Detail" : "Detalle"}</Text>
-                        <Text style={pdfStyles.colTiny}>{isUS ? "Eng." : "Ing."}</Text>
-                        <Text style={pdfStyles.colSmall}>{isUS ? "Qty.Hrs." : "Cant.Hrs."}</Text>
-                        <Text style={pdfStyles.colSmall}>{isUS ? "Unit P." : "P. Unit."}</Text>
-                        <Text style={pdfStyles.colSmall}>Total</Text>
-                    </View>
-                    {itemsServicio.map((item) => {
-                        const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
-                        const esCostoVuelo = tarifa?.concepto.toLowerCase().includes('costo de vuelo');
-                        // Bug 3 fix: use client contract rate if available
-                        let precioUnitario: number;
-                        if (item.esPrecioManual && item.precioManual !== undefined) {
-                            precioUnitario = item.precioManual;
-                        } else if (item.conContrato && tarifasCliente[item.tarifaId]) {
-                            precioUnitario = tarifasCliente[item.tarifaId];
-                        } else {
-                            precioUnitario = item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0;
-                        }
-
-                        // Bug 5 fix: prioritize item.ingenieros
-                        const numIngenieros = item.ingenieros ? item.ingenieros : (tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0 ? item.desglose.length : 1);
-                        // Bug 4 fix: validate breakdown
-                        const tieneDesgloseValido = item.desglose && item.desglose.length > 0 &&
-                            (item.desglose.length > 1 || item.desglose[0]?.nombre || (item.desglose[0]?.horas && item.desglose[0].horas > 0));
-                        return (
-                            <View key={item.id} style={pdfStyles.tableRow}>
-                                <View style={pdfStyles.colDesc}>
-                                    <Text>{tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}</Text>
-                                    {tieneDesgloseValido && item.desglose.map((d, idx) => {
-                                        if (!d.nombre && (!d.horas || d.horas === 0)) return null;
-                                        return (
-                                            <Text key={idx} style={pdfStyles.desgloseText}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
-                                        );
-                                    })}
-                                    {item.detalles && <Text style={pdfStyles.notaText}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
-                                </View>
-                                <Text style={pdfStyles.colTiny}>{esCostoVuelo ? "N/A" : numIngenieros}</Text>
-                                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>{esCostoVuelo ? "N/A" : item.cantidad}</Text>
-                                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>${formatCurrency(precioUnitario)}</Text>
-                                <Text style={[pdfStyles.colSmall, { fontWeight: "bold", fontSize: 9 * (itemsServicio.length <= 3 ? 1 : 0.8) }]}>${formatCurrency(item.total)}</Text>
-                            </View>
-                        );
-                    })}
-                    <View style={pdfStyles.total}>
-                        <Text>Subtotal:</Text>
-                        <Text>${formatCurrency(subtotal)} {formData.condiciones.moneda}</Text>
-                    </View>
-
-                    <View style={[pdfStyles.total, { backgroundColor: "#dbeafe" }]}>
-                        <Text>TOTAL:</Text>
-                        <Text>${formatCurrency(total)} {formData.condiciones.moneda}</Text>
-                    </View>
-                </View>
-                <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.label}>{isUS ? "General Conditions:" : "Condiciones Generales:"}</Text>
-                    <Text style={pdfStyles.value}>
-                        {!isUS && <Text><Text style={{ fontWeight: "bold" }}>Precios: </Text>{formData.condiciones.precios} | <Text style={{ fontWeight: "bold" }}>Moneda: </Text>{formData.condiciones.moneda}</Text>}
-                        {(!isUS && formData.condiciones.maquina) && <Text> | <Text style={{ fontWeight: "bold" }}>Máquina: </Text>{formData.condiciones.maquina}</Text>}
-                        {(isUS && formData.condiciones.maquina) && <Text><Text style={{ fontWeight: "bold" }}>Machine: </Text>{formData.condiciones.maquina}</Text>}
-                    </Text>
-                </View>
-                {formData.condiciones.observaciones && (
-                    <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>{isUS ? "Observations:" : "Observaciones:"}</Text>
-                        <Text style={pdfStyles.value}>{formData.condiciones.observaciones}</Text>
-                    </View>
-                )}
-
-                {isUS && formData.condiciones.scopeOfVisit && (
-                    <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>Scope of visit:</Text>
-                        <Text style={pdfStyles.value}>{formData.condiciones.scopeOfVisit}</Text>
-                    </View>
-                )}
-
-                {isUS && formData.condiciones.equipmentToService && (
-                    <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>Equipment to be Serviced:</Text>
-                        <Text style={pdfStyles.value}>{formData.condiciones.equipmentToService}</Text>
-                    </View>
-                )}
-
-                {isUS && formData.condiciones.paymentTerms && (
-                    <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>Payment Terms:</Text>
-                        <Text style={pdfStyles.value}>{formData.condiciones.paymentTerms}</Text>
-                    </View>
-                )}
-                
-                {isUS && (
-                    <View style={pdfStyles.section}>
-                        <Text style={pdfStyles.label}>Terms and Conditions:</Text>
-                        <Text style={[pdfStyles.value, { fontSize: 7, textAlign: "justify" }]}>
-                            If there is an existing written agreement between Customer and SIG governing the sale of the products or services quoted herein, the terms of that agreement shall apply. In the absence of such agreement, this Quotation and any resulting orders are subject to SIG's General Terms and Conditions of Sale, a current copy of which can be found at https://www.sig.biz/en/general-terms-and-conditions-for-customers ("GTC"). By placing an order, Customer agrees to be bound by the GTC, which are incorporated by reference. Any terms in Customer's purchase order or other documents that are different from, or in addition to, the GTC are expressly rejected and shall have no effect unless accepted by SIG in a signed writing.
-                        </Text>
-                    </View>
-                )}
-
-                {/* Spacer para empujar la firma al fondo de la página */}
-                <View style={{ flexGrow: 1 }} />
-                
-                {/* Firma + Footer: wrap=false para mantenerlos juntos */}
-                <View wrap={false} style={pdfStyles.signatureSection}>
-                    <Text style={pdfStyles.signatureText}>
-                        {isUS ? "Send purchase order to " : "Enviar orden de compra a "}
-                        <Text style={{ color: "blue", textDecoration: "none" }}>{emailUsuario}</Text>
-                        {isUS ? " to the attention of " : " con atención a "}{nombreUsuario}.
-                    </Text>
-                    <Image style={pdfStyles.signatureImage} src={nombreUsuario.toLowerCase().includes("eduardo") ? "/eduardo_firma.png" : (nombreUsuario.toLowerCase().includes("santoyo") || nombreUsuario.toLowerCase().includes("jonh") || nombreUsuario.toLowerCase().includes("john")) ? "/santoyo.png" : "/firma_julio.png"} />
-                    <View style={pdfStyles.signatureLine} />
-                    <Text style={pdfStyles.signatureName}>{nombreUsuario}</Text>
-                    <Text style={pdfStyles.signatureJob}>{puestoUsuario}</Text>
-
-                    <View style={pdfStyles.footer}>
-                        <Text style={{ fontWeight: "bold" }}>{formData.proveedor.nombre}</Text>
-                        <Text>{formData.proveedor.direccion}, {formData.proveedor.colonia}, {formData.proveedor.ciudad}, C.P. {formData.proveedor.cp}</Text>
-                        <Text style={{ marginTop: 2 }}>www.sig.biz</Text>
-                    </View>
-                </View>
-            </Page>
-        </Document>
-    );
-};
-
-/* ===================== Modal Vista Previa (Reused) ===================== */
-// (Same component, no changes needed, just keeping it here for completeness)
-interface ModalVistaPreviaProps {
-    isOpen: boolean;
-    onClose: () => void;
-    formData: CotizacionFormData;
-    itemsServicio: ServicioTarifado[];
-    tarifas: Tarifa[];
-    folio: string | null;
-    usuariosRegistrados: UsuarioRegistrado[];
-    tarifasCliente?: Record<string, number>;
-}
-
-const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
-    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        let url = "";
-        const renderPDF = async () => {
-            try {
-                const { pdf } = await import("@react-pdf/renderer");
-                const blob = await pdf(
-                    <CotizacionPDF
-                        formData={formData}
-                        itemsServicio={itemsServicio}
-                        tarifas={tarifas}
-                        folio={folio}
-                        usuariosRegistrados={usuariosRegistrados}
-                        tarifasCliente={tarifasCliente}
-                    />
-                ).toBlob();
-                url = URL.createObjectURL(blob);
-                setPdfUrl(url);
-            } catch (e) {
-                console.error("PDF Render Error", e);
-            }
-        };
-        renderPDF();
-        return () => { if (url) URL.revokeObjectURL(url); };
-    }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados]);
-
-    const [correoGenerado, setCorreoGenerado] = useState("");
-    const [generandoCorreo, setGenerandoCorreo] = useState(false);
-    const folioParaIA = folio || "PENDIENTE DE ASIGNACIÓN";
-    const [reporteTecnico, setReporteTecnico] = useState<File | null>(null);
-    const [isMerging, setIsMerging] = useState(false);
-
-    const onDrop = useCallback((acceptedFiles: File[]) => { if (acceptedFiles.length > 0) setReporteTecnico(acceptedFiles[0]); }, []);
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'application/pdf': ['.pdf'] }, multiple: false });
-
-    if (!isOpen) return null;
-
-    const copiarAlPortapapeles = (texto: string) => {
-        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(() => toast.success("Copiado")).catch(() => { }); }
-    };
-
-    const generarCorreo = async () => {
-        setGenerandoCorreo(true);
-        try {
-            const subtotal = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-            const total = subtotal;
-            const { data } = await api.post("/ia/generar-correo", {
-                cliente: formData.facturarA.nombre,
-                numeroCotizacion: folioParaIA,
-                servicios: itemsServicio.map(i => { const t = tarifas.find(t => String(t.id) === i.tarifaId); return t ? t.concepto : ""; }).join(", "),
-                total: total.toFixed(2),
-                moneda: formData.condiciones.moneda
-            });
-            if (data.result) setCorreoGenerado(data.result);
-        } catch (e) { toast.error("Error generando correo"); } finally { setGenerandoCorreo(false); }
-    };
-
-    const handleDownloadMerged = async () => {
-        setIsMerging(true);
-        try {
-            const { pdf } = await import("@react-pdf/renderer");
-            const quoteBlob = await pdf(<CotizacionPDF formData={formData} itemsServicio={itemsServicio} tarifas={tarifas} folio={folio} usuariosRegistrados={usuariosRegistrados} tarifasCliente={tarifasCliente} />).toBlob();
-            if (!reporteTecnico) {
-                const url = URL.createObjectURL(quoteBlob);
-                const link = document.createElement('a'); link.href = url; link.download = `Cotizacion_${folio || 'Borrador'}.pdf`; link.click(); setIsMerging(false); return;
-            }
-            const quoteArrayBuffer = await quoteBlob.arrayBuffer();
-            const reportArrayBuffer = await reporteTecnico.arrayBuffer();
-            const mergedPdf = await PDFDocument.create();
-            const quotePdf = await PDFDocument.load(quoteArrayBuffer);
-            const reportPdf = await PDFDocument.load(reportArrayBuffer);
-            (await mergedPdf.copyPages(quotePdf, quotePdf.getPageIndices())).forEach(page => mergedPdf.addPage(page));
-            (await mergedPdf.copyPages(reportPdf, reportPdf.getPageIndices())).forEach(page => mergedPdf.addPage(page));
-            const mergedPdfBytes = await mergedPdf.save();
-            const blob = new Blob([mergedPdfBytes as any], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a'); link.href = url; link.download = `Cotizacion_${folio || 'Borrador'}_FULL.pdf`; link.click(); URL.revokeObjectURL(url);
-        } catch (error) { toast.error("Error al fusionar PDFs."); } finally { setIsMerging(false); }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-row overflow-hidden border border-gray-200 dark:border-zinc-800">
-                <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-zinc-800">
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-800">
-                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Vista Previa</h2>
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleDownloadMerged} disabled={isMerging} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all disabled:opacity-50">{isMerging ? "Generando..." : <><Download size={18} /> Descargar</>}</button>
-                            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500"><X size={24} /></button>
-                        </div>
-                    </div>
-                    <div className="flex-1 bg-gray-100 dark:bg-zinc-950 relative">
-                        {pdfUrl ? (
-                            <iframe src={pdfUrl} className="w-full h-full border-0" title="Vista Previa PDF" />
-                        ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <p>Cargando vista previa...</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <div className="w-1/3 bg-gray-50 dark:bg-zinc-950 p-6 flex flex-col overflow-y-auto gap-8 border-l border-gray-200 dark:border-zinc-800">
-                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3"><Paperclip size={16} /> Anexar TSR</h3>
-                        <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}>
-                            <input {...getInputProps()} />
-                            {reporteTecnico ? <div className="flex items-center justify-center gap-2 text-green-600 font-medium"><FileCheck size={20} /><span className="truncate">{reporteTecnico.name}</span><button onClick={(e) => { e.stopPropagation(); setReporteTecnico(null); }} className="ml-2 text-red-500"><X size={14} /></button></div> : <div className="text-gray-500 text-xs"><p>Arrastra PDF aquí</p></div>}
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-2"><Sparkles className="text-purple-600" /> Asistente de Envío</h3>
-                        <button onClick={generarCorreo} disabled={generandoCorreo} className="w-full py-3 bg-purple-600 text-white rounded-xl font-semibold flex justify-center items-center gap-2">{generandoCorreo ? "..." : <><Mail size={18} /> Generar Correo</>}</button>
-                        {correoGenerado && <div className="mt-4"><textarea className="w-full h-48 p-4 border rounded-xl text-sm" value={correoGenerado} readOnly /><button onClick={() => copiarAlPortapapeles(correoGenerado)} className="mt-3 py-2 border w-full rounded-lg flex justify-center gap-2"><Copy size={16} /> Copiar</button></div>}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 /* ===================== Componente principal ===================== */
 const EditarCotizacionPage: React.FC = () => {
@@ -496,11 +69,9 @@ const EditarCotizacionPage: React.FC = () => {
     });
 
     const [clienteSeleccionadoId, setClienteSeleccionadoId] = useState<string>("");
-    const [shipToSeleccionadoId, setShipToSeleccionadoId] = useState<string>("");
-    const [usuarioSeleccionadoId, setUsuarioSeleccionadoId] = useState<string>("");
-    const [modoNuevoCliente, setModoNuevoCliente] = useState<boolean>(false);
     const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([]);
     const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
+    const [serviciosExternos, setServiciosExternos] = useState<ServicioExternoForm[]>([]);
 
     const [mejorandoTexto, setMejorandoTexto] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -508,7 +79,7 @@ const EditarCotizacionPage: React.FC = () => {
 
     // Client-specific contract rate overrides: { servicio_id: precio_contrato }
     const [tarifasCliente, setTarifasCliente] = useState<Record<string, number>>({});
-    const clienteTieneContrato = Object.keys(tarifasCliente).length > 0;
+    const ultimoClienteSolicitado = useRef<string | null>(null);
 
     // Auto-recalculate items when overrides change
     useEffect(() => {
@@ -518,15 +89,7 @@ const EditarCotizacionPage: React.FC = () => {
                 const tarifa = tarifasDisponibles.find((t) => String(t.id) === item.tarifaId);
                 if (!tarifa) return item;
                 
-                const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
-                    ? item.precioManual
-                    : (item.conContrato && tarifasCliente[item.tarifaId]
-                        ? tarifasCliente[item.tarifaId]
-                        : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato));
-                    
-                const expectedTotal = tarifa.requiere_desglose
-                    ? precioUnitario * item.cantidad
-                    : precioUnitario * item.ingenieros * item.cantidad;
+                const expectedTotal = totalLinea(item, tarifa, tarifasCliente);
 
                 if (item.total !== expectedTotal) {
                     changed = true;
@@ -543,13 +106,9 @@ const EditarCotizacionPage: React.FC = () => {
         const loadAll = async () => {
             try {
                 // 1. Cargar Catálogos
-                const [resClientes, resUsuarios] = await Promise.all([
-                    api.get('/clientes'),
-                    api.get('/usuarios'),
-                ]);
-
-                setClientesDisponibles(resClientes.data.data || []);
-                setUsuariosRegistrados(resUsuarios.data.data || []);
+                const [clientes, usuarios] = await Promise.all([obtenerClientes(), obtenerUsuarios()]);
+                setClientesDisponibles(clientes);
+                setUsuariosRegistrados(usuarios);
 
                 // 2. Cargar Cotización primero para saber la entidad/region
                 const { data: cotData } = await api.get(`/cotizaciones/${id}`);
@@ -557,16 +116,7 @@ const EditarCotizacionPage: React.FC = () => {
                 const cotRegion = cot.condiciones?.entidad || 'MX';
 
                 // 3. Cargar servicios filtrados por region de la cotización
-                const resServicios = await api.get(`/servicios?region=${cotRegion}`);
-                const listaServicios = (resServicios.data.data || []).map((s: any) => ({
-                    id: s.id,
-                    concepto: s.concepto,
-                    unidad: s.unidad,
-                    precio_sin_contrato: Number(s.precio_sin_contrato),
-                    precio_con_contrato: Number(s.precio_con_contrato),
-                    moneda: s.moneda,
-                    requiere_desglose: s.concepto.toLowerCase().includes('viaje') || s.concepto.toLowerCase().includes('travel')
-                }));
+                const listaServicios = await obtenerServicios(cotRegion);
                 setTarifasDisponibles(listaServicios);
 
                 if (cot.estado !== 'borrador') {
@@ -579,21 +129,27 @@ const EditarCotizacionPage: React.FC = () => {
 
                 // Parsear datos
                 const cliente = cot.clientes || {};
-                const items = cot.cotizacion_items || [];
+                const todasLasPartidas = cot.cotizacion_items || [];
+                // Los servicios externos se editan en su propia tabla
+                const items = todasLasPartidas.filter((i: any) => !esPartidaServicioExterno(i));
+                setServiciosExternos(
+                    todasLasPartidas
+                        .filter((i: any) => esPartidaServicioExterno(i))
+                        .map((i: any, idx: number) => ({ id: idx + 1, ...servicioExternoDesdePartida(i) }))
+                );
                 const condiciones = cot.condiciones || {}; // JSONB
 
                 setClienteSeleccionadoId(String(cot.cliente_id));
 
                 // 4. Cargar tarifas especiales de este cliente si tiene
+                // (se guardan también en una variable local: el estado de React aún no
+                // está actualizado cuando reconstruimos las partidas más abajo)
+                let overridesCliente: Record<string, number> = {};
                 try {
-                    const resTarifasCliente = await api.get(`/tarifas-cliente/${cot.cliente_id}`);
-                    const overrides: Record<string, number> = {};
-                    (resTarifasCliente.data.data || []).forEach((tc: any) => {
-                        overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
-                    });
-                    setTarifasCliente(overrides);
+                    overridesCliente = await obtenerTarifasCliente(cot.cliente_id);
+                    setTarifasCliente(overridesCliente);
                 } catch (error) {
-                    console.log("No se pudieron cargar tarifas especiales del cliente", error);
+                    console.warn("No se pudieron cargar tarifas especiales del cliente", error);
                 }
 
                 // Populate Form
@@ -658,15 +214,16 @@ const EditarCotizacionPage: React.FC = () => {
                     // Vamos a intentar buscar por concepto exacto
                     const tarifaEncontrada = listaServicios.find((t: any) => t.concepto === i.concepto);
 
+                    // lineaDesdePartida corrige dos problemas de la versión anterior:
+                    //  - En BD `cantidad` = horas × ingenieros; antes se volvía a multiplicar
+                    //    por ingenieros al recalcular y el total se duplicaba/triplicaba.
+                    //  - Contrato y precio manual se infieren del precio guardado, en lugar de
+                    //    asumir siempre "con contrato" (lo que reescribía precios manuales).
                     return {
+                        ...lineaDesdePartida(i, tarifaEncontrada, overridesCliente),
                         id: i.id, // ID interno temporal
-                        tarifaId: tarifaEncontrada ? String(tarifaEncontrada.id) : "",
-                        ingenieros: i.ingenieros || 1,
-                        cantidad: i.cantidad, // Ojo: en DB 'cantidad' a veces es total de horas
-                        conContrato: true, // Default
                         detalles: i.detalles || "",
                         desglose: i.desglose || [], // JSON
-                        total: i.subtotal || i.total
                     };
                 });
                 setItemsServicio(loadedItems);
@@ -685,17 +242,7 @@ const EditarCotizacionPage: React.FC = () => {
     // Re-fetch rates filtered by region when entity changes
     const fetchTarifasByRegion = async (region: string) => {
         try {
-            const { data } = await api.get(`/servicios?region=${region}`);
-            const lista: Tarifa[] = (Array.isArray(data) ? data : data.data || []).map((s: any) => ({
-                id: s.id,
-                concepto: s.concepto,
-                unidad: s.unidad,
-                precio_sin_contrato: Number(s.precio_sin_contrato),
-                precio_con_contrato: Number(s.precio_con_contrato),
-                moneda: s.moneda,
-                requiere_desglose: s.concepto.toLowerCase().includes('viaje') || s.concepto.toLowerCase().includes('travel')
-            }));
-            setTarifasDisponibles(lista);
+            setTarifasDisponibles(await obtenerServicios(region));
             // Reset service items since rates changed
             setItemsServicio([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }] }]);
         } catch (error) {
@@ -717,15 +264,18 @@ const EditarCotizacionPage: React.FC = () => {
 
     const handleGuardar = async () => {
         try {
+            // Líneas sin tarifa (fila vacía) no se guardan
+            const lineasConTarifa = itemsServicio.filter(item => item.tarifaId);
+            const externosCapturados = serviciosExternos.filter(servicioExternoCapturado);
+            if (lineasConTarifa.length === 0 && externosCapturados.length === 0) {
+                toast.error('Error al actualizar', { description: 'Agrega al menos un servicio técnico o un servicio externo.' });
+                return;
+            }
             setLoading(true)
-            const itemsFormateados = itemsServicio.map(item => {
+            const itemsFormateados = lineasConTarifa.map(item => {
                 const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
-                const precioUnitario = item.esPrecioManual && item.precioManual !== undefined
-                    ? item.precioManual
-                    : (item.conContrato && tarifasCliente[item.tarifaId]
-                        ? tarifasCliente[item.tarifaId]
-                        : (item.conContrato ? tarifa?.precio_con_contrato || 0 : tarifa?.precio_sin_contrato || 0));
-                const cantidadReal = tarifa?.requiere_desglose ? item.cantidad : (item.cantidad * (item.ingenieros || 1));
+                const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
+                const cantidadReal = cantidadParaGuardar(item, tarifa);
                 return {
                     concepto: tarifa?.concepto || 'Servicio no especificado',
                     cantidad: cantidadReal,
@@ -746,8 +296,8 @@ const EditarCotizacionPage: React.FC = () => {
                 contactoPrincipal: formData.contactoPrincipal,
                 contactoSecundario: formData.contactoSecundario,
                 condiciones: formData.condiciones,
-                itemsServicio: itemsFormateados,
-                total: itemsServicio.reduce((sum, i) => sum + i.total, 0),
+                itemsServicio: [...itemsFormateados, ...externosCapturados.map(partidaDesdeServicioExterno)],
+                total: sumarTotales(lineasConTarifa) + totalServiciosExternos(externosCapturados),
                 descripcion: formData.descripcion,
                 tipo_servicio: formData.tipo_servicio,
                 datos_forma: formData
@@ -771,21 +321,20 @@ const EditarCotizacionPage: React.FC = () => {
         // (Simplificado) Importar lógica completa si es necesario cambiar cliente
         setClienteSeleccionadoId(value);
 
-        // Fetch client-specific contract rates
-        api.get(`/tarifas-cliente/${value}`).then(({ data }) => {
-            const overrides: Record<string, number> = {};
-            (data.data || []).forEach((tc: any) => {
-                overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+        // Tarifas especiales del cliente (se descarta una respuesta vieja si el
+        // usuario ya eligió otro cliente)
+        ultimoClienteSolicitado.current = value;
+        obtenerTarifasCliente(value)
+            .catch(() => ({}))
+            .then((tarifas) => {
+                if (ultimoClienteSolicitado.current === value) setTarifasCliente(tarifas);
             });
-            setTarifasCliente(overrides);
-        }).catch(() => setTarifasCliente({}));
         const cliente = clientesDisponibles.find((c) => String(c.id) === value);
         if (cliente) {
             setFormData(prev => ({ ...prev, facturarA: { ...prev.facturarA, nombre: cliente.nombre, direccion: cliente.direccion, colonia: cliente.colonia, ciudad: cliente.ciudad, cp: cliente.cp } }));
         }
     };
 
-    const handleSelectUsuario = (value: string) => { setUsuarioSeleccionadoId(value); };
     const handleFacturarFieldChange = (campo: keyof FacturarA, valor: string) => { handleInputChange("facturarA", campo, valor); };
     const agregarLineaServicio = () => { setItemsServicio((prev) => [...prev, { id: Date.now(), tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: Date.now().toString(), nombre: '', horas: 0 }] },]); };
     const eliminarLineaServicio = (id: number) => { setItemsServicio((prev) => prev.length > 1 ? prev.filter((i) => i.id !== id) : prev); };
@@ -798,7 +347,7 @@ const EditarCotizacionPage: React.FC = () => {
             if (campo === "tarifaId") {
                 updated.tarifaId = String(valor);
                 const t = tarifasDisponibles.find((x) => String(x.id) === updated.tarifaId);
-                if (t && t.concepto.toLowerCase().includes("costo de vuelo")) {
+                if (esTarifaCostoVuelo(t)) {
                     updated.esPrecioManual = true;
                     if (updated.precioManual === undefined) {
                         updated.precioManual = 0;
@@ -811,7 +360,9 @@ const EditarCotizacionPage: React.FC = () => {
                 updated.esPrecioManual = Boolean(valor);
                 if (updated.esPrecioManual && updated.precioManual === undefined) {
                     const t = tarifasDisponibles.find((x) => String(x.id) === updated.tarifaId);
-                    updated.precioManual = updated.conContrato && tarifasCliente[updated.tarifaId] ? tarifasCliente[updated.tarifaId] : (updated.conContrato ? t?.precio_con_contrato : t?.precio_sin_contrato);
+                    updated.precioManual = t || (updated.conContrato && tarifasCliente[updated.tarifaId])
+            ? precioCatalogo(updated, t, tarifasCliente)
+            : undefined;
                 }
             }
             else if (campo === "precioManual") updated.precioManual = Number(valor);
@@ -822,40 +373,12 @@ const EditarCotizacionPage: React.FC = () => {
                 else (updated as any)[campo] = valor;
             }
             const tarifa = tarifasDisponibles.find((t) => String(t.id) === updated.tarifaId);
-            const requiereDesglose = tarifa?.requiere_desglose;
-            if ((campo === "ingenieros" || campo === "tarifaId") && requiereDesglose) {
-                const diff = updated.ingenieros - updated.desglose.length;
-                if (diff > 0) { for (let i = 0; i < diff; i++) updated.desglose.push({ uid: Math.random().toString(), nombre: '', horas: 0 }); }
-                else if (diff < 0) { updated.desglose = updated.desglose.slice(0, updated.ingenieros); }
+            if ((campo === "ingenieros" || campo === "tarifaId") && tarifa?.requiere_desglose) {
+              // Una fila de horas por ingeniero (arreglo nuevo: no se muta el estado anterior)
+              updated.desglose = ajustarDesgloseAIngenieros(updated.desglose, updated.ingenieros, () => ({ uid: Math.random().toString(), nombre: '', horas: 0 }));
             }
-            if (tarifa) {
-                const esCostoVuelo = tarifa.concepto.toLowerCase().includes('costo de vuelo');
-                if (esCostoVuelo) {
-                    // Para Costo de Vuelo: precio único = precio manual. No aplica ingenieros ni horas.
-                    updated.ingenieros = 1;
-                    updated.cantidad = 1;
-                    updated.esPrecioManual = true;
-                    updated.total = updated.precioManual || 0;
-                } else {
-                    // Use client-specific contract rate if available, otherwise generic
-                    let precioUnitario: number;
-                    if (updated.esPrecioManual && updated.precioManual !== undefined) {
-                        precioUnitario = updated.precioManual;
-                    } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
-                        precioUnitario = tarifasCliente[updated.tarifaId];
-                    } else {
-                        precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-                    }
-                    if (requiereDesglose) {
-                        const totalHoras = updated.desglose.reduce((acc, curr) => acc + curr.horas, 0);
-                        updated.cantidad = totalHoras;
-                        updated.total = precioUnitario * totalHoras;
-                    } else {
-                        updated.total = precioUnitario * updated.ingenieros * updated.cantidad;
-                    }
-                }
-            } else { updated.total = 0; }
-            return updated;
+            // Reglas de precio (vuelo, desglose, contrato, manual) en features/cotizaciones/pricing.ts
+            return recalcularLinea(updated, tarifa, tarifasCliente);
         }));
     };
 
@@ -869,20 +392,8 @@ const EditarCotizacionPage: React.FC = () => {
             updated.desglose = nuevoDesglose;
             const tarifa = tarifasDisponibles.find(t => String(t.id) === updated.tarifaId);
             if (tarifa && tarifa.requiere_desglose) {
-                const totalHoras = nuevoDesglose.reduce((acc, curr) => acc + curr.horas, 0);
-                updated.cantidad = totalHoras;
-
-                // Use client-specific contract rate if available, otherwise generic
-                let precioUnitario: number;
-                if (updated.esPrecioManual && updated.precioManual !== undefined) {
-                    precioUnitario = updated.precioManual;
-                } else if (updated.conContrato && tarifasCliente[updated.tarifaId]) {
-                    precioUnitario = tarifasCliente[updated.tarifaId];
-                } else {
-                    precioUnitario = updated.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato;
-                }
-
-                updated.total = precioUnitario * totalHoras;
+              // cantidad = suma de horas del desglose; total = precio × horas
+              return recalcularLinea(updated, tarifa, tarifasCliente);
             }
             return updated;
         }));
@@ -895,14 +406,15 @@ const EditarCotizacionPage: React.FC = () => {
         try {
             const { data } = await api.post("/ia/mejorar-texto", { text: textoOriginal });
             if (data.result) handleInputChange("condiciones", "observaciones", data.result);
-        } catch (error) { toast.error("Error AI"); } finally { setMejorandoTexto(false); }
+        } catch { toast.error("Error AI"); } finally { setMejorandoTexto(false); }
     };
 
-    const subtotalServicios = itemsServicio.reduce((sum, i) => sum + i.total, 0);
-    const totalServicios = subtotalServicios;
+    const subtotalServicios = sumarTotales(itemsServicio);
+    const subtotalExternos = totalServiciosExternos(serviciosExternos);
+    const totalServicios = subtotalServicios + subtotalExternos;
 
     if (initialLoading) return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center">
+        <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 <p className="text-gray-600 dark:text-gray-300 font-medium">Cargando datos de cotización...</p>
@@ -911,7 +423,7 @@ const EditarCotizacionPage: React.FC = () => {
     )
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-6">
+        <div className="min-h-screen bg-white dark:bg-zinc-950 p-6">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6">
                     <Link href={`/cotizaciones/${id}`} className="flex items-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors mb-4">
@@ -919,13 +431,13 @@ const EditarCotizacionPage: React.FC = () => {
                     </Link>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-amber-500">
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-blue-600">
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Editar Cotización</h1>
                             <p className="text-gray-500 dark:text-gray-400">Modificando cotización folio: <b>{folioGenerado}</b></p>
                         </div>
-                        <div className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-4 py-2 rounded-full font-bold text-sm">
+                        <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full font-bold text-sm">
                             Modo Edición
                         </div>
                     </div>
@@ -1077,7 +589,7 @@ const EditarCotizacionPage: React.FC = () => {
                                             <input type="number" min="1" value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full p-2 border border-gray-300 dark:border-zinc-700 rounded text-center bg-white dark:bg-zinc-800 text-gray-900 dark:text-white mt-1" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400">{tarifa?.unidad === 'dia' ? 'Días' : 'Horas'}</label>
+                                            <label className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400">{esViaje ? 'Total horas (suma)' : tarifa?.unidad === 'dia' ? 'Días por ingeniero' : 'Horas por ingeniero'}</label>
                                             <input type="number" value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full p-2 border rounded text-center mt-1 ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-600' : 'border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} />
                                         </div>
                                     </div>
@@ -1110,18 +622,18 @@ const EditarCotizacionPage: React.FC = () => {
                                             {item.esPrecioManual && (
                                                 <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg px-3 py-1.5 transition-all shadow-sm">
                                                     <span className="text-blue-700 dark:text-blue-400 font-bold text-sm">$</span>
-                                                    <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (item.conContrato && tarifa && tarifasCliente[String(tarifa.id)] ? tarifasCliente[String(tarifa.id)] : (item.conContrato ? tarifa?.precio_con_contrato : tarifa?.precio_sin_contrato))} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
+                                                    <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (tarifa ? precioCatalogo(item, tarifa, tarifasCliente) : undefined)} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
                                                 </div>
                                             )}
                                             
                                             {tarifa && !item.esPrecioManual && (
                                                 <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                                    (${(item.conContrato && tarifasCliente[String(tarifa.id)] ? tarifasCliente[String(tarifa.id)] : (item.conContrato ? tarifa.precio_con_contrato : tarifa.precio_sin_contrato)).toFixed(2)} / {tarifa.unidad})
+                                                    (${precioCatalogo(item, tarifa, tarifasCliente).toFixed(2)} / {tarifa.unidad})
                                                 </span>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                            <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">Total</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)}</span></div>
+                                            <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">Total</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)}</span>{tarifa && !esTarifaCostoVuelo(tarifa) && <span className="text-xs text-gray-500 dark:text-gray-400">= ${calcularPrecioUnitario(item, tarifa, tarifasCliente).toFixed(2)} × {formatearHoras(horasTotalesLinea(item, tarifa))} h totales</span>}</div>
                                             {itemsServicio.length > 1 && <button onClick={() => eliminarLineaServicio(item.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 transition-colors"><Trash2 size={20} /></button>}
                                         </div>
                                     </div>
@@ -1132,18 +644,27 @@ const EditarCotizacionPage: React.FC = () => {
 
                     <div className="mt-6 flex justify-end">
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl min-w-[300px]">
-                            <div className="flex justify-between mb-2 text-gray-700 dark:text-gray-300"><span>Subtotal:</span><span className="font-bold">${subtotalServicios.toFixed(2)}</span></div>
+                            <div className="flex justify-between gap-6 mb-2 text-gray-700 dark:text-gray-300"><span>{subtotalExternos !== 0 ? "Subtotal servicios técnicos:" : "Subtotal:"}</span><span className="font-bold">${subtotalServicios.toFixed(2)}</span></div>
+                            {subtotalExternos !== 0 && <div className="flex justify-between gap-6 mb-2 text-gray-700 dark:text-gray-300"><span>Subtotal servicios externos:</span><span className="font-bold">${subtotalExternos.toFixed(2)}</span></div>}
                             <div className="flex justify-between pt-2 border-t border-blue-200 dark:border-blue-700/50 text-xl font-bold text-blue-800 dark:text-blue-300"><span>Total:</span><span>${totalServicios.toFixed(2)}</span></div>
                         </div>
                     </div>
                 </div>
+
+                <ServiciosExternosEditor
+                    filas={serviciosExternos}
+                    onChange={setServiciosExternos}
+                    titulo={formData.condiciones.tituloServiciosExternos || ""}
+                    onTituloChange={(v) => handleInputChange("condiciones", "tituloServiciosExternos", v)}
+                    moneda={formData.condiciones.moneda}
+                />
 
                 {/* CONDITIONS */}
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border border-gray-200 dark:border-zinc-800">
                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Condiciones</h3>
                     <textarea rows={3} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full p-3 border border-gray-300 dark:border-zinc-700 rounded-xl text-sm mb-2 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Observaciones..." />
                     <div className="flex gap-2">
-                        <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Sparkles size={12} /> Mejorar con IA</button>
+                        <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Sparkles size={12} /> Mejorar con IA</button>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
@@ -1165,7 +686,7 @@ const EditarCotizacionPage: React.FC = () => {
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-6 flex justify-end gap-4 border border-gray-200 dark:border-zinc-800">
                     <button onClick={() => router.push(`/cotizaciones/${id}`)} className="px-6 py-3 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancelar</button>
                     <button onClick={() => setModalVistaPreviaAbierto(true)} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 flex items-center gap-2 transition-colors"><Eye size={20} /> Vista Previa</button>
-                    <button onClick={handleGuardar} disabled={loading} className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 flex items-center gap-2 font-bold shadow-lg disabled:opacity-60 transition-colors">{loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Guardando...</> : <><Save size={18} /> Guardar Cambios</>}</button>
+                    <button onClick={handleGuardar} disabled={loading} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 flex items-center gap-2 font-bold shadow-lg disabled:opacity-60 transition-colors">{loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Guardando...</> : <><Save size={18} /> Guardar Cambios</>}</button>
                 </div>
 
             </div>
@@ -1179,6 +700,7 @@ const EditarCotizacionPage: React.FC = () => {
                 folio={folioGenerado}
                 usuariosRegistrados={usuariosRegistrados}
                 tarifasCliente={tarifasCliente}
+                serviciosExternos={serviciosExternos}
             />
         </div>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, {  } from "react";
 import { Camera } from "lucide-react";
 import { ParameterRangeRow } from "./ParameterRangeRow";
 import { EvidenceUploader, EvidenceImageItem } from "./EvidenceUploader";

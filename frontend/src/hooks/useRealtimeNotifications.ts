@@ -19,7 +19,6 @@ export const useRealtimeNotifications = () => {
                     table: 'cotizaciones',
                 },
                 (payload) => {
-                    console.log('Cambio recibido:', payload);
 
                     if (payload.eventType === 'INSERT') {
                         const newCot = payload.new;
@@ -36,11 +35,6 @@ export const useRealtimeNotifications = () => {
 
                         // Notificar cambios de estado importante
                         if (updatedCot.estado !== oldCot.estado) {
-                            const colorMap: { [key: string]: string } = {
-                                aceptada: 'text-green-600',
-                                rechazada: 'text-red-600',
-                                borrador: 'text-gray-600'
-                            };
 
                             toast.success(`Estado Actualizado: ${updatedCot.numero_cotizacion || ('ID ' + updatedCot.id)}`, {
                                 description: `La cotización ahora está en estado: ${updatedCot.estado.toUpperCase()}`,

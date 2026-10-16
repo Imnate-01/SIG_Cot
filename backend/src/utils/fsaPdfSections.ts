@@ -1,7 +1,8 @@
 /** Helpers para renderizar secciones técnicas del PDF */
+import { escapeHtml } from './escapeHtml';
 
 const n = (v: any, unit = '') =>
-  v !== null && v !== undefined ? `${v}${unit}` : '<span style="color:#94a3b8">—</span>';
+  v !== null && v !== undefined ? `${escapeHtml(v)}${unit}` : '<span style="color:#94a3b8">—</span>';
 
 /** Tabla genérica de parámetros con HH/HS/SP/L/LL */
 function paramTable(
@@ -88,9 +89,9 @@ export function sectionDedusting(wd: any): string {
 // ─── SECCIÓN 3: H₂O₂ ─────────────────────────────────────────────────────
 export function sectionH2O2(wd: any): string {
   const vals = wd?.h2o2Values || {};
-  const prov = wd?.h2o2Proveedor || '—';
-  const tipo = wd?.h2o2Tipo || '—';
-  const conc = wd?.h2o2Concentracion ?? '—';
+  const prov = escapeHtml(wd?.h2o2Proveedor || '—');
+  const tipo = escapeHtml(wd?.h2o2Tipo || '—');
+  const conc = escapeHtml(wd?.h2o2Concentracion ?? '—');
 
   const t1234Params = [
     { label: 'Spray qty H₂O₂ Prod. A/wine (≥500ml)', unit: 'µl/s', hh: 380, hs: 355, sp: 330, l: 305, ll: 280, key: 'Spray qty H₂O₂ Prod. A/wine (≥500ml)' },
@@ -201,9 +202,9 @@ export function sectionCIP(wd: any): string {
     const f = flows.filter(r => r.paso === paso);
     if (!f.length) return '<tr><td colspan="6" style="text-align:center;color:#94a3b8;font-style:italic">Sin registros</td></tr>';
     return f.map(r => `<tr>
-      <td style="text-align:center">Tr ${r.track}</td>
-      <td style="text-align:center">Cab ${r.cabezal}</td>
-      <td>${r.tipo_cabezal || '—'}</td>
+      <td style="text-align:center">Tr ${escapeHtml(r.track)}</td>
+      <td style="text-align:center">Cab ${escapeHtml(r.cabezal)}</td>
+      <td>${escapeHtml(r.tipo_cabezal || '—')}</td>
       <td style="text-align:center">${n(r.flujo_ml_s)}</td>
       <td style="text-align:center">${n(r.volumen_hmi)}</td>
       <td style="text-align:center">${n(r.volumen_cip)}</td>
@@ -252,7 +253,7 @@ export function sectionCIP(wd: any): string {
 // ─── SECCIÓN 6: Misceláneos ───────────────────────────────────────────────
 export function sectionMisc(wd: any): string {
   const misc = wd?.miscValues || {};
-  const obs  = wd?.observacionesGen || '';
+  const obs  = escapeHtml(wd?.observacionesGen || '');
 
   const yesNo = (key: string) => {
     const v = misc[key];
@@ -288,7 +289,7 @@ export function sectionMisc(wd: any): string {
           <tbody>
             <tr><td>Paso funcional SST</td><td>${yesNo('sst_funcional')}</td></tr>
             <tr><td>Paso funcional AZS</td><td>${yesNo('azs_funcional')}</td></tr>
-            <tr><td>Concentración de H₂O₂</td><td>${misc['h2o2_concentracion'] !== undefined ? misc['h2o2_concentracion'] + '%' : '—'}</td></tr>
+            <tr><td>Concentración de H₂O₂</td><td>${misc['h2o2_concentracion'] !== undefined ? escapeHtml(misc['h2o2_concentracion']) + '%' : '—'}</td></tr>
           </tbody>
         </table>
       </div>

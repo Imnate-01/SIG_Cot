@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
 
 export interface WizardStep {
   id: number;
@@ -41,7 +41,6 @@ export function WizardSidebar({
         {steps.map((step) => {
           const isActive    = currentStep === step.id;
           const isCompleted = step.completed;
-          const isPending   = !isCompleted && !isActive;
 
           return (
             <div

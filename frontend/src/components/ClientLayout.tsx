@@ -20,10 +20,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname.endsWith("/login") ||
     pathname.endsWith("/register") ||
     pathname.endsWith("/verificado") ||
+    pathname.endsWith("/recuperar") ||
+    pathname.endsWith("/restablecer") ||
     pathname.match(/^\/(en|es)$/) !== null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 font-sans text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 font-sans text-black dark:text-gray-100">
 
       {/* 2. AQUI VA EL ONBOARDING */}
       {/* Solo se renderiza si estamos dentro del sistema. */}
@@ -35,7 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
       {/* Contenido Principal */}
       <main
-        className={`min-h-screen transition-all duration-300 ease-in-out ${!esFullPage ? "lg:pl-64" : ""
+        className={`min-h-screen transition-all duration-300 ease-in-out ${!esFullPage ? "lg:pl-60 max-lg:pt-14" : ""
           }`}
       >
         <div className={!esFullPage ? "" : ""}>

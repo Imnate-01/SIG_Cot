@@ -1,4 +1,5 @@
 import { SIG_LOGO_B64 } from './sig_logo_b64';
+import { escapeHtml, safeImageSrc } from './escapeHtml';
 import { sectionDedusting, sectionH2O2, sectionPreheating, sectionCIP, sectionMisc } from './fsaPdfSections';
 
 export function buildFsaPdfHtml(report: any): { html: string, headerTemplate: string, footerTemplate: string } {
@@ -7,19 +8,10 @@ export function buildFsaPdfHtml(report: any): { html: string, headerTemplate: st
   const wd: any            = report.wizard_data || {};
 
   // ── helpers ──
-  const val = (v: any, fallback = '—') => (v !== null && v !== undefined && v !== '') ? String(v) : fallback;
+  // Todo valor de datos se escapa: el HTML resultante lo renderiza Chromium en el servidor.
+  const val = (v: any, fallback = '—') => (v !== null && v !== undefined && v !== '') ? escapeHtml(v) : fallback;
 
-  const statusColor = (estado: string) => {
-    if (estado === 'finalizado') return '#16a34a';
-    if (estado === 'en_revision') return '#d97706';
-    return '#64748b';
-  };
 
-  const statusLabel = (estado: string) => {
-    if (estado === 'finalizado') return 'Finalizado';
-    if (estado === 'en_revision') return 'En Revisión';
-    return 'Borrador';
-  };
 
   const now = new Date().toLocaleDateString('es-MX', {
     year: 'numeric', month: 'long', day: 'numeric'
@@ -32,8 +24,8 @@ export function buildFsaPdfHtml(report: any): { html: string, headerTemplate: st
       <div class="img-grid img-grid-${Math.min(imgs.length, 4)}">
         ${imgs.map((img: any, idx: number) => `
           <figure class="img-figure">
-            <img src="${img.url_report || img.url_thumbnail || ''}" alt="Evidencia ${idx + 1}" class="evidence-img" />
-            ${img.caption ? `<figcaption>Fig. ${idx + 1}: ${img.caption}</figcaption>` : ''}
+            <img src="${safeImageSrc(img.url_report || img.url_thumbnail)}" alt="Evidencia ${idx + 1}" class="evidence-img" />
+            ${img.caption ? `<figcaption>Fig. ${idx + 1}: ${escapeHtml(img.caption)}</figcaption>` : ''}
           </figure>
         `).join('')}
       </div>`;
@@ -51,7 +43,7 @@ export function buildFsaPdfHtml(report: any): { html: string, headerTemplate: st
             CAM ON: <strong>${val(f.cam_on)}°</strong> &nbsp;|&nbsp; CAM OFF: <strong>${val(f.cam_off)}°</strong>
           </div>
         </div>
-        ${f.descripcion ? `<p class="cop-desc">${f.descripcion}</p>` : ''}
+        ${f.descripcion ? `<p class="cop-desc">${escapeHtml(f.descripcion)}</p>` : ''}
         ${imgGrid}
       </div>`;
   }).join('');
@@ -356,7 +348,7 @@ ${sectionMisc(wd)}
     <p style="font-size:9pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2mm">
       Observaciones del auditor
     </p>
-    <div class="obs-box">${report.observaciones_gen}</div>
+    <div class="obs-box">${escapeHtml(report.observaciones_gen)}</div>
     ` : ''}
 
     <!-- Firmas -->

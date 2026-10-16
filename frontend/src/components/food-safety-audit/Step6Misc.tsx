@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { CopFindingState } from "./Step1COP";
 
-type ParamValues = Record<string, number | null>;
 
 /* ─────────────────────────────────────────
    Parámetros de esterilización

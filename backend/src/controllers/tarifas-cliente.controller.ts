@@ -1,15 +1,13 @@
 import { Request, Response } from 'express'
-import { createClientForUser } from '../config/supabase'
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 
 export class TarifasClienteController {
 
   // GET /api/tarifas-cliente/:clienteId
   async getByCliente(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { clienteId } = req.params;
 
       const { data, error } = await supabaseUser
@@ -21,17 +19,14 @@ export class TarifasClienteController {
       if (error) throw error;
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // POST /api/tarifas-cliente (bulk upsert)
   async upsert(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { cliente_id, tarifas } = req.body;
       // tarifas: [{ servicio_id, precio_contrato }]
 
@@ -54,17 +49,14 @@ export class TarifasClienteController {
       if (error) throw error;
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // DELETE /api/tarifas-cliente/:id
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const { error } = await supabaseUser
@@ -75,7 +67,7 @@ export class TarifasClienteController {
       if (error) throw error;
       res.json({ success: true, message: 'Tarifa eliminada' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 }

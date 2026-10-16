@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 import multer from 'multer';
-import { createClientForUser } from '../config/supabase';
 import { processAuditImage, deleteAuditImageVersions } from '../utils/imageProcessor';
 
 // Mapa de extensión → MIME correcto (fallback cuando el OS no registra el tipo)
@@ -51,16 +52,13 @@ export class EvidenceImagesController {
   // ─────────────────────────────────────────────────────────
   async upload(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
       if (!req.file) return res.status(400).json({ success: false, message: 'No se recibió ningún archivo.' });
 
       // Normalizar MIME type: en Windows + HEIC, el navegador puede enviar
       // "application/octet-stream" o vacío. Lo resolvemos por la extensión del archivo.
       const effectiveMime = getEffectiveMime(req.file);
 
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { auditId } = req.params;
       const { cop_finding_id, param_id, caption = '', orden = 0 } = req.body;
 
@@ -125,7 +123,7 @@ export class EvidenceImagesController {
 
     } catch (error: any) {
       console.error('[EvidenceImages] upload error:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -134,9 +132,7 @@ export class EvidenceImagesController {
   // ─────────────────────────────────────────────────────────
   async getByAudit(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { auditId } = req.params;
       const { cop_finding_id } = req.query;
@@ -154,7 +150,7 @@ export class EvidenceImagesController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -164,9 +160,7 @@ export class EvidenceImagesController {
   // ─────────────────────────────────────────────────────────
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { imgId } = req.params;
       const { caption, orden } = req.body;
@@ -185,7 +179,7 @@ export class EvidenceImagesController {
       if (error) throw error;
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -198,12 +192,10 @@ export class EvidenceImagesController {
   // ─────────────────────────────────────────────────────────
   async replace(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
       if (!req.file)  return res.status(400).json({ success: false, message: 'No se recibió ningún archivo.' });
 
       const effectiveMime = getEffectiveMime(req.file);
-      const supabaseUser  = createClientForUser(token);
+      const supabaseUser  = contextoAuth(req).supabase;
       const { auditId, imgId } = req.params;
 
       // 1. Obtener el registro actual (necesitamos storage_key para borrar archivos viejos)
@@ -270,7 +262,7 @@ export class EvidenceImagesController {
       res.json({ success: true, data: updated });
     } catch (error: any) {
       console.error('[EvidenceImages] replace error:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -279,9 +271,7 @@ export class EvidenceImagesController {
   // ─────────────────────────────────────────────────────────
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: 'No autorizado' });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { imgId } = req.params;
 
@@ -309,7 +299,7 @@ export class EvidenceImagesController {
 
       res.json({ success: true, message: 'Imagen eliminada correctamente' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 }

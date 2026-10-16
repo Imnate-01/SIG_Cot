@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
+import AuthShell, { campoClase } from "@/components/auth/AuthShell";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 /**
  * Detecta si el usuario pertenece al grupo de Ingeniería Aséptica / Calidad Aséptica.
@@ -125,47 +127,33 @@ function LoginInner() {
       router.push(rutaInicio(data.usuario));
       router.refresh();
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      toast.error(t("connectionError"), { description: err.message || "No se pudo conectar con el servidor." });
+      const mensaje = err instanceof Error ? err.message : "";
+      toast.error(t("connectionError"), { description: mensaje || "No se pudo conectar con el servidor." });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full md:w-1/2 px-8 sm:px-12 lg:px-16 py-12">
-      <div className="mb-8">
-        <img
-          src="/SIG_logo.png"
-          alt="Logo SIG"
-          className="h-16 w-auto object-contain dark:brightness-100"
-        />
-      </div>
-      <h1 className="text-4xl font-bold text-slate-900 dark:text-white leading-tight">
-        {t("welcome")}
-        <br />
-        <span className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-          {t("brandName")}
-        </span>
-      </h1>
+    <div className="w-full max-w-[400px]">
+      {/* Logo solo en móvil (en escritorio está en el panel lateral) */}
+      <Image src="/sig-logo.webp" alt="SIG" width={62} height={40} priority unoptimized className="mb-8 h-10 w-auto md:hidden" />
 
-      <p className="mt-4 text-base text-slate-600 dark:text-gray-400">
-        {t("subtitle")}
-      </p>
+      <h1 className="text-[28px] font-bold leading-tight text-sig-ink">{t("title")}</h1>
+      <p className="mt-2 text-sm text-sig-muted">{t("subtitle")}</p>
 
-      <div className="mt-10 space-y-5">
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2"
-          >
+          <label htmlFor="email" className="mb-1.5 block text-[13px] font-semibold text-sig-ink">
             {t("emailLabel")}
           </label>
           <input
             id="email"
             type="email"
-            className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
+            autoComplete="username"
+            className={campoClase}
             placeholder={t("emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -173,17 +161,15 @@ function LoginInner() {
         </div>
 
         <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2"
-          >
+          <label htmlFor="password" className="mb-1.5 block text-[13px] font-semibold text-sig-ink">
             {t("passwordLabel")}
           </label>
           <div className="relative">
             <input
               id="password"
               type={showPassword ? "text" : "password"}
-              className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 pr-12 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
+              autoComplete="current-password"
+              className={`${campoClase} pr-10`}
               placeholder={t("passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -191,68 +177,54 @@ function LoginInner() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-sig-muted hover:text-sig-ink"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
 
-        {/* Recordar sesión + Olvidaste tu contraseña */}
-        <div className="flex items-center justify-between pt-1">
-          <label className="inline-flex items-center gap-2 cursor-pointer group">
+        <div className="flex items-center justify-between">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-sig-ink">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="h-4 w-4 border-slate-300 dark:border-zinc-600 rounded text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer bg-white dark:bg-zinc-700"
+              className="h-4 w-4 cursor-pointer accent-sig-blue"
             />
-            <span className="text-sm text-slate-700 dark:text-gray-300 group-hover:text-slate-900 dark:group-hover:text-white">
-              {t("rememberMe")}
-            </span>
+            {t("rememberMe")}
           </label>
-
           <button
             type="button"
-            className="text-sm text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-800 dark:hover:text-blue-300 hover:underline transition-colors"
-            onClick={() => toast.info(t("resetPassword"), { description: t("forgotPasswordMsg") })}
+            className="text-[13px] font-semibold text-sig-blue hover:text-sig-ink hover:underline"
+            onClick={() => router.push("/recuperar")}
           >
             {t("forgotPassword")}
           </button>
         </div>
 
-        {/* Botón Iniciar sesión */}
         <button
-          type="button"
-          onClick={handleSubmit}
+          type="submit"
           disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-700 dark:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white font-semibold text-base py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded bg-sig-blue text-sm font-semibold text-white transition-colors hover:bg-sig-blue-hover focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--sig-blue-focus)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <>
-              <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>{t("submitting")}</span>
+              <Loader2 size={16} className="animate-spin" />
+              {t("submitting")}
             </>
           ) : (
-            <>
-              <span>{t("submit")}</span>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </>
+            t("submit")
           )}
         </button>
-      </div>
+      </form>
 
-      {/* Registro */}
-      <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <span className="text-sm text-slate-600">{t("noAccount")}</span>
+      <div className="mt-8 flex items-center justify-between border-t border-sig-line pt-6 text-sm">
+        <span className="text-sig-muted">{t("noAccount")}</span>
         <button
           type="button"
-          className="bg-slate-100 hover:bg-slate-200 text-blue-700 font-semibold text-sm px-6 py-2.5 rounded-lg transition-all hover:shadow-md"
+          className="inline-flex h-9 items-center rounded border border-sig-line-strong bg-white px-3.5 font-semibold text-sig-ink hover:bg-sig-sand"
           onClick={() => router.push("/register")}
         >
           {t("register")}
@@ -262,53 +234,23 @@ function LoginInner() {
   );
 }
 
-// ─── Columna derecha estática (no necesita client hooks) ─────────────────────
-function LoginRightPanel() {
-  return (
-    <div className="hidden md:flex w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 items-center justify-center p-12 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full blur-3xl"></div>
-        <div className="absolute bottom-10 right-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="relative z-10 text-center max-w-md">
-        <div className="mb-8 flex justify-center">
-          <div className="w-48 h-48 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center shadow-2xl">
-            <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-        </div>
-
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Sistema de Cotizaciones
-        </h2>
-        <p className="text-blue-100 text-lg leading-relaxed">
-          Gestiona tus cotizaciones de manera eficiente y profesional con nuestra plataforma integrada
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Export default: envuelve LoginInner en <Suspense> ───────────────────────
 // Next.js App Router requiere Suspense alrededor de cualquier componente
 // que use useSearchParams() para poder pre-renderizar la página en el build.
 export default function LoginPage() {
+  const t = useTranslations("Login");
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-black flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl max-w-6xl w-full flex overflow-hidden border border-transparent dark:border-zinc-800">
-        <Suspense
-          fallback={
-            <div className="w-full md:w-1/2 px-8 sm:px-12 lg:px-16 py-12 flex items-center justify-center min-h-[400px]">
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-            </div>
-          }
-        >
-          <LoginInner />
-        </Suspense>
-        <LoginRightPanel />
-      </div>
-    </div>
+    <AuthShell
+      appName={t("appName")}
+      appTagline={t("appTagline")}
+      items={[t("moduleQuotes"), t("moduleReports"), t("moduleFsa")]}
+      footer={t("internalUse")}
+    >
+      <Suspense
+        fallback={<Loader2 size={24} className="animate-spin text-sig-blue" aria-label="Cargando" />}
+      >
+        <LoginInner />
+      </Suspense>
+    </AuthShell>
   );
 }
