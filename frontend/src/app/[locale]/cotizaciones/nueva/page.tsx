@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import api from "@/services/api";
 import {
   precioUnitario as calcularPrecioUnitario,
@@ -9,7 +9,6 @@ import {
   ajustarDesgloseAIngenieros,
   cantidadParaGuardar,
   sumarTotales,
-  conceptoRequiereDesglose,
   esCostoVuelo as esTarifaCostoVuelo,
 } from "@/features/cotizaciones/pricing";
 import type {
@@ -23,6 +22,7 @@ import type {
   ServicioTarifado,
 } from "@/features/cotizaciones/types";
 import { ModalVistaPrevia } from "@/features/cotizaciones/components/ModalVistaPrevia";
+import { obtenerClientes, obtenerUsuarios, obtenerServicios, obtenerTarifasCliente } from "@/features/cotizaciones/api";
 import MachineCombobox from "@/components/MachineCombobox";
 import {
   Eye,
@@ -83,7 +83,7 @@ const NuevaCotizacionPage: React.FC = () => {
 
   // Client-specific contract rate overrides: { servicio_id: precio_contrato }
   const [tarifasCliente, setTarifasCliente] = useState<Record<string, number>>({});
-  const clienteTieneContrato = Object.keys(tarifasCliente).length > 0;
+  const ultimoClienteSolicitado = useRef<string | null>(null);
 
   // Auto-recalculate items when overrides change
   useEffect(() => {
@@ -106,65 +106,15 @@ const NuevaCotizacionPage: React.FC = () => {
   }, [tarifasCliente, tarifasDisponibles]);
 
   useEffect(() => {
-    const fetchClientes = async () => {
-      try {
-        const { data } = await api.get('/clientes');
-        const lista = Array.isArray(data) ? data : data.data || [];
-        setClientesDisponibles(lista);
-      } catch (error) {
-        console.error("Error cargando clientes:", error);
-      }
-    };
-
-    const fetchUsuarios = async () => {
-      try {
-        const { data } = await api.get('/usuarios');
-        const lista = Array.isArray(data) ? data : data.data || [];
-        setUsuariosRegistrados(lista);
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-      }
-    };
-
-    const fetchServicios = async () => {
-      try {
-        const { data } = await api.get('/servicios?region=MX');
-        const lista: Tarifa[] = (Array.isArray(data) ? data : data.data || []).map((s: any) => ({
-          id: s.id,
-          concepto: s.concepto,
-          unidad: s.unidad,
-          precio_sin_contrato: Number(s.precio_sin_contrato),
-          precio_con_contrato: Number(s.precio_con_contrato),
-          moneda: s.moneda,
-          requiere_desglose: conceptoRequiereDesglose(s.concepto),
-          categoria: s.categoria || 'Servicio Técnico'
-        }));
-        setTarifasDisponibles(lista);
-      } catch (error) {
-        console.error("Error cargando servicios:", error);
-      }
-    };
-
-    fetchClientes();
-    fetchUsuarios();
-    fetchServicios();
+    obtenerClientes().then(setClientesDisponibles).catch((error) => console.error("Error cargando clientes:", error));
+    obtenerUsuarios().then(setUsuariosRegistrados).catch((error) => console.error("Error cargando usuarios:", error));
+    obtenerServicios("MX").then(setTarifasDisponibles).catch((error) => console.error("Error cargando servicios:", error));
   }, []);
 
   // Re-fetch rates filtered by region when entity changes
   const fetchTarifasByRegion = async (region: string) => {
     try {
-      const { data } = await api.get(`/servicios?region=${region}`);
-      const lista: Tarifa[] = (Array.isArray(data) ? data : data.data || []).map((s: any) => ({
-        id: s.id,
-        concepto: s.concepto,
-        unidad: s.unidad,
-        precio_sin_contrato: Number(s.precio_sin_contrato),
-        precio_con_contrato: Number(s.precio_con_contrato),
-        moneda: s.moneda,
-        requiere_desglose: conceptoRequiereDesglose(s.concepto),
-        categoria: s.categoria || 'Servicio Técnico'
-      }));
-      setTarifasDisponibles(lista);
+      setTarifasDisponibles(await obtenerServicios(region));
       // Reset service items since rates changed
       setItemsServicio([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }] }]);
     } catch (error) {
@@ -260,14 +210,15 @@ const NuevaCotizacionPage: React.FC = () => {
     setModoNuevoCliente(false);
     setClienteSeleccionadoId(value);
 
-    // Fetch client-specific contract rates
-    api.get(`/tarifas-cliente/${value}`).then(({ data }) => {
-      const overrides: Record<string, number> = {};
-      (data.data || []).forEach((tc: any) => {
-        overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+    // Tarifas especiales del cliente. Si el usuario cambia de cliente antes de
+    // que llegue la respuesta, se descarta (antes podía aplicar las tarifas del
+    // cliente anterior).
+    ultimoClienteSolicitado.current = value;
+    obtenerTarifasCliente(value)
+      .catch(() => ({}))
+      .then((tarifas) => {
+        if (ultimoClienteSolicitado.current === value) setTarifasCliente(tarifas);
       });
-      setTarifasCliente(overrides);
-    }).catch(() => setTarifasCliente({}));
 
     const cliente = clientesDisponibles.find((c) => String(c.id) === value);
     if (!cliente) return;
@@ -534,7 +485,7 @@ const NuevaCotizacionPage: React.FC = () => {
     try {
       const { data } = await api.post("/ia/mejorar-texto", { text: textoOriginal });
       if (data.result) handleInputChange("condiciones", "observaciones", data.result);
-    } catch (error) { toast.error(t("toastImproveError")); } finally { setMejorandoTexto(false); }
+    } catch { toast.error(t("toastImproveError")); } finally { setMejorandoTexto(false); }
   };
 
   const extraerDatosCliente = async () => {
@@ -556,11 +507,10 @@ const NuevaCotizacionPage: React.FC = () => {
         setTextoClienteSucio("");
         toast.success(t("toastExtractSuccess"));
       }
-    } catch (error) { toast.error(t("toastExtractError")); } finally { setExtrayendoCliente(false); }
+    } catch { toast.error(t("toastExtractError")); } finally { setExtrayendoCliente(false); }
   }
 
   const subtotalServicios = sumarTotales(itemsServicio);
-  const totalServicios = subtotalServicios;
 
   // Filter machines by selected Ship To
   const maquinasFiltradas = useMemo(() => {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "@/services/api";
 import {
   precioUnitario as calcularPrecioUnitario,
@@ -9,7 +9,6 @@ import {
   ajustarDesgloseAIngenieros,
   cantidadParaGuardar,
   sumarTotales,
-  conceptoRequiereDesglose,
   esCostoVuelo as esTarifaCostoVuelo,
   lineaDesdePartida,
 } from "@/features/cotizaciones/pricing";
@@ -22,6 +21,7 @@ import type {
   ServicioTarifado,
 } from "@/features/cotizaciones/types";
 import { ModalVistaPrevia } from "@/features/cotizaciones/components/ModalVistaPrevia";
+import { obtenerClientes, obtenerUsuarios, obtenerServicios, obtenerTarifasCliente } from "@/features/cotizaciones/api";
 import { useParams, useRouter } from "next/navigation"; // Added useParams, useRouter
 import {
     Eye,
@@ -60,9 +60,6 @@ const EditarCotizacionPage: React.FC = () => {
     });
 
     const [clienteSeleccionadoId, setClienteSeleccionadoId] = useState<string>("");
-    const [shipToSeleccionadoId, setShipToSeleccionadoId] = useState<string>("");
-    const [usuarioSeleccionadoId, setUsuarioSeleccionadoId] = useState<string>("");
-    const [modoNuevoCliente, setModoNuevoCliente] = useState<boolean>(false);
     const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([]);
     const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
 
@@ -72,7 +69,7 @@ const EditarCotizacionPage: React.FC = () => {
 
     // Client-specific contract rate overrides: { servicio_id: precio_contrato }
     const [tarifasCliente, setTarifasCliente] = useState<Record<string, number>>({});
-    const clienteTieneContrato = Object.keys(tarifasCliente).length > 0;
+    const ultimoClienteSolicitado = useRef<string | null>(null);
 
     // Auto-recalculate items when overrides change
     useEffect(() => {
@@ -99,13 +96,9 @@ const EditarCotizacionPage: React.FC = () => {
         const loadAll = async () => {
             try {
                 // 1. Cargar Catálogos
-                const [resClientes, resUsuarios] = await Promise.all([
-                    api.get('/clientes'),
-                    api.get('/usuarios'),
-                ]);
-
-                setClientesDisponibles(resClientes.data.data || []);
-                setUsuariosRegistrados(resUsuarios.data.data || []);
+                const [clientes, usuarios] = await Promise.all([obtenerClientes(), obtenerUsuarios()]);
+                setClientesDisponibles(clientes);
+                setUsuariosRegistrados(usuarios);
 
                 // 2. Cargar Cotización primero para saber la entidad/region
                 const { data: cotData } = await api.get(`/cotizaciones/${id}`);
@@ -113,16 +106,7 @@ const EditarCotizacionPage: React.FC = () => {
                 const cotRegion = cot.condiciones?.entidad || 'MX';
 
                 // 3. Cargar servicios filtrados por region de la cotización
-                const resServicios = await api.get(`/servicios?region=${cotRegion}`);
-                const listaServicios = (resServicios.data.data || []).map((s: any) => ({
-                    id: s.id,
-                    concepto: s.concepto,
-                    unidad: s.unidad,
-                    precio_sin_contrato: Number(s.precio_sin_contrato),
-                    precio_con_contrato: Number(s.precio_con_contrato),
-                    moneda: s.moneda,
-                    requiere_desglose: conceptoRequiereDesglose(s.concepto)
-                }));
+                const listaServicios = await obtenerServicios(cotRegion);
                 setTarifasDisponibles(listaServicios);
 
                 if (cot.estado !== 'borrador') {
@@ -145,13 +129,8 @@ const EditarCotizacionPage: React.FC = () => {
                 // está actualizado cuando reconstruimos las partidas más abajo)
                 let overridesCliente: Record<string, number> = {};
                 try {
-                    const resTarifasCliente = await api.get(`/tarifas-cliente/${cot.cliente_id}`);
-                    const overrides: Record<string, number> = {};
-                    (resTarifasCliente.data.data || []).forEach((tc: any) => {
-                        overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
-                    });
-                    overridesCliente = overrides;
-                    setTarifasCliente(overrides);
+                    overridesCliente = await obtenerTarifasCliente(cot.cliente_id);
+                    setTarifasCliente(overridesCliente);
                 } catch (error) {
                     console.log("No se pudieron cargar tarifas especiales del cliente", error);
                 }
@@ -246,17 +225,7 @@ const EditarCotizacionPage: React.FC = () => {
     // Re-fetch rates filtered by region when entity changes
     const fetchTarifasByRegion = async (region: string) => {
         try {
-            const { data } = await api.get(`/servicios?region=${region}`);
-            const lista: Tarifa[] = (Array.isArray(data) ? data : data.data || []).map((s: any) => ({
-                id: s.id,
-                concepto: s.concepto,
-                unidad: s.unidad,
-                precio_sin_contrato: Number(s.precio_sin_contrato),
-                precio_con_contrato: Number(s.precio_con_contrato),
-                moneda: s.moneda,
-                requiere_desglose: conceptoRequiereDesglose(s.concepto)
-            }));
-            setTarifasDisponibles(lista);
+            setTarifasDisponibles(await obtenerServicios(region));
             // Reset service items since rates changed
             setItemsServicio([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }] }]);
         } catch (error) {
@@ -328,21 +297,20 @@ const EditarCotizacionPage: React.FC = () => {
         // (Simplificado) Importar lógica completa si es necesario cambiar cliente
         setClienteSeleccionadoId(value);
 
-        // Fetch client-specific contract rates
-        api.get(`/tarifas-cliente/${value}`).then(({ data }) => {
-            const overrides: Record<string, number> = {};
-            (data.data || []).forEach((tc: any) => {
-                overrides[String(tc.servicio_id)] = Number(tc.precio_contrato);
+        // Tarifas especiales del cliente (se descarta una respuesta vieja si el
+        // usuario ya eligió otro cliente)
+        ultimoClienteSolicitado.current = value;
+        obtenerTarifasCliente(value)
+            .catch(() => ({}))
+            .then((tarifas) => {
+                if (ultimoClienteSolicitado.current === value) setTarifasCliente(tarifas);
             });
-            setTarifasCliente(overrides);
-        }).catch(() => setTarifasCliente({}));
         const cliente = clientesDisponibles.find((c) => String(c.id) === value);
         if (cliente) {
             setFormData(prev => ({ ...prev, facturarA: { ...prev.facturarA, nombre: cliente.nombre, direccion: cliente.direccion, colonia: cliente.colonia, ciudad: cliente.ciudad, cp: cliente.cp } }));
         }
     };
 
-    const handleSelectUsuario = (value: string) => { setUsuarioSeleccionadoId(value); };
     const handleFacturarFieldChange = (campo: keyof FacturarA, valor: string) => { handleInputChange("facturarA", campo, valor); };
     const agregarLineaServicio = () => { setItemsServicio((prev) => [...prev, { id: Date.now(), tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: Date.now().toString(), nombre: '', horas: 0 }] },]); };
     const eliminarLineaServicio = (id: number) => { setItemsServicio((prev) => prev.length > 1 ? prev.filter((i) => i.id !== id) : prev); };
@@ -414,7 +382,7 @@ const EditarCotizacionPage: React.FC = () => {
         try {
             const { data } = await api.post("/ia/mejorar-texto", { text: textoOriginal });
             if (data.result) handleInputChange("condiciones", "observaciones", data.result);
-        } catch (error) { toast.error("Error AI"); } finally { setMejorandoTexto(false); }
+        } catch { toast.error("Error AI"); } finally { setMejorandoTexto(false); }
     };
 
     const subtotalServicios = sumarTotales(itemsServicio);

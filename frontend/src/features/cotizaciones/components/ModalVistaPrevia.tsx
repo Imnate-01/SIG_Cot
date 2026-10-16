@@ -53,7 +53,9 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
     };
     renderPDF();
     return () => { if (url) URL.revokeObjectURL(url); };
-  }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados]);
+  // tarifasCliente incluido: antes la vista previa podía mostrar precios viejos
+  // si las tarifas especiales del cliente llegaban después de abrirla
+  }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente]);
 
   const [correoGenerado, setCorreoGenerado] = useState("");
   const [generandoCorreo, setGenerandoCorreo] = useState(false);
@@ -84,7 +86,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
     textArea.style.left = "-9999px";
     document.body.appendChild(textArea);
     textArea.select();
-    try { document.execCommand('copy'); toast.success(t("toastCopied")); } catch (err) { toast.error(t("toastCopyError")); }
+    try { document.execCommand('copy'); toast.success(t("toastCopied")); } catch { toast.error(t("toastCopyError")); }
     document.body.removeChild(textArea);
   };
 
@@ -105,7 +107,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
         moneda: formData.condiciones.moneda
       });
       if (data.result) setCorreoGenerado(data.result);
-    } catch (e) {
+    } catch {
       toast.error(t("toastAiError"));
     } finally {
       setGenerandoCorreo(false);
