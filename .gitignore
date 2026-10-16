@@ -1,0 +1,25 @@
+# Dependencias y builds
+node_modules/
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Variables de entorno (nunca versionar)
+.env
+.env.*
+!.env.example
+
+# Datos de clientes, formatos y archivos de trabajo (no van al repositorio)
+_privado/
+FSR FORMS 2026.zip
+generar_script.py
+generar_script.py_out
+frontend/US_Customer_List_Complete.md
+frontend/Arquitectura reporte Food Safety Audit.xlsx
+
+# Logs y salidas de build locales
+*.log
+build_log*.txt
+build-output.txt
+ts_errors.txt
