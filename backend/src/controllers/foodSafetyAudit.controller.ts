@@ -3,6 +3,31 @@ import { createClientForUser, supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
 import { getBrowser } from '../utils/browserManager';
 
+// ─── Helper: recursos que Chromium puede cargar al generar el PDF ──────────
+// Solo data: URIs y hosts de confianza: el de Supabase (imágenes de
+// evidencia) más los que se agreguen en PDF_ALLOWED_HOSTS (separados por coma).
+const PDF_ALLOWED_HOSTS: string[] = (() => {
+  const hosts = (process.env.PDF_ALLOWED_HOSTS || '')
+    .split(',')
+    .map(h => h.trim().toLowerCase())
+    .filter(Boolean);
+  try {
+    if (process.env.SUPABASE_URL) hosts.push(new URL(process.env.SUPABASE_URL).host.toLowerCase());
+  } catch { /* SUPABASE_URL mal formada: se ignora */ }
+  return hosts;
+})();
+
+function isAllowedPdfResource(url: string): boolean {
+  if (url.startsWith('data:') || url === 'about:blank') return true;
+  try {
+    const parsed = new URL(url);
+    const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return isHttp && PDF_ALLOWED_HOSTS.includes(parsed.host.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 // ─── Helper: extrae y valida el usuario del token ───────────────────────────
 async function getUserFromToken(req: Request, res: Response) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -376,20 +401,38 @@ export class FoodSafetyAuditController {
       // FIX #5: usar el browser singleton en lugar de crear/destruir uno por request
       const browser = await getBrowser();
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load' });
-      await new Promise(r => setTimeout(r, 800));
+      let pdfBuffer: Uint8Array;
+      try {
+        // Seguridad: Chromium solo puede cargar recursos inline (data:) y las
+        // imágenes de nuestro Storage. Cualquier otra URL que se colara en el
+        // contenido (red interna, metadata del servidor, etc.) se bloquea.
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+          const url = request.url();
+          if (isAllowedPdfResource(url)) {
+            request.continue();
+          } else {
+            console.warn('[FSA PDF] Recurso bloqueado:', url.slice(0, 200));
+            request.abort();
+          }
+        });
 
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '28mm', bottom: '22mm', left: '16mm', right: '16mm' },
-        displayHeaderFooter: true,
-        headerTemplate,
-        footerTemplate,
-      });
+        await page.setContent(html, { waitUntil: 'load' });
+        await new Promise(r => setTimeout(r, 800));
 
-      // Cerrar solo la página (no el browser) para mantener el singleton activo
-      await page.close();
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: { top: '28mm', bottom: '22mm', left: '16mm', right: '16mm' },
+          displayHeaderFooter: true,
+          headerTemplate,
+          footerTemplate,
+        });
+      } finally {
+        // Cerrar solo la página (no el browser) para mantener el singleton activo.
+        // Va en finally: si algo falla, la pestaña no se queda abierta consumiendo memoria.
+        await page.close().catch(() => {});
+      }
 
       const filename = `FSA_${report.folio}_${new Date().toISOString().slice(0, 10)}.pdf`;
       res.set({
