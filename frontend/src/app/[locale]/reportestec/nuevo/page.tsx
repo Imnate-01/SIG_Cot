@@ -295,7 +295,7 @@ export default function NuevoReporteTecnicoPage() {
 
         setDraftStatus("saved");
         setLastDraftAt(Date.now());
-      } catch (e) {
+      } catch {
         setDraftStatus("error");
       }
     })();

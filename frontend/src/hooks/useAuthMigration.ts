@@ -33,7 +33,6 @@ export function useAuthMigration() {
                     setUserData(validLegacy);
                     setIsMigrated(true);
                     // Optional: toast.success("Sistema actualizado", { description: "Tus datos se han migrado correctamente." });
-                    console.log("Migration from 'user' to 'user_data' successful.");
                 } catch (e) {
                     console.error("Migration failed", e);
                     toast.error("Error de sistema", { description: "No se pudieron guardar tus datos locales." });

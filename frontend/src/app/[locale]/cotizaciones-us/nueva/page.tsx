@@ -1,13 +1,23 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import api from "@/services/api";
-import { 
-  Save, X, Plus, Trash2, Eye, Building2, User, FileText, Settings, DollarSign, Calendar, Truck, UserCircle
+import {
+  Save,
+  X,
+  Plus,
+  Trash2,
+  Eye,
+  Building2,
+  FileText,
+  Settings,
+  DollarSign,
+  Calendar,
+  Truck,
+  UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { CotizacionUsFormData, TravelLeg, LaborDay, UsRates } from "../components/StandardRatesPDF";
+import { CotizacionUsFormData, UsRates } from "../components/StandardRatesPDF";
 
 const PDFDownloadLinkDynamic = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
@@ -16,12 +26,10 @@ const PDFDownloadLinkDynamic = dynamic(
 import StandardRatesPDF from "../components/StandardRatesPDF";
 
 export default function NuevaCotizacionUsPage() {
-  const router = useRouter();
 
   // Estados
   const [loading, setLoading] = useState(false);
   const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState(false);
-  const [quoteNumber, setQuoteNumber] = useState<string | null>(null);
 
   // Initial Rates (2026 standard)
   const initialRates: UsRates = {
@@ -139,7 +147,6 @@ export default function NuevaCotizacionUsPage() {
       setLoading(true);
       const { data } = await api.post('/cotizaciones-us', formData);
       if (data.success) {
-        setQuoteNumber(data.data.quote_number);
         setFormData(prev => ({ ...prev, quote_number: data.data.quote_number }));
         toast.success(`Cotización ${data.data.quote_number} guardada exitosamente`);
       }
@@ -274,7 +281,7 @@ export default function NuevaCotizacionUsPage() {
             </div>
             
             <div className="space-y-4">
-              {formData.travel_legs.map((leg, i) => (
+              {formData.travel_legs.map((leg) => (
                 <div key={leg.id} className="p-4 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-xl relative group">
                   <button onClick={() => removeTravelLeg(leg.id)} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
                     <Trash2 size={16} />
@@ -332,7 +339,7 @@ export default function NuevaCotizacionUsPage() {
             </div>
             
             <div className="space-y-3">
-              {formData.labor_schedule.map((day, i) => (
+              {formData.labor_schedule.map((day) => (
                 <div key={day.id} className="flex flex-wrap md:flex-nowrap items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-xl">
                   <div className="w-24">
                     <label className="block text-xs font-medium text-gray-500 md:hidden">Fecha</label>

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import api from "@/services/api";
-import { User, Lock, Save, ShieldCheck, Building } from "lucide-react";
+import { User, Lock, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -36,7 +36,7 @@ export default function ConfiguracionPage() {
           departamento: data.data.departamento || "",
           rol: data.data.rol || "vendedor"
         });
-      } catch (error) {
+      } catch {
         console.error("Error cargando perfil");
       }
     };
@@ -48,7 +48,7 @@ export default function ConfiguracionPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await api.put("/usuarios/me", {
+      await api.put("/usuarios/me", {
         nombre: perfil.nombre,
         departamento: perfil.departamento
       });
@@ -58,7 +58,7 @@ export default function ConfiguracionPage() {
       localStorage.setItem("user_data", JSON.stringify({ ...userStorage, nombre: perfil.nombre }));
 
       toast.success(t("successProfile"), { description: t("successProfileDesc") });
-    } catch (error) {
+    } catch {
       toast.error(t("errorProfile"));
     } finally {
       setLoading(false);
@@ -80,7 +80,7 @@ export default function ConfiguracionPage() {
       await api.put("/usuarios/me/password", { password: passwords.newPassword });
       toast.success(t("successPassword"));
       setPasswords({ newPassword: "", confirmPassword: "" });
-    } catch (error) {
+    } catch {
       toast.error(t("errorPassword"));
     } finally {
       setLoading(false);

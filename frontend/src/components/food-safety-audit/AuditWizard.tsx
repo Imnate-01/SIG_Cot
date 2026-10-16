@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Save, CheckCircle2, Loader2, Send, AlertTriangle, Download, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, CheckCircle2, Loader2, AlertTriangle, Download, X } from "lucide-react";
 import { foodSafetyAuditApi } from "@/services/foodSafetyAudit";
 import { WizardSidebar, WizardStep } from "@/components/food-safety-audit/WizardSidebar";
 import { Step1COP, CopFindingState } from "@/components/food-safety-audit/Step1COP";

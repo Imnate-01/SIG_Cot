@@ -5,7 +5,8 @@ import { jwtVerify } from 'jose';
 import { routing } from './i18n/routing';
 
 // Rutas protegidas (sin prefijo de locale)
-const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda'];
+// '/cotizaciones' cubre también '/cotizaciones-us'
+const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda', '/food-safety-audit'];
 
 const SUPABASE_JWT_SECRET = new TextEncoder().encode(
   process.env.SUPABASE_JWT_SECRET || ''

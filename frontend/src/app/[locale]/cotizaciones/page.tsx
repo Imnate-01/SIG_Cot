@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "@/services/api";
-import { Eye, Search, Filter, X, Calendar, Download, LayoutGrid, List } from "lucide-react";
+import { Eye, Search, X, Download, LayoutGrid, List } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { exportToExcel } from "../../../utils/exportCotizaciones";
@@ -25,19 +25,20 @@ export default function DashboardCotizaciones() {
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroPais, setFiltroPais] = useState<"todos" | "MX" | "US">("todos");
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const { data } = await api.get("/cotizaciones");
-        setCotizaciones(data.data);
-      } catch (error) {
-        console.error("Error cargando cotizaciones:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargarDatos();
+  const cargarDatos = useCallback(async () => {
+    try {
+      const { data } = await api.get("/cotizaciones");
+      setCotizaciones(data.data);
+    } catch (error) {
+      console.error("Error cargando cotizaciones:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const cotizacionesFiltradas = cotizaciones.filter((cot) => {
     const texto = busqueda.toLowerCase();
@@ -317,9 +318,9 @@ export default function DashboardCotizaciones() {
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <KanbanBoard
               cotizaciones={cotizacionesFiltradas}
-              onStatusChange={() => {
-                console.log("Kanban status changed");
-              }}
+              // Si falla el cambio de estado en el Kanban, se recarga la lista
+              // para deshacer el movimiento optimista (antes no hacía nada)
+              onStatusChange={cargarDatos}
             />
           </div>
         )}

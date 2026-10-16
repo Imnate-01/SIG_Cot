@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import { Upload, X, Camera, AlertCircle, CheckCircle2, Loader2, Image as ImageIcon, Pencil } from "lucide-react";
+import { X, Camera, AlertCircle, CheckCircle2, Loader2, Image as ImageIcon, Pencil } from "lucide-react";
 import { foodSafetyAuditApi } from "@/services/foodSafetyAudit";
 import { ImageAnnotationEditor } from "./ImageAnnotationEditor";
 

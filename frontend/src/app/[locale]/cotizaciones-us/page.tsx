@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Plus, Search, Eye, Download, FileText, Trash2, Edit2 } from "lucide-react";
+import { Plus, Search, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 
 interface CotizacionUs {
   id: number;
@@ -50,7 +49,7 @@ export default function CotizacionesUsPage() {
       await api.delete(`/cotizaciones-us/${id}`);
       toast.success("Cotización eliminada");
       fetchCotizaciones();
-    } catch (error) {
+    } catch {
       toast.error("Error al eliminar");
     }
   };

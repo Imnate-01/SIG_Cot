@@ -46,7 +46,7 @@ export default function GestionCotizacion() {
         setEstado(data.data.estado || "borrador");
         setOrdenCompra(data.data.orden_compra || "");
         setEstatusPO(data.data.estatus_po || "pendiente");
-      } catch (error) {
+      } catch {
         toast.error("Error al cargar la cotización");
       } finally {
         setLoading(false);
@@ -64,7 +64,7 @@ export default function GestionCotizacion() {
       });
       toast.success(t("toastStatusUpdated"), { description: t("toastStatusUpdatedDesc") });
       router.push("/cotizaciones");
-    } catch (error) {
+    } catch {
       toast.error(t("toastStatusError"), { description: t("toastStatusErrorDesc") });
     }
   };

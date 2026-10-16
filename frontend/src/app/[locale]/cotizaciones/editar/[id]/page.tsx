@@ -132,7 +132,7 @@ const EditarCotizacionPage: React.FC = () => {
                     overridesCliente = await obtenerTarifasCliente(cot.cliente_id);
                     setTarifasCliente(overridesCliente);
                 } catch (error) {
-                    console.log("No se pudieron cargar tarifas especiales del cliente", error);
+                    console.warn("No se pudieron cargar tarifas especiales del cliente", error);
                 }
 
                 // Populate Form

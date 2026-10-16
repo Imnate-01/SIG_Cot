@@ -29,7 +29,7 @@ export function validateAndParseUserData(jsonString: string | null): UserData | 
             return parsed;
         }
         return null;
-    } catch (e) {
+    } catch {
         return null;
     }
 }

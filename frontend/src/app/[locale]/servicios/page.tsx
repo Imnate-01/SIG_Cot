@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import api from "@/services/api";
-import { Plus, Search, Edit, Trash2, DollarSign, Clock, Package, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Clock, Package, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -18,7 +18,6 @@ interface Servicio {
 
 export default function ServiciosPage() {
   const t = useTranslations("Servicios");
-  const tCommon = useTranslations("Common");
 
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +78,7 @@ export default function ServiciosPage() {
       setModalAbierto(false);
       cargarServicios(regionTab);
       toast.success(t("successSaved"));
-    } catch (error) { toast.error(t("errorSave")); }
+    } catch { toast.error(t("errorSave")); }
   };
 
   const handleEliminar = async (id: number) => {
@@ -87,7 +86,7 @@ export default function ServiciosPage() {
     try {
       await api.delete(`/servicios/${id}`);
       cargarServicios(regionTab);
-    } catch (error) { toast.error(t("errorDelete")); }
+    } catch { toast.error(t("errorDelete")); }
   };
 
   const serviciosFiltrados = servicios.filter(s =>

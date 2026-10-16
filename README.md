@@ -1,57 +1,62 @@
-# SIG Cotizaciones - Guía de Ejecución Local
+# SIG Cotizaciones
 
-Para probar la aplicación en tu entorno local, sigue estos pasos:
+Sistema interno de cotizaciones de servicio técnico (MX / US / CA), reportes
+técnicos (TSR) y reportes Food Safety Audit (FSA).
 
-## Prerrequisitos
-- Node.js instalado (versión 18+ recomendada)
-- Una instancia de Supabase (o conexión a base de datos PostgreSQL)
-- Una API Key de Google Gemini
+| Carpeta | Qué contiene |
+|---|---|
+| `frontend/` | Next.js 16 (App Router, next-intl, @react-pdf) |
+| `backend/` | API Express 5 + Supabase (PostgreSQL, Auth, Storage) + Gemini + Puppeteer (PDF FSA) |
+| `supabase/` | Migraciones SQL, pruebas de las funciones y diagnóstico de RLS |
+| `docs/` | Checklist de pruebas manuales |
+| `_privado/` | Datos de clientes y archivos de trabajo — **ignorado por git** |
 
-## 1. Configuración del Backend
+## Ejecutar en local
 
-1.  Navega a la carpeta `backend`:
-    ```bash
-    cd backend
-    ```
-2.  Asegúrate de tener un archivo `.env` con las siguientes variables:
-    ```env
-    PORT=3001
-    DATABASE_URL=tu_conexion_supabase_o_postgres
-    GEMINI_API_KEY=tu_api_key_de_google
-    JWT_SECRET=tu_secreto_para_tokens
-    ```
-3.  Instala las dependencias (si no lo has hecho):
-    ```bash
-    npm install
-    ```
-4.  Inicia el servidor de desarrollo:
-    ```bash
-    npm run dev
-    ```
-    *El backend correrá en `http://localhost:3001`*
+Requisitos: Node.js 20+ y un proyecto de Supabase.
 
-## 2. Configuración del Frontend
+```bash
+# Backend (http://localhost:3001)
+cd backend
+cp .env.example .env      # llena SUPABASE_*, GEMINI_API_KEY, etc.
+npm install
+npm run dev
 
-1.  Abre una **nueva terminal** y navega a la carpeta `frontend`:
-    ```bash
-    cd frontend
-    ```
-2.  Asegúrate de tener las variables de entorno configuradas (ej. `.env.local`):
-    ```env
-    NEXT_PUBLIC_API_URL=http://localhost:3001/api
-    ```
-3.  Instala dependencias:
-    ```bash
-    npm install
-    ```
-4.  Inicia la aplicación Next.js:
-    ```bash
-    npm run dev
-    ```
-    *El frontend correrá en `http://localhost:3000`*
+# Frontend (http://localhost:3000) — en otra terminal
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
 
-## 3. Probando la Predicción
-1.  Abre tu navegador en `http://localhost:3000`.
-2.  Inicia sesión en la aplicación.
-3.  Ve a la sección **Reportes**.
-4.  Verás la nueva tarjeta de "Análisis Predictivo IA" y las barras de pronóstico en la gráfica principal.
+Todas las variables están documentadas en `backend/.env.example` y `frontend/.env.example`.
+
+## Base de datos
+
+Aplica las migraciones de `supabase/migrations/` en el SQL Editor de Supabase
+(ver `supabase/README.md`). `supabase/diagnostico_rls.sql` muestra las políticas
+RLS actuales y qué tablas no las tienen.
+
+## Pruebas
+
+```bash
+cd frontend && npm test          # precios (equivalencia con el cálculo anterior), firmantes, validación
+cd supabase/tests && npm install && npm test   # funciones SQL en Postgres embebido
+```
+
+Después de cada cambio importante, recorre `docs/CHECKLIST_PRUEBAS.md`.
+
+## Arquitectura (resumen)
+
+**Backend** (`backend/src`)
+- `server.ts` — CORS, `requireAuth` en todas las rutas salvo `/auth` y `/health`, manejador de errores.
+- `middlewares/` — `requireAuth` (valida el token con Supabase), `requireRole` (roles por variable de entorno).
+- `controllers/` → `repositories/` (escrituras atómicas vía funciones SQL) → Supabase con la identidad del usuario (RLS).
+- `domain/pricing.ts` — reglas de precio (copia idéntica de `frontend/src/features/cotizaciones/pricing.ts`).
+- `services/verificacionPrecios.ts` — el servidor recalcula totales (`PRICING_ENFORCE`).
+- `utils/http.ts` — errores de base de datos → códigos HTTP.
+
+**Frontend** (`frontend/src`)
+- `features/cotizaciones/` — precios, tipos, firmantes, API de catálogos, PDFs y vista previa.
+- `features/reportes-tecnicos/` — utilidades y firma digital del TSR.
+- `services/api.ts` — axios con token y renovación automática de sesión.

@@ -17,8 +17,7 @@ import {
   HelpCircle,
   Menu,
   X,
-  Wrench,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
@@ -31,7 +30,7 @@ export default function Sidebar() {
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const { userData, isMigrated } = useAuthMigration();
+  const { userData } = useAuthMigration();
 
   const usuario = userData || {
     nombre: "Usuario",

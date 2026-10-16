@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import api from "@/services/api";
-import { Plus, Search, Edit, Trash2, MapPin, Phone, Mail, X, User } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Mail, X, User } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
