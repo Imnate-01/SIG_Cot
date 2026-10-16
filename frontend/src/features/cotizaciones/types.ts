@@ -6,7 +6,7 @@ export interface Proveedor { nombre: string; direccion: string; colonia: string;
 export interface FacturarA { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
 export interface ShipTo { nombre: string; direccion: string; colonia: string; ciudad: string; cp: string; }
 export interface Contacto { nombre: string; email: string; telefono: string; }
-export interface Condiciones { precios: string; moneda: string; maquina: string; observaciones: string; entidad?: "MX" | "US" | "CA"; scopeOfVisit?: string; equipmentToService?: string; paymentTerms?: string; }
+export interface Condiciones { precios: string; moneda: string; maquina: string; observaciones: string; entidad?: "MX" | "US" | "CA"; scopeOfVisit?: string; equipmentToService?: string; paymentTerms?: string; tituloServiciosExternos?: string; }
 export interface CotizacionFormData {
   proveedor: Proveedor;
   facturarA: FacturarA;
@@ -70,3 +70,6 @@ export interface Tarifa {
 
 export interface DesgloseIngeniero { uid: string; nombre: string; horas: number; }
 export interface ServicioTarifado { id: number; tarifaId: string; ingenieros: number; cantidad: number; conContrato: boolean; detalles?: string; desglose: DesgloseIngeniero[]; total: number; esPrecioManual?: boolean; precioManual?: number; }
+
+/** Fila de la tabla libre de servicios externos / entrenamientos (formulario). */
+export interface ServicioExternoForm { id: number; detalle: string; cantidad: number | string; precioUnitario: number | string; }

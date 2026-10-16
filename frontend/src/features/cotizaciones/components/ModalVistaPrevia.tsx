@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import api from "@/services/api";
 import { CotizacionPDF } from "../pdf/CotizacionPDF";
-import { sumarTotales } from "../pricing";
+import { sumarTotales, totalServiciosExternos, servicioExternoCapturado, type ServicioExterno } from "../pricing";
 import type { CotizacionFormData, ServicioTarifado, Tarifa, UsuarioRegistrado } from "../types";
 
 /**
@@ -22,9 +22,10 @@ export interface ModalVistaPreviaProps {
   folio: string | null;
   usuariosRegistrados: UsuarioRegistrado[];
   tarifasCliente?: Record<string, number>;
+  serviciosExternos?: ServicioExterno[];
 }
 
-export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
+export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onClose, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {}, serviciosExternos = [] }) => {
   const t = useTranslations("NuevaCotizacion");
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
             folio={folio}
             usuariosRegistrados={usuariosRegistrados}
             tarifasCliente={tarifasCliente}
+            serviciosExternos={serviciosExternos}
           />
         ).toBlob();
         url = URL.createObjectURL(blob);
@@ -55,7 +57,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
     return () => { if (url) URL.revokeObjectURL(url); };
   // tarifasCliente incluido: antes la vista previa podía mostrar precios viejos
   // si las tarifas especiales del cliente llegaban después de abrirla
-  }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente]);
+  }, [isOpen, formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente, serviciosExternos]);
 
   const [correoGenerado, setCorreoGenerado] = useState("");
   const [generandoCorreo, setGenerandoCorreo] = useState(false);
@@ -93,8 +95,8 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
   const generarCorreo = async () => {
     setGenerandoCorreo(true);
     try {
-      const subtotal = sumarTotales(itemsServicio);
-      const total = subtotal;
+      const externos = serviciosExternos.filter(servicioExternoCapturado);
+      const total = sumarTotales(itemsServicio) + totalServiciosExternos(externos);
 
       const { data } = await api.post("/ia/generar-correo", {
         cliente: formData.facturarA.nombre,
@@ -102,7 +104,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
         servicios: itemsServicio.map(i => {
           const t = tarifas.find(t => String(t.id) === i.tarifaId);
           return t ? t.concepto : "";
-        }).join(", "),
+        }).concat(externos.map((e) => e.detalle)).filter(Boolean).join(", "),
         total: total.toFixed(2),
         moneda: formData.condiciones.moneda
       });
@@ -126,6 +128,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
           folio={folio}
           usuariosRegistrados={usuariosRegistrados}
           tarifasCliente={tarifasCliente}
+          serviciosExternos={serviciosExternos}
         />
       ).toBlob();
 

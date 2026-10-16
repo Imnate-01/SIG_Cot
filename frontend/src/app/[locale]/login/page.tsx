@@ -198,7 +198,7 @@ function LoginInner() {
           <button
             type="button"
             className="text-[13px] font-semibold text-sig-blue hover:text-sig-ink hover:underline"
-            onClick={() => toast.info(t("resetPassword"), { description: t("forgotPasswordMsg") })}
+            onClick={() => router.push("/recuperar")}
           >
             {t("forgotPassword")}
           </button>

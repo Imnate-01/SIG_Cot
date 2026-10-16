@@ -11,6 +11,13 @@ import {
   sumarTotales,
   esCostoVuelo as esTarifaCostoVuelo,
   lineaDesdePartida,
+  horasTotalesLinea,
+  formatearHoras,
+  totalServiciosExternos,
+  servicioExternoCapturado,
+  partidaDesdeServicioExterno,
+  esPartidaServicioExterno,
+  servicioExternoDesdePartida,
 } from "@/features/cotizaciones/pricing";
 import type {
   CotizacionFormData,
@@ -19,7 +26,9 @@ import type {
   UsuarioRegistrado,
   Tarifa,
   ServicioTarifado,
+  ServicioExternoForm,
 } from "@/features/cotizaciones/types";
+import { ServiciosExternosEditor } from "@/features/cotizaciones/components/ServiciosExternosEditor";
 import { ModalVistaPrevia } from "@/features/cotizaciones/components/ModalVistaPrevia";
 import { obtenerClientes, obtenerUsuarios, obtenerServicios, obtenerTarifasCliente } from "@/features/cotizaciones/api";
 import { useParams, useRouter } from "next/navigation"; // Added useParams, useRouter
@@ -62,6 +71,7 @@ const EditarCotizacionPage: React.FC = () => {
     const [clienteSeleccionadoId, setClienteSeleccionadoId] = useState<string>("");
     const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([]);
     const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
+    const [serviciosExternos, setServiciosExternos] = useState<ServicioExternoForm[]>([]);
 
     const [mejorandoTexto, setMejorandoTexto] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -119,7 +129,14 @@ const EditarCotizacionPage: React.FC = () => {
 
                 // Parsear datos
                 const cliente = cot.clientes || {};
-                const items = cot.cotizacion_items || [];
+                const todasLasPartidas = cot.cotizacion_items || [];
+                // Los servicios externos se editan en su propia tabla
+                const items = todasLasPartidas.filter((i: any) => !esPartidaServicioExterno(i));
+                setServiciosExternos(
+                    todasLasPartidas
+                        .filter((i: any) => esPartidaServicioExterno(i))
+                        .map((i: any, idx: number) => ({ id: idx + 1, ...servicioExternoDesdePartida(i) }))
+                );
                 const condiciones = cot.condiciones || {}; // JSONB
 
                 setClienteSeleccionadoId(String(cot.cliente_id));
@@ -247,8 +264,15 @@ const EditarCotizacionPage: React.FC = () => {
 
     const handleGuardar = async () => {
         try {
+            // Líneas sin tarifa (fila vacía) no se guardan
+            const lineasConTarifa = itemsServicio.filter(item => item.tarifaId);
+            const externosCapturados = serviciosExternos.filter(servicioExternoCapturado);
+            if (lineasConTarifa.length === 0 && externosCapturados.length === 0) {
+                toast.error('Error al actualizar', { description: 'Agrega al menos un servicio técnico o un servicio externo.' });
+                return;
+            }
             setLoading(true)
-            const itemsFormateados = itemsServicio.map(item => {
+            const itemsFormateados = lineasConTarifa.map(item => {
                 const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
                 const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
                 const cantidadReal = cantidadParaGuardar(item, tarifa);
@@ -272,8 +296,8 @@ const EditarCotizacionPage: React.FC = () => {
                 contactoPrincipal: formData.contactoPrincipal,
                 contactoSecundario: formData.contactoSecundario,
                 condiciones: formData.condiciones,
-                itemsServicio: itemsFormateados,
-                total: sumarTotales(itemsServicio),
+                itemsServicio: [...itemsFormateados, ...externosCapturados.map(partidaDesdeServicioExterno)],
+                total: sumarTotales(lineasConTarifa) + totalServiciosExternos(externosCapturados),
                 descripcion: formData.descripcion,
                 tipo_servicio: formData.tipo_servicio,
                 datos_forma: formData
@@ -386,7 +410,8 @@ const EditarCotizacionPage: React.FC = () => {
     };
 
     const subtotalServicios = sumarTotales(itemsServicio);
-    const totalServicios = subtotalServicios;
+    const subtotalExternos = totalServiciosExternos(serviciosExternos);
+    const totalServicios = subtotalServicios + subtotalExternos;
 
     if (initialLoading) return (
         <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
@@ -564,7 +589,7 @@ const EditarCotizacionPage: React.FC = () => {
                                             <input type="number" min="1" value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full p-2 border border-gray-300 dark:border-zinc-700 rounded text-center bg-white dark:bg-zinc-800 text-gray-900 dark:text-white mt-1" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400">{tarifa?.unidad === 'dia' ? 'Días' : 'Horas'}</label>
+                                            <label className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400">{esViaje ? 'Total horas (suma)' : tarifa?.unidad === 'dia' ? 'Días por ingeniero' : 'Horas por ingeniero'}</label>
                                             <input type="number" value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full p-2 border rounded text-center mt-1 ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-600' : 'border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} />
                                         </div>
                                     </div>
@@ -608,7 +633,7 @@ const EditarCotizacionPage: React.FC = () => {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                            <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">Total</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)}</span></div>
+                                            <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">Total</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)}</span>{tarifa && !esTarifaCostoVuelo(tarifa) && <span className="text-xs text-gray-500 dark:text-gray-400">= ${calcularPrecioUnitario(item, tarifa, tarifasCliente).toFixed(2)} × {formatearHoras(horasTotalesLinea(item, tarifa))} h totales</span>}</div>
                                             {itemsServicio.length > 1 && <button onClick={() => eliminarLineaServicio(item.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 transition-colors"><Trash2 size={20} /></button>}
                                         </div>
                                     </div>
@@ -619,11 +644,20 @@ const EditarCotizacionPage: React.FC = () => {
 
                     <div className="mt-6 flex justify-end">
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl min-w-[300px]">
-                            <div className="flex justify-between mb-2 text-gray-700 dark:text-gray-300"><span>Subtotal:</span><span className="font-bold">${subtotalServicios.toFixed(2)}</span></div>
+                            <div className="flex justify-between gap-6 mb-2 text-gray-700 dark:text-gray-300"><span>{subtotalExternos !== 0 ? "Subtotal servicios técnicos:" : "Subtotal:"}</span><span className="font-bold">${subtotalServicios.toFixed(2)}</span></div>
+                            {subtotalExternos !== 0 && <div className="flex justify-between gap-6 mb-2 text-gray-700 dark:text-gray-300"><span>Subtotal servicios externos:</span><span className="font-bold">${subtotalExternos.toFixed(2)}</span></div>}
                             <div className="flex justify-between pt-2 border-t border-blue-200 dark:border-blue-700/50 text-xl font-bold text-blue-800 dark:text-blue-300"><span>Total:</span><span>${totalServicios.toFixed(2)}</span></div>
                         </div>
                     </div>
                 </div>
+
+                <ServiciosExternosEditor
+                    filas={serviciosExternos}
+                    onChange={setServiciosExternos}
+                    titulo={formData.condiciones.tituloServiciosExternos || ""}
+                    onTituloChange={(v) => handleInputChange("condiciones", "tituloServiciosExternos", v)}
+                    moneda={formData.condiciones.moneda}
+                />
 
                 {/* CONDITIONS */}
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border border-gray-200 dark:border-zinc-800">
@@ -666,6 +700,7 @@ const EditarCotizacionPage: React.FC = () => {
                 folio={folioGenerado}
                 usuariosRegistrados={usuariosRegistrados}
                 tarifasCliente={tarifasCliente}
+                serviciosExternos={serviciosExternos}
             />
         </div>
     );

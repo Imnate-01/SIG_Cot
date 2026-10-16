@@ -20,3 +20,14 @@ cd supabase/tests
 npm install
 npm test
 ```
+
+## Correos de Auth (registro y recuperación de contraseña)
+El servidor de correo **por defecto** de Supabase solo envía a los miembros del equipo
+del proyecto y tiene un límite muy bajo por hora. Para que lleguen los correos de
+confirmación y de "¿Olvidaste tu contraseña?" a cualquier `@sig.biz`:
+
+1. Authentication → Emails → **SMTP Settings**: configurar un SMTP propio (p. ej. el de SIG o SendGrid).
+2. Authentication → URL Configuration → **Redirect URLs**: agregar
+   `https://<dominio-del-frontend>/restablecer` y `https://<dominio-del-frontend>/verificado`.
+3. Mientras tanto, un administrador puede crear cuentas y restablecer contraseñas desde
+   el panel **Usuarios** (backend: variable `ROLES_ADMIN_USUARIOS`).

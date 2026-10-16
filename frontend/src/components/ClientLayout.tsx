@@ -20,6 +20,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname.endsWith("/login") ||
     pathname.endsWith("/register") ||
     pathname.endsWith("/verificado") ||
+    pathname.endsWith("/recuperar") ||
+    pathname.endsWith("/restablecer") ||
     pathname.match(/^\/(en|es)$/) !== null;
 
   return (

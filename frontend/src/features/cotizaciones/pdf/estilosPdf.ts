@@ -23,7 +23,7 @@ export const buildPdfStyles = (itemCount: number) => {
         tableRow: { flexDirection: "row" as const, borderBottom: "1px solid #e5e7eb", padding: 3 * scale, fontSize: 8 * scale },
         colDesc: { flex: 2 },
         colTiny: { width: 35, textAlign: "center" as const },
-        colSmall: { width: 55, textAlign: "center" as const },
+        colSmall: { width: 52, textAlign: "center" as const },
         total: { flexDirection: "row" as const, justifyContent: "space-between" as const, backgroundColor: "#dbeafe", padding: 4 * scale, marginTop: 2 * scale, fontWeight: "bold", fontSize: 9 * scale },
         footer: { textAlign: "center" as const, fontSize: 7 * scale, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 5 * scale, marginTop: 8 * scale },
         signatureSection: { marginTop: 10 * scale, marginBottom: 4 * scale },

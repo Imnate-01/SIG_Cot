@@ -33,7 +33,7 @@ export interface PartidaCotizacion {
   precio_unitario: number;
   subtotal: number;
   detalles: string | null;
-  desglose: unknown[];
+  desglose: unknown;   // arreglo de horas por ingeniero, o { tipo: "servicio_externo" }
   ingenieros: number;
 }
 

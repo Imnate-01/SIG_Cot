@@ -6,7 +6,14 @@ import {
   precioUnitario as calcularPrecioUnitario,
   sumarTotales,
   esCostoVuelo as esTarifaCostoVuelo,
+  horasTotalesLinea,
+  horasPorIngenieroTexto,
+  formatearHoras,
+  totalServiciosExternos,
+  servicioExternoCapturado,
+  type ServicioExterno,
 } from "../pricing";
+import { EncabezadoServiciosPDF, FilaServicioPDF, TablaServiciosExternosPDF, TotalesPDF } from "./tablasPdf";
 import type { CotizacionFormData, ServicioTarifado, Tarifa, UsuarioRegistrado } from "../types";
 
 /**
@@ -21,12 +28,17 @@ export interface CotizacionPDFProps {
   folio: string | null;
   usuariosRegistrados: UsuarioRegistrado[];
   tarifasCliente?: Record<string, number>;
+  /** Tabla libre de servicios externos / entrenamientos. */
+  serviciosExternos?: ServicioExterno[];
 }
 
-export const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {} }) => {
-  const pdfStyles = buildPdfStyles(itemsServicio.length);
-  const subtotal = sumarTotales(itemsServicio);
-  const total = subtotal;
+export const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsServicio, tarifas, folio, usuariosRegistrados, tarifasCliente = {}, serviciosExternos = [] }) => {
+  // Líneas sin tarifa y en cero (p. ej. la fila vacía del formulario) no se imprimen
+  const lineas = itemsServicio.filter((i) => i.tarifaId || Number(i.total) !== 0);
+  const externos = serviciosExternos.filter(servicioExternoCapturado);
+  const pdfStyles = buildPdfStyles(lineas.length + externos.length);
+  const subtotalServicios = sumarTotales(lineas);
+  const subtotalExternos = totalServiciosExternos(externos);
   const isUS = formData.condiciones.entidad === "US" || formData.condiciones.entidad === "CA";
   const fecha = new Date().toLocaleDateString(isUS ? "en-US" : "es-MX", { day: "numeric", month: "long", year: "numeric" });
 
@@ -36,8 +48,6 @@ export const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsSer
   const usuarioSeleccionado = usuariosRegistrados.find(u => u.email === formData.contactoPrincipal.email);
   const puestoUsuario = puestoFirmante(usuarioSeleccionado?.nombre, usuarioSeleccionado?.puesto);
   const displayFolio = folio ? folio : (isUS ? "DRAFT" : "BORRADOR");
-  const formatCurrency = (val: number) => val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
   const nombreUsuario = usuarioSeleccionado?.nombre || formData.contactoPrincipal.nombre || "Representante SIG";
   const emailUsuario = usuarioSeleccionado?.email || formData.contactoPrincipal.email || "contacto@sig.biz";
 
@@ -103,61 +113,48 @@ export const CotizacionPDF: React.FC<CotizacionPDFProps> = ({ formData, itemsSer
           </View>
         </View>
 
-        {/* Tabla */}
-        <View style={pdfStyles.table}>
-          <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.colDesc}>{isUS ? "Detail" : "Detalle"}</Text>
-            <Text style={pdfStyles.colTiny}>{isUS ? "Eng." : "Ing."}</Text>
-            <Text style={pdfStyles.colSmall}>{isUS ? "Qty.Hrs." : "Cant.Hrs."}</Text>
-            <Text style={pdfStyles.colSmall}>{isUS ? "Unit P." : "P. Unit."}</Text>
-            <Text style={pdfStyles.colSmall}>Total</Text>
+        {/* Tabla de servicios técnicos */}
+        {lineas.length > 0 && (
+          <View style={pdfStyles.table}>
+            <EncabezadoServiciosPDF s={pdfStyles} isUS={isUS} />
+            {lineas.map((item) => {
+              const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
+              const esCostoVuelo = esTarifaCostoVuelo(tarifa);
+              const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
+              const numIngenieros = item.ingenieros || (tarifa?.requiere_desglose && item.desglose?.length ? item.desglose.length : 1);
+              const horasTotales = horasTotalesLinea(item, tarifa);
+              return (
+                <FilaServicioPDF
+                  key={item.id}
+                  s={pdfStyles}
+                  isUS={isUS}
+                  concepto={tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}
+                  desglose={tarifa?.requiere_desglose ? item.desglose : null}
+                  nota={item.detalles}
+                  ingenieros={esCostoVuelo ? null : numIngenieros}
+                  horasPorIngeniero={esCostoVuelo ? null : horasPorIngenieroTexto(numIngenieros, horasTotales, tarifa?.requiere_desglose ? item.desglose : null)}
+                  horasTotales={esCostoVuelo ? null : formatearHoras(horasTotales)}
+                  precioUnitario={precioUnitario}
+                  total={item.total}
+                  fontSizeTotal={9 * (lineas.length <= 3 ? 1 : 0.8)}
+                />
+              );
+            })}
           </View>
+        )}
 
-          {itemsServicio.map((item) => {
-            const tarifa = tarifas.find((t) => String(t.id) === item.tarifaId);
-            const esCostoVuelo = esTarifaCostoVuelo(tarifa);
-            // Bug 3 fix: use client contract rate if available
-            const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
+        <TablaServiciosExternosPDF s={pdfStyles} isUS={isUS} titulo={formData.condiciones.tituloServiciosExternos} servicios={externos} />
 
-            // Bug 5 fix: prioritize item.ingenieros
-            const numIngenieros = item.ingenieros ? item.ingenieros : (tarifa?.requiere_desglose && item.desglose && item.desglose.length > 0 ? item.desglose.length : 1);
-
-            // Bug 4 fix: validate breakdown
-            const tieneDesgloseValido = item.desglose && item.desglose.length > 0 &&
-              (item.desglose.length > 1 || item.desglose[0]?.nombre || (item.desglose[0]?.horas && item.desglose[0].horas > 0));
-
-            return (
-              <View key={item.id} style={pdfStyles.tableRow}>
-                <View style={pdfStyles.colDesc}>
-                  <Text>{tarifa?.concepto || (isUS ? "Not specified" : "No especificado")}</Text>
-
-                  {tieneDesgloseValido && item.desglose.map((d, idx) => {
-                    if (!d.nombre && (!d.horas || d.horas === 0)) return null;
-                    return (
-                      <Text key={idx} style={pdfStyles.desgloseText}>• {d.nombre || (isUS ? `Eng. ${idx + 1}` : `Ing. ${idx + 1}`)}: {d.horas}h</Text>
-                    );
-                  })}
-
-                  {item.detalles && <Text style={pdfStyles.notaText}>{isUS ? "Note: " : "Nota: "}{item.detalles}</Text>}
-                </View>
-
-                <Text style={pdfStyles.colTiny}>{esCostoVuelo ? "N/A" : numIngenieros}</Text>
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>{esCostoVuelo ? "N/A" : item.cantidad}</Text>
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>${formatCurrency(precioUnitario)}</Text>
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold", fontSize: 9 * (itemsServicio.length <= 3 ? 1 : 0.8) }]}>${formatCurrency(item.total)}</Text>
-              </View>
-            );
-          })}
-
-          <View style={pdfStyles.total}>
-            <Text>Subtotal:</Text>
-            <Text>${formatCurrency(subtotal)} {formData.condiciones.moneda}</Text>
-          </View>
-
-          <View style={[pdfStyles.total, { backgroundColor: "#dbeafe" }]}>
-            <Text>TOTAL:</Text>
-            <Text>${formatCurrency(total)} {formData.condiciones.moneda}</Text>
-          </View>
+        <View style={{ marginBottom: 8 }}>
+          <TotalesPDF
+            s={pdfStyles}
+            isUS={isUS}
+            moneda={formData.condiciones.moneda}
+            subtotalServicios={subtotalServicios}
+            subtotalExternos={subtotalExternos}
+            hayServicios={lineas.length > 0}
+            hayExternos={externos.length > 0}
+          />
         </View>
 
         <View style={pdfStyles.section}>

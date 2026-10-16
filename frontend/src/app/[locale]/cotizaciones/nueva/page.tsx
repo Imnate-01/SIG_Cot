@@ -10,6 +10,11 @@ import {
   cantidadParaGuardar,
   sumarTotales,
   esCostoVuelo as esTarifaCostoVuelo,
+  horasTotalesLinea,
+  formatearHoras,
+  totalServiciosExternos,
+  servicioExternoCapturado,
+  partidaDesdeServicioExterno,
 } from "@/features/cotizaciones/pricing";
 import type {
   CotizacionFormData,
@@ -20,7 +25,9 @@ import type {
   UsuarioRegistrado,
   Tarifa,
   ServicioTarifado,
+  ServicioExternoForm,
 } from "@/features/cotizaciones/types";
+import { ServiciosExternosEditor } from "@/features/cotizaciones/components/ServiciosExternosEditor";
 import { ModalVistaPrevia } from "@/features/cotizaciones/components/ModalVistaPrevia";
 import { obtenerClientes, obtenerUsuarios, obtenerServicios, obtenerTarifasCliente } from "@/features/cotizaciones/api";
 import MachineCombobox from "@/components/MachineCombobox";
@@ -74,6 +81,7 @@ const NuevaCotizacionPage: React.FC = () => {
   const [direccionesShipTo, setDireccionesShipTo] = useState<ClienteDireccion[]>([]);
   const [maquinasCliente, setMaquinasCliente] = useState<ClienteMaquina[]>([]);
   const [soldToSeleccionadoId, setSoldToSeleccionadoId] = useState<string>("");
+  const [serviciosExternos, setServiciosExternos] = useState<ServicioExternoForm[]>([]);
   const [itemsServicio, setItemsServicio] = useState<ServicioTarifado[]>([{ id: 1, tarifaId: "", ingenieros: 1, cantidad: 1, conContrato: true, total: 0, detalles: "", desglose: [{ uid: 'init_1', nombre: '', horas: 0 }], }]);
   const [modalVistaPreviaAbierto, setModalVistaPreviaAbierto] = useState<boolean>(false);
 
@@ -135,7 +143,15 @@ const NuevaCotizacionPage: React.FC = () => {
     try {
       setLoading(true)
 
-      const itemsFormateados = itemsServicio.map(item => {
+      // Líneas sin tarifa (p. ej. la fila vacía inicial) no se guardan
+      const lineasConTarifa = itemsServicio.filter(item => item.tarifaId);
+      const externosCapturados = serviciosExternos.filter(servicioExternoCapturado);
+      if (lineasConTarifa.length === 0 && externosCapturados.length === 0) {
+        toast.error(t("toastSaveError"), { description: t("errorNoItems") });
+        return;
+      }
+
+      const itemsFormateados = lineasConTarifa.map(item => {
         const tarifa = tarifasDisponibles.find(t => String(t.id) === item.tarifaId)
         const precioUnitario = calcularPrecioUnitario(item, tarifa, tarifasCliente);
 
@@ -151,6 +167,9 @@ const NuevaCotizacionPage: React.FC = () => {
           ingenieros: item.ingenieros || 1
         }
       })
+      // Servicios externos: partidas con subtotal = cantidad × precio (ver pricing.ts)
+      const partidasExternas = externosCapturados.map(partidaDesdeServicioExterno)
+      const totalCotizacion = sumarTotales(lineasConTarifa) + totalServiciosExternos(externosCapturados)
 
       const payload = {
         cliente_id: clienteSeleccionadoId === "nuevo" ? null : clienteSeleccionadoId,
@@ -161,12 +180,12 @@ const NuevaCotizacionPage: React.FC = () => {
         contactoPrincipal: formData.contactoPrincipal,
         contactoSecundario: formData.contactoSecundario,
         condiciones: formData.condiciones,
-        itemsServicio: itemsFormateados,
+        itemsServicio: [...itemsFormateados, ...partidasExternas],
         descripcion: formData.descripcion,
         tipo_servicio: formData.tipo_servicio,
-        subtotal: sumarTotales(itemsServicio),
+        subtotal: totalCotizacion,
         iva: 0,
-        total: sumarTotales(itemsServicio),
+        total: totalCotizacion,
         estado: 'borrador',
         datos_forma: formData
       }
@@ -511,6 +530,8 @@ const NuevaCotizacionPage: React.FC = () => {
   }
 
   const subtotalServicios = sumarTotales(itemsServicio);
+  const subtotalExternos = totalServiciosExternos(serviciosExternos);
+  const totalGeneral = subtotalServicios + subtotalExternos;
 
   // Filter machines by selected Ship To
   const maquinasFiltradas = useMemo(() => {
@@ -774,7 +795,7 @@ const NuevaCotizacionPage: React.FC = () => {
                       </select>
                     </div>
                     {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("numEngineers")}</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>}
-                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{tarifa?.unidad === "dia" ? t("totalDays") : t("totalHours")}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>}
+                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{esViaje ? t("totalHoursAllEngineers") : tarifa?.unidad === "dia" ? t("daysPerEngineer") : t("hoursPerEngineer")}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>}
                   </div>
                   {esViaje && (
                     <div className="mb-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-4 rounded-lg animate-fadeIn">
@@ -811,7 +832,7 @@ const NuevaCotizacionPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                      <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">{t("lineTotal")}</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)} USD</span></div>
+                      <div className="flex flex-col items-end"><span className="text-xs text-gray-500 dark:text-gray-400">{t("lineTotal")}</span><span className="text-xl font-bold text-gray-800 dark:text-white">${item.total.toFixed(2)} USD</span>{tarifa && !esCostoVuelo && <span className="text-xs text-gray-500 dark:text-gray-400">{t("lineFormula", { precio: calcularPrecioUnitario(item, tarifa, tarifasCliente).toFixed(2), horas: formatearHoras(horasTotalesLinea(item, tarifa)) })}</span>}</div>
                       {itemsServicio.length > 1 && (<button onClick={() => eliminarLineaServicio(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title={t("deleteConcept")}><Trash2 size={20} /></button>)}
                     </div>
                   </div>
@@ -822,11 +843,20 @@ const NuevaCotizacionPage: React.FC = () => {
           </div>
           <div className="mt-6 flex justify-end">
             <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 min-w-[300px] shadow-inner border border-blue-100 dark:border-blue-900/20">
-              <div className="flex items-center justify-between mb-2"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("subtotal")}</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalServicios.toFixed(2)} USD</span></div>
-              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">{t("total")}</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${subtotalServicios.toFixed(2)} USD</span></div></div>
+              <div className="flex items-center justify-between mb-2 gap-6"><span className="text-gray-600 dark:text-gray-400 font-medium">{subtotalExternos !== 0 ? t("subtotalTechnical") : t("subtotal")}</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalServicios.toFixed(2)} USD</span></div>
+              {subtotalExternos !== 0 && <div className="flex items-center justify-between mb-2 gap-6"><span className="text-gray-600 dark:text-gray-400 font-medium">{t("subtotalExternal")}</span><span className="text-gray-800 dark:text-white font-semibold">${subtotalExternos.toFixed(2)} USD</span></div>}
+              <div className="border-t-2 border-blue-200 dark:border-blue-900/30 pt-3 mt-3"><div className="flex items-center justify-between"><span className="text-xl font-bold text-gray-800 dark:text-white">{t("total")}</span><span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalGeneral.toFixed(2)} USD</span></div></div>
             </div>
           </div>
         </div>
+
+        <ServiciosExternosEditor
+          filas={serviciosExternos}
+          onChange={setServiciosExternos}
+          titulo={formData.condiciones.tituloServiciosExternos || ""}
+          onTituloChange={(v) => handleInputChange("condiciones", "tituloServiciosExternos", v)}
+          moneda={formData.condiciones.moneda}
+        />
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><Calculator className="text-blue-600 dark:text-blue-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
@@ -921,6 +951,7 @@ const NuevaCotizacionPage: React.FC = () => {
         folio={folioGenerado}
         usuariosRegistrados={usuariosRegistrados}
         tarifasCliente={tarifasCliente}
+        serviciosExternos={serviciosExternos}
       />
     </div>
   );

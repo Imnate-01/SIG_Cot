@@ -3,6 +3,14 @@ import React from "react";
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import { buildPdfStyles } from "./estilosPdf";
 import { imagenFirma, puestoFirmante } from "../firmantes";
+import {
+  esCostoVuelo,
+  esPartidaServicioExterno,
+  servicioExternoDesdePartida,
+  horasPorIngenieroTexto,
+  formatearHoras,
+} from "../pricing";
+import { EncabezadoServiciosPDF, FilaServicioPDF, TablaServiciosExternosPDF, formatCurrency } from "./tablasPdf";
 
 /**
  * PDF de una cotización YA GUARDADA (pantalla de detalle /cotizaciones/[id]).
@@ -16,7 +24,10 @@ export const CotizacionGuardadaPDF = ({ data }: { data: any }) => {
 
   const cliente = data.clientes || {};
   const usuario = data.usuarios || {};
-  const items = data.cotizacion_items || [];
+  const todasLasPartidas = data.cotizacion_items || [];
+  // Las partidas marcadas como servicio externo van en su propia tabla
+  const items = todasLasPartidas.filter((i: any) => !esPartidaServicioExterno(i));
+  const externos = todasLasPartidas.filter((i: any) => esPartidaServicioExterno(i)).map(servicioExternoDesdePartida);
   const condiciones = data.condiciones || {};
 
   // Extraer información estructurada si existe, si no hacer fallback
@@ -57,7 +68,7 @@ export const CotizacionGuardadaPDF = ({ data }: { data: any }) => {
   };
 
   // Generar estilos dinámicos según la cantidad de items
-  const pdfStyles = buildPdfStyles(items.length);
+  const pdfStyles = buildPdfStyles(todasLasPartidas.length);
 
   // Determinar puesto del usuario — misma lógica que en el PDF de creación/edición:
   // 1. Si el nombre incluye "eduardo" → cargo especial "Back Office Manager"
@@ -65,11 +76,13 @@ export const CotizacionGuardadaPDF = ({ data }: { data: any }) => {
   // 3. Fallback: puesto del join de BD, luego "Coordinador de Servicio Técnico"
   const puestoUsuario = puestoFirmante(contactoPrincipal.nombre, usuario.puesto);
 
-  const subtotal = items.reduce((sum: number, i: any) => sum + Number(i.subtotal || i.total), 0);
+  const subtotalDe = (lista: any[]) => lista.reduce((sum: number, i: any) => sum + Number(i.subtotal || i.total || 0), 0);
+  const subtotalServicios = subtotalDe(items);
+  const subtotalExternos = subtotalDe(todasLasPartidas.filter((i: any) => esPartidaServicioExterno(i)));
+  const subtotal = subtotalServicios + subtotalExternos;
   const totalGuardado = Number(data.total);
   const iva = totalGuardado > subtotal ? totalGuardado - subtotal : 0;
   const moneda = condiciones.moneda || "USD";
-  const formatCurrency = (val: number) => val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Fallback para notas antiguas
   const notasLimpias = !data.condiciones && data.notas
@@ -137,58 +150,57 @@ export const CotizacionGuardadaPDF = ({ data }: { data: any }) => {
           </View>
         </View>
 
-        {/* Tabla */}
-        <View style={pdfStyles.table}>
-          <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.colDesc}>Detalle / Servicio</Text>
-            {/* ✅ Columna "Ing." Agregada */}
-            <Text style={pdfStyles.colTiny}>Ing.</Text>
-            <Text style={pdfStyles.colSmall}>Cant.</Text>
-            <Text style={pdfStyles.colSmall}>P. Unit.</Text>
-            <Text style={pdfStyles.colSmall}>Total</Text>
+        {/* Tabla de servicios técnicos: Total = Hrs. totales × P. Unit. en cada línea */}
+        {items.length > 0 && (
+          <View style={pdfStyles.table}>
+            <EncabezadoServiciosPDF s={pdfStyles} isUS={false} />
+            {items.map((item: any, idx: number) => {
+              const vuelo = esCostoVuelo({ concepto: item.concepto || "" });
+              const desglose = Array.isArray(item.desglose) ? item.desglose : [];
+              const tieneDesglose = desglose.some((d: any) => d?.nombre || Number(d?.horas) > 0);
+              const numIngenieros = Number(item.ingenieros) || (tieneDesglose ? desglose.length : 1);
+              // En la BD `cantidad` ya es el total de horas (horas × ingenieros, o suma del desglose)
+              const horasTotales = Number(item.cantidad) || 0;
+              return (
+                <FilaServicioPDF
+                  key={idx}
+                  s={pdfStyles}
+                  isUS={false}
+                  concepto={item.concepto}
+                  desglose={desglose}
+                  nota={item.detalles}
+                  ingenieros={vuelo ? null : numIngenieros}
+                  horasPorIngeniero={vuelo ? null : horasPorIngenieroTexto(numIngenieros, horasTotales, desglose)}
+                  horasTotales={vuelo ? null : formatearHoras(horasTotales)}
+                  precioUnitario={Number(item.precio_unitario)}
+                  total={Number(item.subtotal || item.total)}
+                  fontSizeTotal={9 * (items.length <= 3 ? 1 : 0.8)}
+                />
+              );
+            })}
           </View>
+        )}
 
-          {items.map((item: any, idx: number) => {
-            const tieneDesgloseValido = item.desglose && item.desglose.length > 0 && 
-              (item.desglose.length > 1 || item.desglose[0].nombre || item.desglose[0].horas > 0);
-            
-            // Priorizar item.ingenieros si es válido (incluso si es 6 y desglose tiene 1 elemento vacío)
-            const numIngenieros = item.ingenieros ? item.ingenieros : (tieneDesgloseValido ? item.desglose.length : 1);
+        <TablaServiciosExternosPDF s={pdfStyles} isUS={false} titulo={condiciones.tituloServiciosExternos} servicios={externos} />
 
-
-            return (
-              <View key={idx} style={pdfStyles.tableRow}>
-                <View style={pdfStyles.colDesc}>
-                  <Text>{item.concepto}</Text>
-
-                  {/* Renderizar Desglose (Nombres) */}
-                  {tieneDesgloseValido && item.desglose.map((d: any, i: number) => {
-                    if (!d.nombre && (!d.horas || d.horas === 0)) return null;
-                    return (
-                      <Text key={i} style={pdfStyles.desgloseText}>
-                        • {d.nombre || `Ing. ${i + 1}`}: {d.horas}h
-                      </Text>
-                    );
-                  })}
-
-                  {/* Renderizar Notas */}
-                  {item.detalles && <Text style={pdfStyles.notaText}>Nota: {item.detalles}</Text>}
-                </View>
-
-                {/* ✅ Celda "Ing." */}
-                <Text style={pdfStyles.colTiny}>{numIngenieros}</Text>
-
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>{item.cantidad}</Text>
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold" }]}>${formatCurrency(Number(item.precio_unitario))}</Text>
-                <Text style={[pdfStyles.colSmall, { fontWeight: "bold", fontSize: 9 * (items.length <= 3 ? 1 : 0.8) }]}>${formatCurrency(Number(item.subtotal || item.total))}</Text>
+        <View style={{ marginBottom: 8 }}>
+          {items.length > 0 && externos.length > 0 ? (
+            <>
+              <View style={pdfStyles.total}>
+                <Text>Subtotal servicios técnicos:</Text>
+                <Text>${formatCurrency(subtotalServicios)} {moneda}</Text>
               </View>
-            );
-          })}
-
-          <View style={pdfStyles.total}>
-            <Text>Subtotal:</Text>
-            <Text>${formatCurrency(subtotal)} {moneda}</Text>
-          </View>
+              <View style={pdfStyles.total}>
+                <Text>Subtotal servicios adicionales:</Text>
+                <Text>${formatCurrency(subtotalExternos)} {moneda}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={pdfStyles.total}>
+              <Text>Subtotal:</Text>
+              <Text>${formatCurrency(subtotal)} {moneda}</Text>
+            </View>
+          )}
 
           {iva > 0 && (
             <View style={[pdfStyles.total, { backgroundColor: "#f3f4f6" }]}>

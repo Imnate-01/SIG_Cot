@@ -77,7 +77,7 @@ function mapearPartidas(itemsServicio: any[], verificacion: ResultadoVerificacio
     precio_unitario: item.precioUnitario || 0,
     subtotal: PRICING_ENFORCE ? verificacion.subtotales[idx] : (item.total || 0),
     detalles: item.detalles || null,
-    desglose: item.desglose || [],   // horas por ingeniero (servicios de viaje)
+    desglose: item.desglose || [],   // horas por ingeniero (viaje) o { tipo: "servicio_externo" }
     ingenieros: item.ingenieros || 1,
   }))
 }

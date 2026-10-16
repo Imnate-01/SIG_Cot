@@ -21,6 +21,7 @@
  *   4. "Costo de Vuelo":      total = precio manual; ingenieros = cantidad = 1
  *   5. En la base de datos, `cantidad` de una línea normal se guarda como
  *      horas × ingenieros, de modo que siempre: subtotal = precio × cantidad.
+ *   6. Servicios externos: total = precio × cantidad (tabla libre).
  * ============================================================================
  */
 
@@ -239,6 +240,109 @@ export function lineaDesdePartida(
     return { ...base, conContrato: false };
   }
   return { ...base, conContrato: true, esPrecioManual: true, precioManual: precioGuardado };
+}
+
+// ─── Presentación de horas (PDF y formulario) ──────────────────────────────
+//
+// Para que el cliente pueda comprobar la cuenta, el PDF muestra siempre:
+//   Ing. | Hrs/Ing. | Hrs. totales | P. Unit. | Total
+// y en TODAS las líneas se cumple: Total = Hrs. totales × P. Unit.
+//   Ej. normal: 2 ing × 40 h = 80 h → 80 × 162.78 = 13,022.40
+//   Ej. viaje:  desglose 5 h + 5 h = 10 h → 10 × 145.73 = 1,457.30
+
+/** Número de horas sin decimales innecesarios (40 → "40", 7.5 → "7.5"). */
+export function formatearHoras(n: number): string {
+  return String(redondear2(n));
+}
+
+/**
+ * Texto de la columna "Hrs/Ing.".
+ *  - Con desglose: si todos los ingenieros tienen las mismas horas, ese número;
+ *    si no, la lista (p. ej. "6 / 4").
+ *  - Sin desglose: horas totales ÷ ingenieros.
+ */
+export function horasPorIngenieroTexto(
+  ingenieros: number,
+  horasTotales: number,
+  desglose?: Array<{ horas?: number | string }> | null,
+): string {
+  const horas = (Array.isArray(desglose) ? desglose : [])
+    .map((d) => Number(d?.horas) || 0)
+    .filter((h) => h > 0);
+  if (horas.length > 0) {
+    const iguales = horas.every((h) => h === horas[0]);
+    return iguales ? formatearHoras(horas[0]) : horas.map(formatearHoras).join(' / ');
+  }
+  const ing = ingenieros > 0 ? ingenieros : 1;
+  return formatearHoras(horasTotales / ing);
+}
+
+/** Horas totales de una línea del FORMULARIO (cantidad = horas por ingeniero). */
+export function horasTotalesLinea(
+  linea: Pick<LineaCotizacion, 'cantidad' | 'ingenieros'>,
+  tarifa: TarifaCatalogo | undefined | null,
+): number {
+  return cantidadParaGuardar(linea, tarifa);
+}
+
+// ─── Servicios externos / entrenamientos ────────────────────────────────────
+//
+// Tabla libre (Detalle, Cantidad, P. Unit.) para cotizar entrenamientos,
+// mantenimientos a terceros (p. ej. Chiller) o paquetes como "Maintenance Plus".
+// Se guardan como partidas normales de `cotizacion_items` (subtotal = precio ×
+// cantidad, así el total y la verificación del servidor no cambian) con la marca
+// `desglose = { tipo: "servicio_externo" }` para distinguirlas.
+
+export const MARCA_SERVICIO_EXTERNO = 'servicio_externo';
+
+export interface ServicioExterno {
+  detalle: string;
+  cantidad: number | string;
+  precioUnitario: number | string;
+}
+
+export function totalServicioExterno(s: Pick<ServicioExterno, 'cantidad' | 'precioUnitario'>): number {
+  return (Number(s.cantidad) || 0) * (Number(s.precioUnitario) || 0);
+}
+
+export function totalServiciosExternos(lista: Array<Pick<ServicioExterno, 'cantidad' | 'precioUnitario'>> | null | undefined): number {
+  return (lista || []).reduce((sum, s) => sum + totalServicioExterno(s), 0);
+}
+
+/** Un servicio externo cuenta si tiene detalle o importe. */
+export function servicioExternoCapturado(s: ServicioExterno): boolean {
+  return (s.detalle || '').trim() !== '' || totalServicioExterno(s) !== 0;
+}
+
+/** ¿La partida guardada es un servicio externo? */
+export function esPartidaServicioExterno(partida: { desglose?: unknown }): boolean {
+  const d = partida?.desglose;
+  return !!d && typeof d === 'object' && !Array.isArray(d)
+    && (d as { tipo?: unknown }).tipo === MARCA_SERVICIO_EXTERNO;
+}
+
+/** Servicio externo del formulario → partida para guardar. */
+export function partidaDesdeServicioExterno(s: ServicioExterno) {
+  const cantidad = Number(s.cantidad) || 0;
+  const precioUnitario = Number(s.precioUnitario) || 0;
+  return {
+    concepto: (s.detalle || '').trim() || 'Servicio externo',
+    cantidad,
+    precioUnitario,
+    total: cantidad * precioUnitario,
+    detalles: '',
+    desglose: { tipo: MARCA_SERVICIO_EXTERNO },
+    ingenieros: 1,
+  };
+}
+
+/** Partida guardada → servicio externo del formulario. */
+export function servicioExternoDesdePartida(p: PartidaGuardada): ServicioExterno {
+  return {
+    detalle: p.concepto || '',
+    cantidad: Number(p.cantidad) || 0,
+    precioUnitario: Number(p.precio_unitario) || 0,
+  };
 }
 
 // ─── Validación en servidor ─────────────────────────────────────────────────

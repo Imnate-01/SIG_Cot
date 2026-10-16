@@ -52,3 +52,26 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] Log del backend: no aparece `[migración pendiente]` (si ya aplicaste la migración)
 - [ ] Con `ROLES_GESTION_CATALOGO` definido, un usuario sin ese rol recibe 403 al editar un servicio
 - [ ] Sin sesión, /es/food-safety-audit redirige al login
+
+## Comentarios de usuarios (octubre 2026)
+### Horas duplicadas y claridad de horas
+- [ ] Cotización con 2 ingenieros × 40 h → guardar → Editar → sigue en 40 h y mismo total → guardar sin cambios → mismo total
+- [ ] PDF: columnas `Ing. | Hrs/Ing. | Hrs. totales | P. Unit. | Total`; en cada línea Total = Hrs. totales × P. Unit.
+- [ ] Horas de viaje con desglose 5 + 5: Hrs/Ing. = 5, Hrs. totales = 10
+- [ ] En el formulario, bajo cada "Total línea" aparece "= $precio × N h totales"
+
+### Servicios externos / entrenamientos
+- [ ] Agregar 2 filas (detalle, cantidad, P. Unit.) → el total de la cotización las suma
+- [ ] Cotización SOLO con servicios externos (sin tarifa seleccionada) se guarda
+- [ ] PDF de vista previa y PDF guardado muestran la tabla con el título capturado y "Subtotal servicios técnicos / adicionales"
+- [ ] Editar una cotización con servicios externos → aparecen en su tabla, no como líneas de servicio
+- [ ] Sin servicios y sin filas externas → mensaje "Agrega al menos un servicio…"
+
+### Usuarios y contraseñas
+- [ ] Backend con `ROLES_ADMIN_USUARIOS` vacío → el menú no muestra "Usuarios" y /usuarios dice "Sin acceso"
+- [ ] Con un rol configurado: crear usuario → aparece la contraseña temporal → ese usuario inicia sesión sin confirmar correo
+- [ ] Restablecer contraseña de un usuario → la anterior deja de funcionar y la temporal sí
+- [ ] Desactivar un usuario → no puede iniciar sesión; activarlo → vuelve a entrar
+- [ ] "¿Olvidaste tu contraseña?" → /recuperar → llega el correo (requiere SMTP propio en Supabase) → enlace abre /restablecer → nueva contraseña funciona
+- [ ] Enlace de recuperación viejo o ya usado → "El enlace no es válido o expiró"
+- [ ] Con Supabase inaccesible, registro/login muestran el mensaje de conexión (no "fetch failed")

@@ -18,10 +18,12 @@ import {
   Menu,
   X,
   ShieldCheck,
+  UserCog,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
 import LanguageSwitcher from "./LanguageSwitcher";
+import api from "@/services/api";
 
 /** Rutas del menú, de la más específica a la más general. */
 const RUTAS_MENU = [
@@ -34,6 +36,7 @@ const RUTAS_MENU = [
   "/food-safety-audit/nuevo",
   "/food-safety-audit",
   "/reportes",
+  "/usuarios",
   "/configuracion",
   "/ayuda",
 ];
@@ -82,6 +85,16 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const { userData } = useAuthMigration();
+
+  // El panel de Usuarios solo aparece para los roles administradores (lo decide el backend)
+  const [esAdminUsuarios, setEsAdminUsuarios] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    api.get("/admin/usuarios/permisos")
+      .then(({ data }) => { if (vigente) setEsAdminUsuarios(!!data?.data?.adminUsuarios); })
+      .catch(() => {});
+    return () => { vigente = false; };
+  }, []);
 
   const usuario = userData || {
     nombre: "Usuario",
@@ -213,6 +226,7 @@ export default function Sidebar() {
 
           {/* --- SECCIÓN SISTEMA: visible para TODOS los roles --- */}
           <Seccion titulo={t("system")}>
+            {esAdminUsuarios && <NavItem href="/usuarios" icon={UserCog}>{t("users")}</NavItem>}
             <NavItem href="/configuracion" icon={Settings}>{t("settings")}</NavItem>
             <NavItem href="/ayuda" icon={HelpCircle}>{t("helpAndSupport")}</NavItem>
           </Seccion>
