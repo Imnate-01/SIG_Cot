@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { iaController } from '../controllers/iaController';
-import { requireAuth } from '../middlewares/requireAuth';
 
 const router = Router();
 
@@ -15,8 +14,8 @@ const iaRateLimiter = rateLimit({
   message: { success: false, error: 'Demasiadas solicitudes a la IA. Intenta de nuevo en un minuto.' },
 });
 
-// Todas las rutas de IA requieren sesión válida.
-router.use(requireAuth, iaRateLimiter);
+// La sesión la valida requireAuth en server.ts; aquí solo el límite por usuario.
+router.use(iaRateLimiter);
 
 // Definir los endpoints POST
 // La ruta final será /api/ia/mejorar-texto, etc.

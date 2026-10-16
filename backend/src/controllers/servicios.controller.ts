@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
-import { createClientForUser, supabaseAdmin } from '../config/supabase'
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { supabaseAdmin } from '../config/supabase'
 import { pickFields } from '../utils/pickFields'
 
 // Columnas que el usuario puede modificar en un servicio del catálogo
@@ -14,9 +16,7 @@ export class ServiciosController {
   // Usamos supabaseAdmin para bypassear RLS en la lectura del catálogo público de tarifas
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
+      // El token ya lo validó requireAuth (ver server.ts)
       // Filtrar por region si viene como query param
       const region = req.query.region as string | undefined;
       let query = supabaseAdmin
@@ -34,17 +34,14 @@ export class ServiciosController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // CREAR
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { concepto, unidad, precio_sin_contrato, precio_con_contrato, moneda, categoria, region } = req.body
 
       const { data, error } = await supabaseUser
@@ -58,17 +55,14 @@ export class ServiciosController {
       if (error) throw error
       res.status(201).json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // ACTUALIZAR
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params
       const updates = pickFields(req.body, CAMPOS_EDITABLES_SERVICIO)
       if (Object.keys(updates).length === 0) {
@@ -85,17 +79,14 @@ export class ServiciosController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // ELIMINAR (Soft Delete - Solo desactivamos para no romper cotizaciones viejas)
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params
 
       const { error } = await supabaseUser
@@ -106,7 +97,7 @@ export class ServiciosController {
       if (error) throw error
       res.json({ success: true, message: 'Servicio desactivado correctamente' })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { createClientForUser } from '../config/supabase';
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 import { verificarCotizacionUS, registrarDiferencias, PRICING_ENFORCE } from '../services/verificacionPrecios';
 
 export class CotizacionesUsController {
@@ -7,15 +8,9 @@ export class CotizacionesUsController {
   // 1. CREAR COTIZACIÓN US STANDARD
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-      if (authError || !user) {
-        return res.status(401).json({ success: false, message: 'Token inválido o expirado' });
-      }
+      const { user } = contextoAuth(req);
 
       const {
         customer,
@@ -91,17 +86,14 @@ export class CotizacionesUsController {
 
     } catch (error: any) {
       console.error('Error al crear cotización US:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 2. OBTENER TODAS
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('cotizaciones_us_standard')
@@ -112,17 +104,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 3. OBTENER POR ID
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const { data, error } = await supabaseUser
@@ -135,17 +124,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 4. ACTUALIZAR
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       // Verificar que existe y es borrador
@@ -201,17 +187,14 @@ export class CotizacionesUsController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
   // 5. ELIMINAR
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado' });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const { error } = await supabaseUser
@@ -223,7 +206,7 @@ export class CotizacionesUsController {
 
       res.json({ success: true, message: 'Eliminada correctamente' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 }

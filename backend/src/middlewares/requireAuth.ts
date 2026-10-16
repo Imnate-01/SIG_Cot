@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { ErrorHttp } from '../utils/http';
 import { createClientForUser } from '../config/supabase';
 
 /**
@@ -57,4 +59,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     console.error('[requireAuth] No se pudo validar el token:', err);
     return res.status(503).json({ success: false, error: 'Servicio de autenticación no disponible' });
   }
+}
+
+/**
+ * Devuelve el usuario y el cliente de Supabase que dejó `requireAuth`.
+ * Úsalo en controladores montados detrás de `requireAuth`.
+ */
+export function contextoAuth(req: Request): { supabase: SupabaseClient; user: User } {
+  if (!req.supabase || !req.user) throw new ErrorHttp(401, 'No autorizado');
+  return { supabase: req.supabase, user: req.user };
 }

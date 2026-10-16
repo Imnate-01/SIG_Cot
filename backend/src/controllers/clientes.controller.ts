@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
-import { createClientForUser } from '../config/supabase' // Importamos la función segura
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 import { pickFields } from '../utils/pickFields'
 import { actualizarClienteConDirecciones, type DireccionCliente } from '../repositories/cotizaciones.repository'
 
@@ -31,14 +32,7 @@ export class ClientesController {
   async getAll(req: Request, res: Response) {
     try {
       // A. Extraer el token del header (Bearer token)
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        return res.status(401).json({ success: false, error: "No autorizado: Falta token" });
-      }
-
-      // B. Crear cliente seguro para este usuario
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // C. Consultar usando el cliente seguro (RLS se aplicará automáticamente)
       const { data, error } = await supabaseUser
@@ -49,16 +43,14 @@ export class ClientesController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 2. CREAR CLIENTE
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { nombre, empresa, direccion, colonia, ciudad, cp, correo, telefono, cliente_direcciones, pais } = req.body
 
@@ -82,16 +74,14 @@ export class ClientesController {
 
       res.status(201).json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 3. ACTUALIZAR CLIENTE
   async update(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
       const { cliente_direcciones } = req.body
@@ -108,16 +98,14 @@ export class ClientesController {
 
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   // 4. ELIMINAR CLIENTE
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
       const { error } = await supabaseUser.from('clientes').delete().eq('id', id)
@@ -125,7 +113,7 @@ export class ClientesController {
       if (error) throw error
       res.json({ success: true, message: 'Cliente eliminado' })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }

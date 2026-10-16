@@ -1,15 +1,13 @@
 import { Request, Response } from 'express'
-import { createClientForUser } from '../config/supabase' // Usamos el cliente seguro
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 
 export class ReportesController {
 
   async getDashboardStats(req: Request, res: Response) {
     try {
       // 1. Seguridad: Validar token
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // 2. Consulta Segura (Respetando RLS)
       const { data: cotizaciones, error } = await supabaseUser
@@ -108,17 +106,14 @@ export class ReportesController {
       })
 
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
   async getPredictiveStats(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
+      const { userQuery } = req.body; // Pregunta específica del usuario (opcional)
 
-      const { userQuery } = req.body; // New: User's specific question
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // 1. Obtener datos históricos y contexto (últimos 12 meses)
       const { data: cotizaciones, error } = await supabaseUser
@@ -220,7 +215,7 @@ export class ReportesController {
 
     } catch (error: any) {
       console.error("Error en predicción:", error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 }

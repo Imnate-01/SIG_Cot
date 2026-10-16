@@ -11,17 +11,7 @@ export function buildFsaPdfHtml(report: any): { html: string, headerTemplate: st
   // Todo valor de datos se escapa: el HTML resultante lo renderiza Chromium en el servidor.
   const val = (v: any, fallback = '—') => (v !== null && v !== undefined && v !== '') ? escapeHtml(v) : fallback;
 
-  const statusColor = (estado: string) => {
-    if (estado === 'finalizado') return '#16a34a';
-    if (estado === 'en_revision') return '#d97706';
-    return '#64748b';
-  };
 
-  const statusLabel = (estado: string) => {
-    if (estado === 'finalizado') return 'Finalizado';
-    if (estado === 'en_revision') return 'En Revisión';
-    return 'Borrador';
-  };
 
   const now = new Date().toLocaleDateString('es-MX', {
     year: 'numeric', month: 'long', day: 'numeric'

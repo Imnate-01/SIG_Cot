@@ -19,6 +19,8 @@ import iaRoutes from './routes/iaRoutes';
 import tarifasClienteRoutes from './routes/tarifas-cliente.routes';
 import cotizacionesUsRoutes from './routes/cotizaciones-us.routes';
 import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
+import { requireAuth } from './middlewares/requireAuth';
+import { responderError } from './utils/http';
 const app = express();
 
 // El backend corre detrás del proxy de Render: sin esto, req.ip es la IP del proxy
@@ -28,13 +30,16 @@ app.set('trust proxy', process.env.TRUST_PROXY !== undefined ? Number(process.en
 const PORT = process.env.PORT || 3001;
 
 // --- MIDDLEWARES ---
-const allowedOrigins = [
-  'https://sig-cot.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
-];
+// Orígenes permitidos: CORS_ORIGINS (separados por coma) o la lista por defecto
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : [
+      'https://sig-cot.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ];
 
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     // Permitir requests sin origin (ej. Postman, curl)
     if (!origin || allowedOrigins.includes(origin)) {
@@ -46,26 +51,55 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-}));
+};
+app.use(cors(corsOptions));
 
-// Responder explícitamente a preflight OPTIONS
-app.options(/.*/, cors());
+// Preflight OPTIONS con la MISMA configuración (antes usaba cors() abierto a todos)
+app.options(/.*/, cors(corsOptions));
 
-app.use(express.json());
+// 2 MB: los borradores de reportes técnicos incluyen firmas en base64 y el
+// límite por defecto (100 KB) podía rechazar el autosave.
+app.use(express.json({ limit: '2mb' }));
 
 // --- DEFINICIÓN DE RUTAS ---
+// Públicas
 app.use('/api/auth', authRoutes);
-app.use('/api/cotizaciones', cotizacionesRoutes);
 app.use('/api/health', healthRoutes);
-app.use('/api/clientes', clientesRoutes);
-app.use('/api/servicios', serviciosRoutes);
-app.use('/api/reportes', reportesRoutes);
-app.use('/api/usuarios', usuariosRoutes);
-app.use('/api/ia', iaRoutes);
-app.use('/api/reportes-tecnicos', reportesTecnicosRoutes);
-app.use('/api/tarifas-cliente', tarifasClienteRoutes);
-app.use('/api/cotizaciones-us', cotizacionesUsRoutes);
-app.use('/api/food-safety-audit', foodSafetyAuditRoutes);
+
+// Protegidas: requireAuth valida el token UNA vez y deja req.user / req.supabase
+app.use('/api/cotizaciones', requireAuth, cotizacionesRoutes);
+app.use('/api/clientes', requireAuth, clientesRoutes);
+app.use('/api/servicios', requireAuth, serviciosRoutes);
+app.use('/api/reportes', requireAuth, reportesRoutes);
+app.use('/api/usuarios', requireAuth, usuariosRoutes);
+app.use('/api/ia', requireAuth, iaRoutes);
+app.use('/api/reportes-tecnicos', requireAuth, reportesTecnicosRoutes);
+app.use('/api/tarifas-cliente', requireAuth, tarifasClienteRoutes);
+app.use('/api/cotizaciones-us', requireAuth, cotizacionesUsRoutes);
+app.use('/api/food-safety-audit', requireAuth, foodSafetyAuditRoutes);
+
+// Ruta inexistente → JSON (antes respondía una página HTML)
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'Ruta no encontrada', message: 'Ruta no encontrada' });
+});
+
+// Manejador de errores final: JSON mal formado, archivos rechazados por
+// multer, errores lanzados fuera de un try/catch, etc.
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, error: 'JSON inválido', message: 'JSON inválido' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, error: 'La solicitud es demasiado grande', message: 'La solicitud es demasiado grande' });
+  }
+  if (err?.name === 'MulterError' || /Formato no soportado/.test(err?.message || '')) {
+    return res.status(400).json({ success: false, error: err.message, message: err.message });
+  }
+  if (/CORS bloqueado/.test(err?.message || '')) {
+    return res.status(403).json({ success: false, error: 'Origen no permitido', message: 'Origen no permitido' });
+  }
+  return responderError(res, err);
+});
 
 
 // --- INICIAR SERVIDOR ---

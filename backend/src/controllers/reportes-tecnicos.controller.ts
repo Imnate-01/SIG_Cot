@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { createClientForUser } from "../config/supabase";
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 
 // ✅ SANITIZERS
 import { sanitizeDatosGenerales, bigintOrNull } from "../utils/sanitize";
@@ -10,10 +11,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getCatalogos(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       const { data: secciones, error: errSecc } = await supabase
         .from("catalogo_secciones")
@@ -38,7 +36,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data: catalogoCompleto });
     } catch (error: any) {
       console.error("Error catalogos:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -47,15 +45,8 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async create(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-
-      const user = userResp?.user;
-      if (!user) return res.status(401).json({ success: false, message: "Usuario no identificado" });
+      const supabase = contextoAuth(req).supabase;
+      const { user } = contextoAuth(req);
 
       const {
         cliente_id,
@@ -64,7 +55,6 @@ class ReportesTecnicosController {
         detalles,
         acciones,
         cierre,
-        meta,
       } = req.body;
 
       // ✅ BIGINT SANITIZE
@@ -158,7 +148,7 @@ class ReportesTecnicosController {
       });
     } catch (error: any) {
       console.error("Error create reporte:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -167,15 +157,8 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async saveDraft(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-
-      const user = userResp?.user;
-      if (!user) return res.status(401).json({ success: false, message: "Usuario no identificado" });
+      const supabase = contextoAuth(req).supabase;
+      const { user } = contextoAuth(req);
 
       const { datos_generales, payload, cliente_id, draft_id, cotizacion_id } = req.body;
 
@@ -226,7 +209,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data });
     } catch (error: any) {
       console.error("Error save draft:", error);
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -235,10 +218,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getListado(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       // 1) Intento principal: VIEW
       const { data, error } = await supabase
@@ -306,7 +286,7 @@ class ReportesTecnicosController {
       return res.json({ success: true, data: mapped });
     } catch (e: any) {
       console.error("Error getListado(unhandled):", e);
-      return res.status(500).json({ success: false, error: e.message || "Error interno" });
+      return responderError(res, e);
     }
   }
 
@@ -315,10 +295,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
 
       const { data, error } = await supabase
         .from("reportes_tecnicos")
@@ -329,7 +306,7 @@ class ReportesTecnicosController {
 
       return res.json({ success: true, data });
     } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 
@@ -338,10 +315,7 @@ class ReportesTecnicosController {
   // ─────────────────────────────────────────────
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(401).json({ success: false });
-
-      const supabase = createClientForUser(token);
+      const supabase = contextoAuth(req).supabase;
       const { id } = req.params;
 
       const reportId = bigintOrNull(id);
@@ -378,7 +352,7 @@ class ReportesTecnicosController {
         },
       });
     } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
+      return responderError(res, error);
     }
   }
 }

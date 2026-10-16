@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { createClientForUser, supabaseAdmin } from '../config/supabase';
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { supabaseAdmin } from '../config/supabase';
 import { buildFsaPdfHtml } from '../utils/fsaPdfTemplate';
 import { getBrowser } from '../utils/browserManager';
 
@@ -28,19 +30,10 @@ function isAllowedPdfResource(url: string): boolean {
   }
 }
 
-// ─── Helper: extrae y valida el usuario del token ───────────────────────────
-async function getUserFromToken(req: Request, res: Response) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    res.status(401).json({ success: false, error: 'No autorizado: falta token' });
-    return null;
-  }
-  const supabaseUser = createClientForUser(token);
-  const { data: { user }, error } = await supabaseUser.auth.getUser();
-  if (error || !user) {
-    res.status(401).json({ success: false, error: 'Token inválido o expirado' });
-    return null;
-  }
+// ─── Helper: usuario y cliente de Supabase validados por requireAuth ───────
+// (se conserva la firma para no tocar cada método del controlador)
+async function getUserFromToken(req: Request, _res: Response) {
+  const { supabase: supabaseUser, user } = contextoAuth(req);
   return { supabaseUser, user };
 }
 
@@ -141,10 +134,7 @@ export class FoodSafetyAuditController {
 
     } catch (error: any) {
       console.error('Error al crear reporte FSA:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al crear reporte FSA'
-      });
+      responderError(res, error);
     }
   }
 
@@ -175,7 +165,7 @@ export class FoodSafetyAuditController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -231,7 +221,7 @@ export class FoodSafetyAuditController {
 
       res.json({ success: true, data });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -355,7 +345,7 @@ export class FoodSafetyAuditController {
       });
 
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -454,7 +444,7 @@ export class FoodSafetyAuditController {
 
     } catch (error: any) {
       console.error('Error al generar PDF FSA:', error);
-      res.status(500).json({ success: false, error: error.message });
+      responderError(res, error);
     }
   }
 
@@ -480,7 +470,7 @@ export class FoodSafetyAuditController {
       res.json({ success: true, message: 'Reporte eliminado correctamente' });
     } catch (error: any) {
       console.error('Error al eliminar reporte FSA:', error);
-      res.status(500).json({ success: false, error: error.message || 'Error al eliminar reporte' });
+      responderError(res, error);
     }
   }
 }

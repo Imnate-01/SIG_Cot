@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
 import type { SupabaseClient } from '@supabase/supabase-js'
-// Importamos la función para crear clientes seguros, no la instancia global
-import { createClientForUser } from '../config/supabase'
 import { verificarCotizacion, registrarDiferencias, PRICING_ENFORCE, type ResultadoVerificacion } from '../services/verificacionPrecios'
 import {
   buscarOCrearCliente,
@@ -90,23 +90,13 @@ export class CotizacionesController {
   async create(req: Request, res: Response) {
     try {
       // A. Validar Token
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' })
-
-      // B. Crear el cliente seguro (Identidad del Usuario)
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // C. Obtener el ID del usuario para el campo 'creado_por'
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-      if (authError || !user) {
-        return res.status(401).json({ success: false, message: 'Token inválido o expirado' })
-      }
+      const { user } = contextoAuth(req);
 
       // D. Recibir datos
       const {
-        cliente_id,
-        facturarA,
-        contactoSecundario,
         condiciones,
         itemsServicio,
         total,
@@ -157,10 +147,7 @@ export class CotizacionesController {
 
     } catch (error: any) {
       console.error('Error al crear cotización:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al crear cotización'
-      })
+      responderError(res, error);
     }
   }
 
@@ -169,9 +156,7 @@ export class CotizacionesController {
   // ---------------------------------------------------------
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('cotizaciones')
@@ -195,7 +180,7 @@ export class CotizacionesController {
 
       res.json({ success: true, data: cotizacionesFormateadas })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -204,9 +189,7 @@ export class CotizacionesController {
   // ---------------------------------------------------------
   async getById(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
 
@@ -231,7 +214,7 @@ export class CotizacionesController {
         }
       })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -240,9 +223,7 @@ export class CotizacionesController {
   // ---------------------------------------------------------
   async updateEstado(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
       const { estado, orden_compra, estatus_po } = req.body
@@ -268,7 +249,7 @@ export class CotizacionesController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -278,10 +259,7 @@ export class CotizacionesController {
   async update(req: Request, res: Response) {
     try {
       // A. Validar Token
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ success: false, message: 'No autorizado: Falta token' })
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
       const { id } = req.params;
 
       // B. Verificar que exista y sea borrador
@@ -344,10 +322,7 @@ export class CotizacionesController {
 
     } catch (error: any) {
       console.error('Error al actualizar cotización:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Error interno al actualizar cotización'
-      })
+      responderError(res, error);
     }
   }
 
@@ -356,9 +331,7 @@ export class CotizacionesController {
   // ---------------------------------------------------------
   async delete(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { id } = req.params
 
@@ -367,7 +340,7 @@ export class CotizacionesController {
 
       res.json({ success: true, message: 'Cotización eliminada correctamente' })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -376,9 +349,7 @@ export class CotizacionesController {
   // ---------------------------------------------------------
   async getClientes(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('clientes')
@@ -388,15 +359,13 @@ export class CotizacionesController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
   async getUsuarios(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) return res.status(401).json({ success: false, error: "No autorizado" });
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       const { data, error } = await supabaseUser
         .from('usuarios')
@@ -407,7 +376,7 @@ export class CotizacionesController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }

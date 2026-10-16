@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
-// Importamos la función para crear el cliente seguro con el token del usuario y el admin
-import { createClientForUser, supabaseAdmin } from '../config/supabase'
+import { contextoAuth } from '../middlewares/requireAuth'
+import { responderError } from '../utils/http'
+import { supabaseAdmin } from '../config/supabase'
 
 export class UsuariosController {
 
@@ -9,14 +10,7 @@ export class UsuariosController {
   // ---------------------------------------------------------
   async getAll(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (!token) {
-        return res.status(401).json({ success: false, message: 'No autorizado: Falta token' });
-      }
-
-      // Usamos el cliente seguro (identidad del usuario logueado)
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // Traemos los datos necesarios para el selector
       const { data, error } = await supabaseUser
@@ -30,7 +24,7 @@ export class UsuariosController {
       res.json({ success: true, data })
     } catch (error: any) {
       console.error('Error al obtener usuarios:', error);
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -39,15 +33,10 @@ export class UsuariosController {
   // ---------------------------------------------------------
   async getMe(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ message: 'No token provided' })
-
-      const supabaseUser = createClientForUser(token);
+      const supabaseUser = contextoAuth(req).supabase;
 
       // Validar token real
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-      
-      if (authError || !user) return res.status(401).json({ message: 'Token inválido o expirado' })
+      const { user } = contextoAuth(req);
 
       // Buscar perfil
       const { data: perfil, error } = await supabaseUser
@@ -60,7 +49,7 @@ export class UsuariosController {
 
       res.json({ success: true, data: { ...perfil, email: user.email } })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -69,22 +58,17 @@ export class UsuariosController {
   // ---------------------------------------------------------
   async updateMe(req: Request, res: Response) {
     try {
-      const token = req.headers.authorization?.split(' ')[1]
-      if (!token) return res.status(401).json({ message: 'No token' })
+      const supabaseUser = contextoAuth(req).supabase;
       
-      const supabaseUser = createClientForUser(token);
-      
-      const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-      if (authError || !user) return res.status(401).json({ message: 'Unauthorized' })
+      const { user } = contextoAuth(req);
 
-      const { nombre, departamento, telefono } = req.body
+      const { nombre, departamento } = req.body
 
       const { data, error } = await supabaseUser
         .from('usuarios')
         .update({ 
           nombre, 
           departamento,
-          // telefono: telefono 
         })
         .eq('id', user.id)
         .select()
@@ -93,7 +77,7 @@ export class UsuariosController {
       if (error) throw error
       res.json({ success: true, data })
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 
@@ -103,16 +87,15 @@ export class UsuariosController {
   async updatePassword(req: Request, res: Response) {
     try {
       const { password } = req.body
-      const token = req.headers.authorization?.split(' ')[1]
-      
-      if (!token) return res.status(401).json({ message: 'No token' })
+      if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ success: false, error: 'La contraseña debe tener al menos 6 caracteres', message: 'La contraseña debe tener al menos 6 caracteres' })
+      }
 
-      // Obtenemos el usuario a partir del token
-      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-      if (userError || !user) throw new Error('Token inválido')
+      // Usuario validado por requireAuth
+      const { user } = contextoAuth(req);
 
       // Usamos el cliente admin para actualizar la contraseña usando el ID del usuario
-      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
         password: password
       })
 
@@ -122,7 +105,7 @@ export class UsuariosController {
 
     } catch (error: any) {
       console.error('Error al cambiar password:', error)
-      res.status(500).json({ success: false, error: error.message })
+      responderError(res, error);
     }
   }
 }
