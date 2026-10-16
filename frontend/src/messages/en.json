@@ -35,67 +35,6 @@
     "allRegions": "MX + US",
     "analysisScope": "Analysis scope"
   },
-  "Landing": {
-    "hero": {
-      "badge": "Quote, track, and document without losing control",
-      "titleStart": "Unify your",
-      "titleHighlight": "quotation",
-      "titleEnd": "workflow at SIG",
-      "description": "Centralize quotations, clients, purchase orders, and documents in a clear, fast, and auditable platform for SAM / BackOffice teams.",
-      "ctaLogin": "Sign in",
-      "ctaRegister": "Request access",
-      "badge1": "History and traceability",
-      "badge2": "Fast search",
-      "badge3": "Centralized documentation"
-    },
-    "mockup": {
-      "title": "Overview",
-      "subtitle": "Status • Clients • PO • Documents",
-      "quotation": "Quotation",
-      "inReview": "In review",
-      "mockDetail": "Client • PO • line items • totals • notes",
-      "searchTitle": "Search",
-      "searchValue": "Fast",
-      "searchDesc": "ID, client, PO, keyword",
-      "docsTitle": "Documents",
-      "docsValue": "Central",
-      "docsDesc": "PDF, evidence and exports",
-      "auditTitle": "Built for auditing",
-      "auditDesc": "Every change is logged for tracking and control."
-    },
-    "features": {
-      "title": "What can you do in SIG Quotations?",
-      "subtitle": "A modern overview of real capabilities: creation, tracking, search and document control.",
-      "centralizedTitle": "Centralized quotations",
-      "centralizedDesc": "Create, edit, and maintain history. Avoid scattered files and lost versions.",
-      "searchTitle": "Efficient search",
-      "searchDesc": "Find by ID, client, PO, or text. Less time searching, more time operating.",
-      "trackingTitle": "Tracking and status",
-      "trackingDesc": "Control progress (review, sent, approved, billing, etc.) with clarity.",
-      "clientsTitle": "Client management",
-      "clientsDesc": "Consistent tax data and contacts to prevent errors in documents.",
-      "visibilityTitle": "Operational visibility",
-      "visibilityDesc": "Review pending, recent, and team activity to make decisions.",
-      "controlTitle": "Control and traceability",
-      "controlDesc": "Auditable operations: who changed what, when, and in what context."
-    },
-    "howItWorks": {
-      "title": "Clear flow, no friction",
-      "subtitle": "A simple, repeatable process so the team works the same way, every time.",
-      "step1Title": "Capture and structure",
-      "step1Desc": "Record client information, line items, and conditions in a consistent format.",
-      "step2Title": "Review and follow-up",
-      "step2Desc": "Update status and preserve history to avoid confusion and rework.",
-      "step3Title": "Documentation and closure",
-      "step3Desc": "Generate documents and centralize evidence for billing, PO, and auditing."
-    },
-    "cta": {
-      "title": "Ready to work with real control",
-      "description": "Access SIG Quotations and keep traceability, search, and documentation in one place.",
-      "login": "Sign in",
-      "register": "Request access"
-    }
-  },
   "Login": {
     "welcome": "Welcome to",
     "brandName": "SIG quotations",
