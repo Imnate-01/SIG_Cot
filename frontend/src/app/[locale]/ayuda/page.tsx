@@ -43,7 +43,7 @@ export default function AyudaPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 p-8">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8">
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
@@ -98,7 +98,7 @@ export default function AyudaPage() {
             <div className="mt-10">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">{t("docsTitle")}</h2>
               <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
-                <div className="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-lg text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg text-blue-600 dark:text-blue-400 group-transition-transform">
                   <FileText size={24} />
                 </div>
                 <div>
@@ -131,8 +131,6 @@ export default function AyudaPage() {
               </div>
 
               {/* Decoración de fondo */}
-              <div className="absolute top-[-20px] right-[-20px] w-32 h-32 bg-blue-500 rounded-full blur-2xl opacity-50"></div>
-              <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-blue-400 rounded-full blur-xl opacity-30"></div>
             </div>
 
             {/* Tarjeta Secundaria */}

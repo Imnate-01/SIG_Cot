@@ -95,7 +95,7 @@ export default function GestionCotizacion() {
   if (loading) return <div className="p-10 text-center dark:text-white">{t("loading")}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8 flex justify-center">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8 flex justify-center">
       <div className="w-full max-w-2xl">
 
         <Link href="/cotizaciones" className="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mb-6 transition-colors">
@@ -113,8 +113,7 @@ export default function GestionCotizacion() {
 
               {/* Descripción — solo renderiza si existe */}
               {cotizacion?.descripcion && (
-                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 text-sm border border-white/20">
-                  <span className="opacity-60 text-xs">📋</span>
+                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5 text-sm border border-white/20">
                   <span className="font-medium">{cotizacion.descripcion}</span>
                 </div>
               )}
@@ -122,7 +121,7 @@ export default function GestionCotizacion() {
 
             <button
               onClick={() => setShowPdfModal(true)}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all text-sm font-semibold backdrop-blur-sm shadow-sm"
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all text-sm font-semibold shadow-sm"
             >
               <Eye size={18} /> {t("btnPreview")}
             </button>
@@ -161,7 +160,7 @@ export default function GestionCotizacion() {
                       value={ordenCompra}
                       onChange={(e) => setOrdenCompra(e.target.value)}
                       placeholder={t("poPlaceholder")}
-                      className="w-full p-3 border border-green-300 dark:border-green-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:border-green-600 dark:focus:border-green-500"
+                      className="w-full p-3 border border-green-300 dark:border-green-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -174,7 +173,7 @@ export default function GestionCotizacion() {
                           value="pendiente"
                           checked={estatusPO === "pendiente"}
                           onChange={() => setEstatusPO("pendiente")}
-                          className="accent-orange-500 w-5 h-5"
+                          className="accent-blue-600 w-5 h-5"
                         />
                         <span className="text-gray-700 dark:text-gray-300">{t("poPending")}</span>
                       </label>
@@ -202,7 +201,7 @@ export default function GestionCotizacion() {
               {estado === "borrador" && (
                 <Link
                   href={`/cotizaciones/editar/${id}`}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full bg-white dark:bg-zinc-800 hover:bg-sig-sand dark:hover:bg-zinc-700 text-black dark:text-white border border-sig-line-strong dark:border-zinc-700 py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <FileText size={24} /> {t("btnEdit")}
                 </Link>
@@ -227,14 +226,14 @@ export default function GestionCotizacion() {
       </div>
 
       {showPdfModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 ">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 border border-gray-200 dark:border-zinc-800">
             <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800">
               <h3 className="text-lg font-bold text-gray-800 dark:text-white">{t("modalPreviewTitle", { folio: cotizacion?.numero_cotizacion })}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={handleDownloadPdf}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm font-medium transition-colors"
                 >
                   <Download size={16} /> {t("btnDownload")}
                 </button>

@@ -4,6 +4,9 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "@/i18n/routing";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
+import { Check, Eye, EyeOff, Loader2, CircleAlert, CircleCheck } from "lucide-react";
+import AuthShell, { campoClase } from "@/components/auth/AuthShell";
 
 export default function RegisterPage() {
   const [nombre, setNombre] = useState("");
@@ -20,16 +23,17 @@ export default function RegisterPage() {
   const [successMsg, setSuccessMsg] = useState(false);
 
   const t = useTranslations("Register");
+  const tLogin = useTranslations("Login");
 
   const passwordStrength = () => {
     if (password.length === 0) return { text: "", color: "" };
-    if (password.length < 8) return { text: t("strengthWeak"), color: "text-red-600" };
-    if (password.length < 12) return { text: t("strengthMedium"), color: "text-yellow-600" };
-    return { text: t("strengthStrong"), color: "text-green-600" };
+    if (password.length < 8) return { text: t("strengthWeak"), color: "text-sig-danger" };
+    if (password.length < 12) return { text: t("strengthMedium"), color: "text-sig-warning" };
+    return { text: t("strengthStrong"), color: "text-sig-success" };
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: FormEvent) => {
+    e?.preventDefault();
     setErrorMsg(null);
 
     if (!nombre || !email || !departamento || !password || !password2) {
@@ -94,293 +98,179 @@ export default function RegisterPage() {
 
   const strength = passwordStrength();
 
+  const campoLabel = "mb-1.5 block text-[13px] font-semibold text-sig-ink";
+  const ojo = (visible: boolean, alternar: () => void) => (
+    <button
+      type="button"
+      onClick={alternar}
+      aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-sig-muted hover:text-sig-ink"
+    >
+      {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-black flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl max-w-6xl w-full flex overflow-hidden border border-transparent dark:border-zinc-800">
-        <div className="w-full md:w-1/2 px-8 sm:px-12 lg:px-16 py-12 overflow-y-auto max-h-screen">
-          <div className="mb-8">
-            <img
-              src="/SIG_logo.png"
-              alt="Logo SIG"
-              className="h-16 w-auto object-contain dark:brightness-100"
+    <AuthShell
+      appName={t("sideTitle")}
+      appTagline={t("sideSubtitle")}
+      items={[
+        `${t("benefit1Title")} · ${t("benefit1Desc")}`,
+        `${t("benefit2Title")} · ${t("benefit2Desc")}`,
+        `${t("benefit3Title")} · ${t("benefit3Desc")}`,
+      ]}
+      footer={tLogin("internalUse")}
+    >
+      <div className="w-full max-w-[400px]">
+        {/* Logo solo en móvil (en escritorio está en el panel lateral) */}
+        <Image src="/sig-logo.webp" alt="SIG" width={62} height={40} priority unoptimized className="mb-8 h-10 w-auto md:hidden" />
+
+        <h1 className="text-[28px] font-bold leading-tight text-sig-ink">
+          {t("title")} {t("titleHighlight")}
+        </h1>
+        <p className="mt-2 text-sm text-sig-muted">
+          {t("subtitle")} {t("subtitleHint")}
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+          <div>
+            <label htmlFor="nombre" className={campoLabel}>{t("nameLabel")}</label>
+            <input
+              id="nombre"
+              type="text"
+              autoComplete="name"
+              className={campoClase}
+              placeholder={t("namePlaceholder")}
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
             />
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white leading-tight">
-            {t("title")}
-            <br />
-            <span className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-              {t("titleHighlight")}
-            </span>
-          </h1>
-
-          <p className="mt-4 text-base text-slate-600 dark:text-gray-400">
-            {t("subtitle")}
-            <br />
-            <span className="text-sm text-slate-500 dark:text-gray-500">
-              {t("subtitleHint")}
-            </span>
-          </p>
-
-          <div className="mt-8 space-y-4">
-            <div>
-              <label htmlFor="nombre" className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2">
-                {t("nameLabel")}
-              </label>
+          <div>
+            <label htmlFor="email" className={campoLabel}>{t("emailLabel")}</label>
+            <div className="relative">
               <input
-                id="nombre"
-                type="text"
-                className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                placeholder={t("namePlaceholder")}
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                id="email"
+                type="email"
+                autoComplete="username"
+                className={`${campoClase} pr-10`}
+                placeholder={t("emailPlaceholder")}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2">
-                {t("emailLabel")}
-              </label>
-              <div className="relative">
-                <input
-                  id="email"
-                  type="email"
-                  className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                  placeholder={t("emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                {email && email.endsWith("@sig.biz") && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="departamento" className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2">
-                {t("deptLabel")}
-              </label>
-              <input
-                id="departamento"
-                type="text"
-                className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                placeholder={t("deptPlaceholder")}
-                value={departamento}
-                onChange={(e) => setDepartamento(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2">
-                {t("passwordLabel")}
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 pr-12 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                  placeholder={t("passwordPlaceholder")}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              {password && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-slate-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${password.length < 8
-                        ? "w-1/3 bg-red-500"
-                        : password.length < 12
-                          ? "w-2/3 bg-yellow-500"
-                          : "w-full bg-green-500"
-                        }`}
-                    />
-                  </div>
-                  <span className={`text-xs font-medium ${strength.color}`}>
-                    {strength.text}
-                  </span>
-                </div>
+              {email.toLowerCase().trim().endsWith("@sig.biz") && (
+                <span className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-sig-success">
+                  <Check size={18} />
+                </span>
               )}
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password2" className="block text-sm font-semibold text-slate-800 dark:text-gray-200 mb-2">
-                {t("confirmPasswordLabel")}
-              </label>
-              <div className="relative">
-                <input
-                  id="password2"
-                  type={showPassword2 ? "text" : "password"}
-                  className="w-full rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 pr-12 text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300 dark:hover:border-zinc-600"
-                  placeholder={t("confirmPasswordPlaceholder")}
-                  value={password2}
-                  onChange={(e) => setPassword2(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword2(!showPassword2)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  {showPassword2 ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-                {password2 && password === password2 && (
-                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-              </div>
+          <div>
+            <label htmlFor="departamento" className={campoLabel}>{t("deptLabel")}</label>
+            <input
+              id="departamento"
+              type="text"
+              className={campoClase}
+              placeholder={t("deptPlaceholder")}
+              value={departamento}
+              onChange={(e) => setDepartamento(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className={campoLabel}>{t("passwordLabel")}</label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                className={`${campoClase} pr-10`}
+                placeholder={t("passwordPlaceholder")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {ojo(showPassword, () => setShowPassword(!showPassword))}
             </div>
-
-            {errorMsg && (
-              <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded-r-lg px-4 py-3 flex items-start gap-2">
-                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span>{errorMsg}</span>
+            {password && (
+              <div className="mt-2 flex items-center gap-3">
+                <div className="h-1 flex-1 overflow-hidden rounded-sm bg-sig-line">
+                  <div
+                    className={`h-full transition-all ${password.length < 8
+                      ? "w-1/3 bg-sig-danger"
+                      : password.length < 12
+                        ? "w-2/3 bg-sig-warning"
+                        : "w-full bg-sig-success"
+                      }`}
+                  />
+                </div>
+                <span className={`text-xs font-semibold ${strength.color}`}>{strength.text}</span>
               </div>
             )}
+          </div>
 
-            {successMsg && (
-              <div className="text-sm text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 rounded-r-lg px-4 py-3 flex items-start gap-2">
-                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>{t("success")}</span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-700 dark:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white font-semibold text-base py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>{t("submitting")}</span>
-                </>
-              ) : (
-                <>
-                  <span>{t("submit")}</span>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </>
+          <div>
+            <label htmlFor="password2" className={campoLabel}>{t("confirmPasswordLabel")}</label>
+            <div className="relative">
+              <input
+                id="password2"
+                type={showPassword2 ? "text" : "password"}
+                autoComplete="new-password"
+                className={`${campoClase} pr-16`}
+                placeholder={t("confirmPasswordPlaceholder")}
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
+              />
+              {password2 && password === password2 && (
+                <span className="absolute inset-y-0 right-10 flex w-6 items-center justify-center text-sig-success">
+                  <Check size={18} />
+                </span>
               )}
-            </button>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-zinc-800 text-center">
-            <p className="text-sm text-slate-600 dark:text-gray-400 mb-3">
-              {t("hasAccount")}
-            </p>
-            <button
-              type="button"
-              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-blue-700 dark:text-blue-400 font-semibold text-sm px-6 py-2.5 rounded-lg transition-all hover:shadow-md"
-              onClick={() => router.push("/login")}
-            >
-              {t("login")}
-            </button>
-          </div>
-        </div>
-
-        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-emerald-600 to-blue-700 items-center justify-center p-12 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full blur-3xl"></div>
-            <div className="absolute bottom-10 right-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-          </div>
-
-          <div className="relative z-10 text-center max-w-md">
-            <div className="mb-8 flex justify-center">
-              <div className="w-48 h-48 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center shadow-2xl">
-                <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </div>
-            </div>
-
-            <h2 className="text-3xl font-bold text-white mb-4">
-              {t("sideTitle")}
-            </h2>
-            <p className="text-blue-100 text-lg leading-relaxed mb-8">
-              {t("sideSubtitle")}
-            </p>
-
-            <div className="space-y-4 text-left">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center mt-1">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white font-medium">{t("benefit1Title")}</p>
-                  <p className="text-blue-100 text-sm">{t("benefit1Desc")}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center mt-1">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white font-medium">{t("benefit2Title")}</p>
-                  <p className="text-blue-100 text-sm">{t("benefit2Desc")}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center mt-1">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white font-medium">{t("benefit3Title")}</p>
-                  <p className="text-blue-100 text-sm">{t("benefit3Desc")}</p>
-                </div>
-              </div>
+              {ojo(showPassword2, () => setShowPassword2(!showPassword2))}
             </div>
           </div>
+
+          {errorMsg && (
+            <div role="alert" className="flex items-start gap-2 rounded border border-sig-danger/30 border-l-4 border-l-sig-danger bg-sig-danger-soft px-3 py-2.5 text-sm text-sig-danger">
+              <CircleAlert size={18} className="mt-px flex-none" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div role="status" className="flex items-start gap-2 rounded border border-sig-success/30 border-l-4 border-l-sig-success bg-sig-success-soft px-3 py-2.5 text-sm text-sig-success">
+              <CircleCheck size={18} className="mt-px flex-none" />
+              <span>{t("success")}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded bg-sig-blue text-sm font-semibold text-white transition-colors hover:bg-sig-blue-hover focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--sig-blue-focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                {t("submitting")}
+              </>
+            ) : (
+              t("submit")
+            )}
+          </button>
+        </form>
+
+        <div className="mt-8 flex items-center justify-between border-t border-sig-line pt-6 text-sm">
+          <span className="text-sig-muted">{t("hasAccount")}</span>
+          <button
+            type="button"
+            className="inline-flex h-9 items-center rounded border border-sig-line-strong bg-white px-3.5 font-semibold text-sig-ink hover:bg-sig-sand"
+            onClick={() => router.push("/login")}
+          >
+            {t("login")}
+          </button>
         </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

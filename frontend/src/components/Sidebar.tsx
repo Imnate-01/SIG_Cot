@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import Cookies from "js-cookie";
 import {
   LayoutDashboard,
   FilePlus,
   LogOut,
-  UserCircle,
   Users,
   Tags,
   BarChart3,
@@ -23,10 +23,61 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
 import LanguageSwitcher from "./LanguageSwitcher";
 
+/** Rutas del menú, de la más específica a la más general. */
+const RUTAS_MENU = [
+  "/cotizaciones/nueva",
+  "/cotizaciones-us/nueva",
+  "/cotizaciones-us",
+  "/cotizaciones",
+  "/clientes",
+  "/servicios",
+  "/food-safety-audit/nuevo",
+  "/food-safety-audit",
+  "/reportes",
+  "/configuracion",
+  "/ayuda",
+];
+
+/** Devuelve la ruta del menú que corresponde a la URL actual (solo una, la más específica). */
+function rutaActiva(pathname: string): string | undefined {
+  const limpia = pathname.replace(/^\/(es|en)(?=\/|$)/, "") || "/";
+  return RUTAS_MENU.find((r) => limpia === r || limpia.startsWith(r + "/"));
+}
+
+/** Ítem de navegación: fila de 38 px, activo = fondo blanco + barra azul a la izquierda (como en BOM Manager). */
+function NavItem({ href, icon: Icono, children }: { href: string; icon: React.ElementType; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const on = rutaActiva(pathname) === href;
+  return (
+    <Link
+      href={href}
+      aria-current={on ? "page" : undefined}
+      className={`relative flex items-center gap-3 h-[38px] px-2.5 rounded text-sm transition-colors ${on
+        ? "bg-white dark:bg-zinc-800 text-black dark:text-white font-bold"
+        : "text-black dark:text-gray-200 font-medium hover:bg-white dark:hover:bg-zinc-800"
+        }`}
+    >
+      <span className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-sm ${on ? "bg-sig-blue" : "bg-transparent"}`} />
+      <Icono size={18} strokeWidth={1.6} />
+      <span className="flex-1 truncate">{children}</span>
+    </Link>
+  );
+}
+
+function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="px-2.5 text-[11px] font-bold text-sig-muted uppercase tracking-wider mb-1.5">{titulo}</p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("Sidebar");
+  const tLogin = useTranslations("Login");
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -54,12 +105,6 @@ export default function Sidebar() {
     router.push("/login");
   };
 
-  const linkClass = (path: string) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-medium text-sm ${pathname.includes(path)
-      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
-    }`;
-
   /**
    * Detecta si el usuario pertenece al grupo de Ingeniería Aséptica / Calidad Aséptica.
    * Aplica a roles en español e inglés:
@@ -86,154 +131,114 @@ export default function Sidebar() {
   // Alias para mantener compatibilidad con el código existente
   const esIngeniero = esAseptico;
 
+  const iniciales = (usuario.nombre || "U")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p: string) => p[0]?.toUpperCase())
+    .join("") || "U";
+
   return (
     <>
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50"
+        aria-label="Menú"
+        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white border border-sig-line-strong rounded text-black hover:bg-sig-sand"
       >
-        <Menu size={24} />
+        <Menu size={22} />
       </button>
 
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <aside
         className={`
-          fixed top-0 left-0 h-screen w-64 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col shadow-xl z-50 transition-transform duration-300 ease-in-out
-          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          fixed top-0 left-0 h-screen w-60 bg-sig-sand dark:bg-zinc-900 border-r border-sig-line dark:border-zinc-800 flex flex-col z-50 transition-transform duration-300 ease-in-out
+          ${isMobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"}
           lg:translate-x-0 lg:shadow-none
         `}
       >
-        {/* HEADER */}
-        <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold shadow-md ${esIngeniero ? 'bg-orange-500 shadow-orange-200' : 'bg-blue-600 shadow-blue-200'}`}>
-              S
+        {/* HEADER: logo + nombre de la app */}
+        <div className="px-5 pt-5 pb-4 flex items-start justify-between">
+          <div className="flex flex-col gap-3.5">
+            <Image src="/sig-logo.webp" alt="SIG" width={76} height={36} unoptimized priority className="h-9 w-auto object-contain dark:bg-white dark:p-1 dark:rounded" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-bold text-black dark:text-white leading-tight">{tLogin("appName")}</span>
+              <span className="text-xs text-sig-muted leading-tight">{tLogin("appTagline")}</span>
             </div>
-            <span className="font-bold text-lg text-gray-800 dark:text-gray-200 tracking-tight">SIG System</span>
           </div>
-          <ThemeToggle />
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            aria-label="Cerrar menú"
+            className="lg:hidden text-sig-muted hover:text-black"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* NAV SCROLLABLE */}
-        <nav className="flex-1 p-4 space-y-6 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-3 pt-2 pb-4 space-y-5 overflow-y-auto custom-scrollbar">
 
           {/* --- MENÚ EXCLUSIVO PARA VENTAS / ADMIN --- */}
           {!esIngeniero && (
             <>
-              <div>
-                <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{t("commercial")}</p>
-                <div className="space-y-1">
-                  <Link href="/cotizaciones" className={linkClass("/cotizaciones")}>
-                    <LayoutDashboard size={18} />
-                    {t("dashboard")}
-                  </Link>
-                  <Link href="/cotizaciones/nueva" className={linkClass("/cotizaciones/nueva")}>
-                    <FilePlus size={18} />
-                    {t("newQuotation")}
-                  </Link>
-                  <Link href="/cotizaciones-us" className={linkClass("/cotizaciones-us")}>
-                    <LayoutDashboard size={18} />
-                    US Standard Quotes
-                  </Link>
-                  <Link href="/cotizaciones-us/nueva" className={linkClass("/cotizaciones-us/nueva")}>
-                    <FilePlus size={18} />
-                    New US Quote
-                  </Link>
-                </div>
-              </div>
+              <Seccion titulo={t("commercial")}>
+                <NavItem href="/cotizaciones" icon={LayoutDashboard}>{t("dashboard")}</NavItem>
+                <NavItem href="/cotizaciones/nueva" icon={FilePlus}>{t("newQuotation")}</NavItem>
+                <NavItem href="/cotizaciones-us" icon={LayoutDashboard}>US Standard Quotes</NavItem>
+                <NavItem href="/cotizaciones-us/nueva" icon={FilePlus}>New US Quote</NavItem>
+              </Seccion>
 
-              <div>
-                <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{t("management")}</p>
-                <div className="space-y-1">
-                  <Link href="/clientes" className={linkClass("/clientes")}>
-                    <Users size={18} />
-                    {t("clients")}
-                  </Link>
-                  <Link href="/servicios" className={linkClass("/servicios")}>
-                    <Tags size={18} />
-                    {t("ratesAndServices")}
-                  </Link>
-                </div>
-              </div>
+              <Seccion titulo={t("management")}>
+                <NavItem href="/clientes" icon={Users}>{t("clients")}</NavItem>
+                <NavItem href="/servicios" icon={Tags}>{t("ratesAndServices")}</NavItem>
+              </Seccion>
             </>
           )}
 
           {/* --- SECCIÓN FOOD SAFETY AUDIT --- */}
-          <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Auditoría (FSA)</p>
-            <div className="space-y-1">
-              <Link href="/food-safety-audit" className={linkClass("/food-safety-audit")}>
-                <ShieldCheck size={18} />
-                Food Safety Audit
-              </Link>
+          <Seccion titulo="Auditoría (FSA)">
+            <NavItem href="/food-safety-audit" icon={ShieldCheck}>Food Safety Audit</NavItem>
+            {esIngeniero && (
+              <NavItem href="/food-safety-audit/nuevo" icon={FilePlus}>{t("newReport")}</NavItem>
+            )}
+            {!esIngeniero && (
+              <NavItem href="/reportes" icon={BarChart3}>{t("salesMetrics")}</NavItem>
+            )}
+          </Seccion>
 
-              {esIngeniero && (
-                <Link href="/food-safety-audit/nuevo" className={linkClass("/food-safety-audit/nuevo")}>
-                  <FilePlus size={18} />
-                  {t("newReport")}
-                </Link>
-              )}
-
-              {!esIngeniero && (
-                <Link href="/reportes" className={linkClass("/reportes")}>
-                  <BarChart3 size={18} />
-                  {t("salesMetrics")}
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* --- SECCIÓN SISTEMA --- */}
-          {/* Visible para TODOS los roles: configuración de idioma, ayuda y soporte */}
-          <div>
-            <p className="px-3 text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{t("system")}</p>
-            <div className="space-y-1">
-              <Link href="/configuracion" className={linkClass("/configuracion")}>
-                <Settings size={18} />
-                {t("settings")}
-              </Link>
-              <Link href="/ayuda" className={linkClass("/ayuda")}>
-                <HelpCircle size={18} />
-                {t("helpAndSupport")}
-              </Link>
-            </div>
-          </div>
+          {/* --- SECCIÓN SISTEMA: visible para TODOS los roles --- */}
+          <Seccion titulo={t("system")}>
+            <NavItem href="/configuracion" icon={Settings}>{t("settings")}</NavItem>
+            <NavItem href="/ayuda" icon={HelpCircle}>{t("helpAndSupport")}</NavItem>
+          </Seccion>
 
           {/* --- SELECTOR DE IDIOMA --- */}
           <LanguageSwitcher />
-
         </nav>
 
-        {/* FOOTER */}
-        <div className="p-4 border-t border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
-          <div className="flex items-center gap-3 mb-3 px-1">
-            <div className="bg-white dark:bg-zinc-800 p-1.5 rounded-full border border-gray-200 dark:border-zinc-700">
-              <UserCircle className="text-gray-400" size={28} />
+        {/* FOOTER: usuario, tema y cierre de sesión */}
+        <div className="px-5 py-4 border-t border-sig-line dark:border-zinc-800 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-bold flex items-center justify-center shrink-0">
+              {iniciales}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate capitalize">
-                {usuario.nombre}
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate font-mono">
-                {usuario.rol || t("user")}
-              </p>
+            <div className="flex flex-col leading-tight min-w-0 flex-1">
+              <span className="text-[13px] font-semibold text-black dark:text-white truncate capitalize">{usuario.nombre}</span>
+              <span className="text-xs text-sig-muted truncate">{usuario.rol || t("user")}</span>
             </div>
+            <ThemeToggle />
           </div>
 
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 rounded-lg transition-all text-xs font-bold uppercase border border-gray-200 dark:border-zinc-700 hover:border-red-100 dark:hover:border-red-900 bg-white dark:bg-zinc-800">
-            <LogOut size={14} />
+          <button
+            onClick={handleLogout}
+            className="w-full h-9 flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-black dark:text-gray-200 border border-sig-line-strong dark:border-zinc-700 rounded text-sm font-semibold hover:bg-sig-sand dark:hover:bg-zinc-700 transition-colors"
+          >
+            <LogOut size={15} />
             {t("logout")}
           </button>
         </div>

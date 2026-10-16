@@ -94,7 +94,7 @@ export default function ServiciosPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
 
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -104,7 +104,7 @@ export default function ServiciosPage() {
           </div>
           <button
             onClick={() => abrirModal()}
-            className="bg-indigo-600 dark:bg-indigo-700 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
+            className="bg-indigo-600 dark:bg-indigo-700 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all flex items-center gap-2 font-semibold shadow-lg "
           >
             <Plus size={20} />
             {t("newService")}
@@ -119,11 +119,10 @@ export default function ServiciosPage() {
               onClick={() => setRegionTab(r)}
               className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
                 regionTab === r
-                  ? "bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30"
+                  ? "bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg "
                   : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-600"
               }`}
             >
-              <span>{r === "MX" ? "🇲🇽" : "🇺🇸"}</span>
               {r === "MX" ? "SIG México" : "SIG USA"}
             </button>
           ))}
@@ -144,8 +143,6 @@ export default function ServiciosPage() {
           {loading ? <p className="dark:text-gray-400">{t("loading")}</p> : serviciosFiltrados.map((servicio) => (
             <div key={servicio.id} className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-6 hover:shadow-md transition-all group relative overflow-hidden">
 
-              <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-bl-full -mr-4 -mt-4 z-0"></div>
-
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-1.5">
@@ -154,7 +151,7 @@ export default function ServiciosPage() {
                       {servicio.unidad}
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${servicio.region === 'US' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'}`}>
-                      {servicio.region === 'US' ? '🇺🇸' : '🇲🇽'}
+                      {servicio.region === 'US' ? 'US' : 'MX'}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -195,7 +192,7 @@ export default function ServiciosPage() {
       </div>
 
       {modalAbierto && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-transparent dark:border-zinc-800">
             <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -207,22 +204,22 @@ export default function ServiciosPage() {
             <form onSubmit={handleGuardar} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t("concept")}</label>
-                <input required className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all dark:placeholder-gray-500"
+                <input required className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all dark:placeholder-gray-500"
                   value={formData.concepto} onChange={e => setFormData({ ...formData, concepto: e.target.value })} />
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Región</label>
-                <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all appearance-none mb-4"
+                <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all appearance-none mb-4"
                   value={formData.region} onChange={e => setFormData({ ...formData, region: e.target.value })}>
-                  <option value="MX">🇲🇽 SIG México</option>
-                  <option value="US">🇺🇸 SIG USA</option>
+                  <option value="MX">SIG México</option>
+                  <option value="US">SIG USA</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
-                <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all appearance-none"
+                <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all appearance-none"
                   value={formData.categoria} onChange={e => setFormData({ ...formData, categoria: e.target.value })}>
                   <option value="Servicio Técnico">Servicio Técnico</option>
                   <option value="Servicio de Ingeniería Aséptica">Servicio de Ingeniería Aséptica</option>
@@ -232,7 +229,7 @@ export default function ServiciosPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t("unit")}</label>
-                  <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white"
+                  <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white"
                     value={formData.unidad} onChange={e => setFormData({ ...formData, unidad: e.target.value })}>
                     <option value="hora">{t("unitHour")}</option>
                     <option value="dia">{t("unitDay")}</option>
@@ -242,7 +239,7 @@ export default function ServiciosPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t("currency")}</label>
-                  <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white"
+                  <select className="w-full p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white"
                     value={formData.moneda} onChange={e => setFormData({ ...formData, moneda: e.target.value })}>
                     <option value="USD">USD</option>
                     <option value="MXN">MXN</option>
@@ -256,7 +253,7 @@ export default function ServiciosPage() {
                   <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-1">{t("standardPrice")}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-400 dark:text-gray-500">$</span>
-                    <input type="number" step="0.01" className="w-full pl-8 p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all"
+                    <input type="number" step="0.01" className="w-full pl-8 p-3 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white transition-all"
                       value={formData.precio_sin_contrato} onChange={e => setFormData({ ...formData, precio_sin_contrato: parseFloat(e.target.value) })} />
                   </div>
                 </div>
@@ -264,7 +261,7 @@ export default function ServiciosPage() {
                   <label className="block text-sm font-bold text-green-600 dark:text-green-400 mb-1">{t("contractPrice")}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-green-600 dark:text-green-400">$</span>
-                    <input type="number" step="0.01" className="w-full pl-8 p-3 border border-green-200 dark:border-green-800 rounded-xl outline-none focus:ring-2 focus:ring-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 font-bold"
+                    <input type="number" step="0.01" className="w-full pl-8 p-3 border border-green-200 dark:border-green-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 font-bold"
                       value={formData.precio_con_contrato} onChange={e => setFormData({ ...formData, precio_con_contrato: parseFloat(e.target.value) })} />
                   </div>
                 </div>

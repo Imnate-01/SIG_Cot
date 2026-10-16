@@ -176,7 +176,7 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
           <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-800">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("previewTitle")}</h2>
             <div className="flex items-center gap-3">
-              <button onClick={handleDownloadMerged} disabled={isMerging} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all disabled:opacity-50">
+              <button onClick={handleDownloadMerged} disabled={isMerging} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50">
                 {isMerging ? t("btnGenerating") : <><Download size={18} /> {reporteTecnico ? t("btnDownloadMerge") : t("btnDownload")}</>}
               </button>
               <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-gray-400"><X size={24} /></button>
@@ -208,15 +208,15 @@ export const ModalVistaPrevia: React.FC<ModalVistaPreviaProps> = ({ isOpen, onCl
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 text-center">{t("mergeNote")}</p>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-2"><Sparkles className="text-purple-600 dark:text-purple-400" /> {t("aiAssistant")}</h3>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-2"><Sparkles className="text-blue-600 dark:text-blue-400" /> {t("aiAssistant")}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t("aiAssistantDesc")}</p>
-            <button onClick={generarCorreo} disabled={generandoCorreo} className="w-full py-3 bg-purple-600 dark:bg-purple-700 text-white rounded-xl font-semibold flex justify-center items-center gap-2 hover:bg-purple-700 dark:hover:bg-purple-600 transition-all disabled:opacity-50">
+            <button onClick={generarCorreo} disabled={generandoCorreo} className="w-full py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-xl font-semibold flex justify-center items-center gap-2 hover:bg-blue-700 dark:hover:bg-blue-600 transition-all disabled:opacity-50">
               {generandoCorreo ? <span className="animate-pulse">{t("btnAiDrafting")}</span> : <><Mail size={18} /> {t("btnAiMail")}</>}
             </button>
             {correoGenerado && (
               <div className="mt-4 flex-1 flex flex-col animate-fadeIn">
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("aiDraftSuggested")}</label>
-                <textarea className="w-full h-48 p-4 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" value={correoGenerado} readOnly />
+                <textarea className="w-full h-48 p-4 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" value={correoGenerado} readOnly />
                 <button onClick={() => copiarAlPortapapeles(correoGenerado)} className="mt-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-600 dark:text-gray-300 font-medium hover:bg-white dark:hover:bg-zinc-800 flex justify-center items-center gap-2 transition-colors"><Copy size={16} /> {t("btnCopyText")}</button>
               </div>
             )}

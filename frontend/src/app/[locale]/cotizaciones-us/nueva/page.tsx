@@ -235,7 +235,7 @@ export default function NuevaCotizacionUsPage() {
           {/* Configuración de Tarifas */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
             <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-4">
-              <Settings className="text-purple-500" size={20}/> Field Service Rates (USD/Hr)
+              <Settings className="text-blue-500" size={20}/> Field Service Rates (USD/Hr)
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -273,9 +273,9 @@ export default function NuevaCotizacionUsPage() {
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <Truck className="text-orange-500" size={20}/> Travel Time
+                <Truck className="text-blue-600" size={20}/> Travel Time
               </h2>
-              <button onClick={addTravelLeg} className="text-sm bg-orange-100 text-orange-600 hover:bg-orange-200 px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium transition-colors">
+              <button onClick={addTravelLeg} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium transition-colors">
                 <Plus size={16}/> Agregar Leg
               </button>
             </div>
@@ -331,9 +331,9 @@ export default function NuevaCotizacionUsPage() {
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <Calendar className="text-indigo-500" size={20}/> Labor Schedule
+                <Calendar className="text-blue-500" size={20}/> Labor Schedule
               </h2>
-              <button onClick={addLaborDay} className="text-sm bg-indigo-100 text-indigo-600 hover:bg-indigo-200 px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium transition-colors">
+              <button onClick={addLaborDay} className="text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium transition-colors">
                 <Plus size={16}/> Agregar Día
               </button>
             </div>
@@ -381,7 +381,7 @@ export default function NuevaCotizacionUsPage() {
               )}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800 flex justify-end font-bold text-gray-800 dark:text-white">
-              Labor Subtotal: <span className="ml-2 text-indigo-600 dark:text-indigo-400">${formData.labor_subtotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+              Labor Subtotal: <span className="ml-2 text-blue-600 dark:text-blue-400">${formData.labor_subtotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
             </div>
           </div>
 
@@ -421,7 +421,7 @@ export default function NuevaCotizacionUsPage() {
 
       {/* Modal Vista Previa PDF */}
       {modalVistaPreviaAbierto && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 ">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-zinc-800">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">

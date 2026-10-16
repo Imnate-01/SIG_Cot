@@ -14,28 +14,28 @@ export default function LanguageSwitcher() {
     };
 
     return (
-        <div className="px-3 pt-2">
-            <p className="text-[11px] font-extrabold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+        <div className="px-2.5 pt-1">
+            <p className="text-[11px] font-bold text-sig-muted uppercase tracking-wider mb-1.5">
                 {t("label")}
             </p>
-            <div className="flex bg-gray-100 dark:bg-zinc-800 rounded-lg p-1 gap-1">
+            <div className="flex bg-white dark:bg-zinc-800 border border-sig-line dark:border-zinc-700 rounded p-0.5 gap-0.5">
                 <button
                     onClick={() => switchLocale("es")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-bold transition-all ${locale === "es"
-                            ? "bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-sm text-xs font-semibold transition-all ${locale === "es"
+                            ? "bg-sig-blue text-white"
+                            : "text-sig-muted hover:text-black dark:hover:text-gray-200"
                         }`}
                 >
-                    🇲🇽 ES
+                    ES
                 </button>
                 <button
                     onClick={() => switchLocale("en")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-bold transition-all ${locale === "en"
-                            ? "bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-sm text-xs font-semibold transition-all ${locale === "en"
+                            ? "bg-sig-blue text-white"
+                            : "text-sig-muted hover:text-black dark:hover:text-gray-200"
                         }`}
                 >
-                    🇺🇸 EN
+                    EN
                 </button>
             </div>
         </div>

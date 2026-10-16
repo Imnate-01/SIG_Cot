@@ -522,7 +522,7 @@ const NuevaCotizacionPage: React.FC = () => {
   }, [maquinasCliente, shipToSeleccionadoId]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-6">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-blue-600 dark:border-blue-500">
           <div className="flex items-center justify-between mb-4">
@@ -539,8 +539,8 @@ const NuevaCotizacionPage: React.FC = () => {
         {/* Bloque de Identificación (Descripción) */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
-              <FileText className="text-amber-600 dark:text-amber-400" size={24} />
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+              <FileText className="text-blue-600 dark:text-blue-400" size={24} />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
@@ -563,7 +563,7 @@ const NuevaCotizacionPage: React.FC = () => {
               value={formData.descripcion}
               onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
               placeholder={t("identPlaceholder")}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-amber-500 focus:outline-none transition-colors"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors"
             />
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex justify-between">
               <span>
@@ -593,7 +593,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 // Re-fetch tarifas for the selected region
                 fetchTarifasByRegion(val);
               }}
-              className="premium-select w-full md:w-1/2 lg:w-1/3 px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors"
+              className="premium-select w-full md:w-1/2 lg:w-1/3 px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"
             >
               <option value="MX">{t("entityMX")}</option>
               <option value="US">{t("entityUS")}</option>
@@ -620,13 +620,13 @@ const NuevaCotizacionPage: React.FC = () => {
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl"><User className="text-green-600 dark:text-green-400" size={24} /></div>
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><User className="text-blue-600 dark:text-blue-400" size={24} /></div>
             <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("billTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("billSubtitle")}</p></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("client")}</label>
-              <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+              <select value={clienteSeleccionadoId} onChange={(e) => handleSelectCliente(e.target.value)} className="premium-select w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
                 <option value="">{t("selectClient")}</option>
                 {clientesDisponibles
                   .filter((c) => {
@@ -642,7 +642,7 @@ const NuevaCotizacionPage: React.FC = () => {
             {direccionesSoldTo.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("billToSoldTo")}</label>
-                <select value={soldToSeleccionadoId} onChange={(e) => handleSelectSoldTo(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
+                <select value={soldToSeleccionadoId} onChange={(e) => handleSelectSoldTo(e.target.value)} className="premium-select w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
                   <option value="">{t("selectBusinessName")}</option>
                   {direccionesSoldTo.map((d) => (
                     <option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>
@@ -653,20 +653,20 @@ const NuevaCotizacionPage: React.FC = () => {
           </div>
 
           {modoNuevoCliente && (
-            <div className="mb-6 bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 animate-fadeIn">
-              <h3 className="text-sm font-bold text-purple-800 dark:text-purple-300 flex items-center gap-2 mb-2"><Wand2 size={16} /> {t("aiAutofill")}</h3>
-              <p className="text-xs text-purple-600 dark:text-purple-400 mb-3">{t("aiAutofillDesc")}</p>
+            <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 animate-fadeIn">
+              <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300 flex items-center gap-2 mb-2"><Wand2 size={16} /> {t("aiAutofill")}</h3>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">{t("aiAutofillDesc")}</p>
               <textarea
                 value={textoClienteSucio}
                 onChange={(e) => setTextoClienteSucio(e.target.value)}
-                className="w-full p-3 text-sm border border-purple-200 dark:border-purple-800 dark:bg-zinc-800 dark:text-gray-200 rounded-lg mb-3 focus:outline-none focus:border-purple-500"
+                className="w-full p-3 text-sm border border-blue-200 dark:border-blue-800 dark:bg-zinc-800 dark:text-gray-200 rounded-lg mb-3 focus:outline-none focus:border-blue-500"
                 placeholder={t("aiAutofillPlaceholder")}
                 rows={3}
               />
               <button
                 onClick={extraerDatosCliente}
                 disabled={extrayendoCliente || !textoClienteSucio}
-                className="bg-purple-600 dark:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-all disabled:opacity-50"
+                className="bg-blue-600 dark:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-all disabled:opacity-50"
               >
                 {extrayendoCliente ? t("aiAnalyzing") : t("aiExtract")}
               </button>
@@ -674,21 +674,21 @@ const NuevaCotizacionPage: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("clientName")}</label><input type="text" value={formData.facturarA.nombre} onChange={(e) => handleFacturarFieldChange("nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("clientNamePlaceholder")} /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.facturarA.direccion} onChange={(e) => handleFacturarFieldChange("direccion", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.facturarA.colonia} onChange={(e) => handleFacturarFieldChange("colonia", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.facturarA.ciudad} onChange={(e) => handleFacturarFieldChange("ciudad", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.facturarA.cp} onChange={(e) => handleFacturarFieldChange("cp", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
+            <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("clientName")}</label><input type="text" value={formData.facturarA.nombre} onChange={(e) => handleFacturarFieldChange("nombre", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("clientNamePlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.facturarA.direccion} onChange={(e) => handleFacturarFieldChange("direccion", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.facturarA.colonia} onChange={(e) => handleFacturarFieldChange("colonia", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.facturarA.ciudad} onChange={(e) => handleFacturarFieldChange("ciudad", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.facturarA.cp} onChange={(e) => handleFacturarFieldChange("cp", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-xl"><MapPin className="text-teal-600 dark:text-teal-400" size={24} /></div>
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><MapPin className="text-blue-600 dark:text-blue-400" size={24} /></div>
             <div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("shipTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("shipSubtitle")}</p></div>
           </div>
-          <div className="mb-6 bg-teal-50 dark:bg-teal-900/10 p-4 rounded-xl border border-teal-100 dark:border-teal-900/30 flex items-center gap-3 transition-all hover:border-teal-300 dark:hover:border-teal-700 cursor-pointer" onClick={toggleShipToMismo}>
-            <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${formData.shipToMismoQueFacturar ? 'bg-teal-600 border-teal-600 dark:bg-teal-500 dark:border-teal-500' : 'bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-600'}`}>{formData.shipToMismoQueFacturar && <CheckSquare size={16} className="text-white" />}</div>
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 flex items-center gap-3 transition-all hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer" onClick={toggleShipToMismo}>
+            <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${formData.shipToMismoQueFacturar ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500' : 'bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-600'}`}>{formData.shipToMismoQueFacturar && <CheckSquare size={16} className="text-white" />}</div>
             <span className="text-gray-700 dark:text-gray-300 font-semibold select-none">{t("shipSameAsBill")}</span>
           </div>
           {!formData.shipToMismoQueFacturar && (
@@ -697,7 +697,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   {direccionesShipTo.length > 0 ? t("selectPlantShipTo") : t("shipSelectKnown")}
                 </label>
-                <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-teal-500 focus:outline-none transition-colors">
+                <select value={shipToSeleccionadoId} onChange={(e) => handleSelectShipTo(e.target.value)} className="premium-select w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-zinc-800 focus:border-blue-500 focus:outline-none transition-colors">
                   <option value="">{t("shipSelectPlaceholder")}</option>
                   {direccionesShipTo.length > 0
                     ? direccionesShipTo.map(d => (<option key={d.id} value={d.id}>{d.empresa_planta_nombre} - {d.ciudad}</option>))
@@ -706,11 +706,11 @@ const NuevaCotizacionPage: React.FC = () => {
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("shipNamePlant")}</label><input type="text" value={formData.shipTo.nombre} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, nombre: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("shipNamePlaceholder")} /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.shipTo.direccion} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, direccion: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.shipTo.colonia} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, colonia: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.shipTo.ciudad} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, ciudad: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.shipTo.cp} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, cp: e.target.value } }))} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-teal-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
+                <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("shipNamePlant")}</label><input type="text" value={formData.shipTo.nombre} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, nombre: e.target.value } }))} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("shipNamePlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("address")}</label><input type="text" value={formData.shipTo.direccion} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, direccion: e.target.value } }))} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("addressPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("neighborhood")}</label><input type="text" value={formData.shipTo.colonia} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, colonia: e.target.value } }))} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("neighborhoodPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("city")}</label><input type="text" value={formData.shipTo.ciudad} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, ciudad: e.target.value } }))} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("cityPlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("zipCode")}</label><input type="text" value={formData.shipTo.cp} onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, cp: e.target.value } }))} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("zipPlaceholder")} /></div>
               </div>
             </div>
           )}
@@ -728,24 +728,24 @@ const NuevaCotizacionPage: React.FC = () => {
               </select>
             </div>
             <div className="space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoPrincipal.nombre} onChange={(e) => handleInputChange("contactoPrincipal", "nombre", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder={t("namePlaceholder")} /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoPrincipal.email} onChange={(e) => handleInputChange("contactoPrincipal", "email", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="correo@sig.biz" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoPrincipal.telefono} onChange={(e) => handleInputChange("contactoPrincipal", "telefono", e.target.value)} className={`w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="+52 55 1234 5678" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoPrincipal.nombre} onChange={(e) => handleInputChange("contactoPrincipal", "nombre", e.target.value)} className={`w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder={t("namePlaceholder")} /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoPrincipal.email} onChange={(e) => handleInputChange("contactoPrincipal", "email", e.target.value)} className={`w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="correo@sig.biz" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoPrincipal.telefono} onChange={(e) => handleInputChange("contactoPrincipal", "telefono", e.target.value)} className={`w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors ${usuarioSeleccionadoId ? 'bg-gray-50 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-800'}`} placeholder="+52 55 1234 5678" /></div>
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8">
             <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">{t("secondaryContact")}</h3>
             <div className="space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoSecundario.nombre} onChange={(e) => handleInputChange("contactoSecundario", "nombre", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("namePlaceholder")} /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoSecundario.email} onChange={(e) => handleInputChange("contactoSecundario", "email", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="correo@cliente.com" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoSecundario.telefono} onChange={(e) => handleInputChange("contactoSecundario", "telefono", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="+52 55 1234 5678" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("name")}</label><input type="text" value={formData.contactoSecundario.nombre} onChange={(e) => handleInputChange("contactoSecundario", "nombre", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("namePlaceholder")} /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("email")}</label><input type="email" value={formData.contactoSecundario.email} onChange={(e) => handleInputChange("contactoSecundario", "email", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="correo@cliente.com" /></div>
+              <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("phone")}</label><input type="tel" value={formData.contactoSecundario.telefono} onChange={(e) => handleInputChange("contactoSecundario", "telefono", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder="+52 55 1234 5678" /></div>
             </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3"><div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl"><FileText className="text-purple-600 dark:text-purple-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("serviceTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("serviceSubtitle")}</p></div></div>
+            <div className="flex items-center gap-3"><div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><FileText className="text-blue-600 dark:text-blue-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("serviceTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("serviceSubtitle")}</p></div></div>
             <button onClick={agregarLineaServicio} className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg">{t("addConcept")}</button>
           </div>
           <div className="space-y-6">
@@ -759,7 +759,7 @@ const NuevaCotizacionPage: React.FC = () => {
                 <div key={item.id} className="border border-gray-200 dark:border-zinc-700 rounded-xl p-5 bg-gray-50 dark:bg-zinc-800/50 relative">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
                     <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("serviceConcept")}</label>
-                      <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="premium-select w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
+                      <select value={item.tarifaId} onChange={(e) => actualizarLineaServicio(item.id, "tarifaId", e.target.value)} className="premium-select w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800">
                         <option value="">{t("selectRate")}</option>
                         {/* RENDERIZADO DINÁMICO POR TIPOS */}
                         <optgroup label={t("categoryTechService")}>
@@ -773,8 +773,8 @@ const NuevaCotizacionPage: React.FC = () => {
                         </optgroup>
                       </select>
                     </div>
-                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("numEngineers")}</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>}
-                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{tarifa?.unidad === "dia" ? t("totalDays") : t("totalHours")}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border-2 border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>}
+                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t("numEngineers")}</label><input type="number" min={1} value={item.ingenieros} onChange={(e) => actualizarLineaServicio(item.id, "ingenieros", e.target.value)} className="w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-center text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none bg-white dark:bg-zinc-800" /></div>}
+                    {!esCostoVuelo && <div><label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{tarifa?.unidad === "dia" ? t("totalDays") : t("totalHours")}</label><input type="number" min={1} value={item.cantidad} onChange={(e) => !esViaje && actualizarLineaServicio(item.id, "cantidad", e.target.value)} readOnly={!!esViaje} className={`w-full px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none ${esViaje ? 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-400' : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white'}`} /></div>}
                   </div>
                   {esViaje && (
                     <div className="mb-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-4 rounded-lg animate-fadeIn">
@@ -829,22 +829,22 @@ const NuevaCotizacionPage: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6">
-          <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl"><Calculator className="text-orange-600 dark:text-orange-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
+          <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><Calculator className="text-blue-600 dark:text-blue-400" size={24} /></div><div><h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("conditionsTitle")}</h2><p className="text-sm text-gray-500 dark:text-gray-400">{t("conditionsSubtitle")}</p></div></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {formData.condiciones.entidad !== "US" ? (
               <>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("priceNote")}</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("priceNotePlaceholder")} /></div>
-                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="premium-select w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("priceNote")}</label><input type="text" value={formData.condiciones.precios} onChange={(e) => handleInputChange("condiciones", "precios", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("priceNotePlaceholder")} /></div>
+                <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("currency")}</label><select value={formData.condiciones.moneda} onChange={(e) => handleInputChange("condiciones", "moneda", e.target.value)} className="premium-select w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select></div>
               </>
             ) : (
               <>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("scopeOfVisit")}</label>
-                  <input type="text" value={formData.condiciones.scopeOfVisit || ""} onChange={(e) => handleInputChange("condiciones", "scopeOfVisit", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("scopeOfVisitPlaceholder")} />
+                  <input type="text" value={formData.condiciones.scopeOfVisit || ""} onChange={(e) => handleInputChange("condiciones", "scopeOfVisit", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("scopeOfVisitPlaceholder")} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("equipmentToService")}</label>
-                  <input type="text" value={formData.condiciones.equipmentToService || ""} onChange={(e) => handleInputChange("condiciones", "equipmentToService", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("equipmentToServicePlaceholder")} />
+                  <input type="text" value={formData.condiciones.equipmentToService || ""} onChange={(e) => handleInputChange("condiciones", "equipmentToService", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("equipmentToServicePlaceholder")} />
                 </div>
               </>
             )}
@@ -858,11 +858,11 @@ const NuevaCotizacionPage: React.FC = () => {
                   placeholder={shipToSeleccionadoId ? t("searchMachineInPlant") : t("selectShipToFilter")}
                 />
               ) : (
-                <textarea rows={2} value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={formData.condiciones.entidad === "US" ? t("machinePlaceholderUS") : t("machinePlaceholder")} />
+                <textarea rows={2} value={formData.condiciones.maquina} onChange={(e) => handleInputChange("condiciones", "maquina", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors" placeholder={formData.condiciones.entidad === "US" ? t("machinePlaceholderUS") : t("machinePlaceholder")} />
               )}
               {shipToSeleccionadoId && maquinasFiltradas.length > 0 && (
-                <p className="text-xs text-teal-600 dark:text-teal-400 mt-1.5 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block"></span>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
                   {t("showingMachinesCount", { count: maquinasFiltradas.length })}
                 </p>
               )}
@@ -870,18 +870,18 @@ const NuevaCotizacionPage: React.FC = () => {
             <div className="md:col-span-2">
               <div className="flex justify-between items-end mb-2">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">{t("observations")}</label>
-                <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className={`text-xs flex items-center gap-1 px-3 py-1 rounded-full transition-all font-bold ${mejorandoTexto ? "bg-purple-100 dark:bg-purple-900/30 text-purple-400 cursor-wait" : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 hover:scale-105"}`}>
+                <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className={`text-xs flex items-center gap-1 px-3 py-1 rounded-full transition-all font-bold ${mejorandoTexto ? "bg-blue-100 dark:bg-blue-900/30 text-blue-400 cursor-wait" : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 "}`}>
                   <Sparkles size={14} /> {mejorandoTexto ? t("improvingText") : t("improveAI")}
                 </button>
               </div>
-              <textarea rows={4} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors resize-none" placeholder={t("observationsPlaceholder")} />
+              <textarea rows={4} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none transition-colors resize-none" placeholder={t("observationsPlaceholder")} />
             </div>
 
             {formData.condiciones.entidad === "US" && (
               <>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("paymentTerms")}</label>
-                  <input type="text" value={formData.condiciones.paymentTerms || ""} onChange={(e) => handleInputChange("condiciones", "paymentTerms", e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("paymentTermsPlaceholder")} />
+                  <input type="text" value={formData.condiciones.paymentTerms || ""} onChange={(e) => handleInputChange("condiciones", "paymentTerms", e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none transition-colors" placeholder={t("paymentTermsPlaceholder")} />
                 </div>
               </>
             )}
@@ -892,10 +892,10 @@ const NuevaCotizacionPage: React.FC = () => {
           <button className="px-6 py-3 border-2 border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all font-semibold">
             {t("btnCancel")}
           </button>
-          {/* ✅ NUEVA UBICACIÓN DEL BOTÓN DE VISTA PREVIA */}
+          {/* Botón de vista previa */}
           <button
             onClick={() => setModalVistaPreviaAbierto(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg font-semibold"
+            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-zinc-800 text-black dark:text-white border border-sig-line-strong dark:border-zinc-700 rounded-xl hover:bg-sig-sand dark:hover:bg-zinc-700 transition-colors font-semibold"
           >
             <Eye size={20} /> {t("btnPreview")}
           </button>
@@ -903,7 +903,7 @@ const NuevaCotizacionPage: React.FC = () => {
           <button
             onClick={handleGuardar}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 dark:bg-green-700 text-white rounded-xl hover:bg-green-700 dark:hover:bg-green-600 transition-all shadow-md hover:shadow-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all shadow-md hover:shadow-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save size={20} />
             {loading ? t("btnSaving") : t("btnSave")}

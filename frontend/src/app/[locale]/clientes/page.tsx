@@ -190,7 +190,7 @@ export default function ClientesPage() {
   const conteoUS = clientes.filter(c => c.pais === "US" || c.pais === "CA").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div>
@@ -206,7 +206,7 @@ export default function ClientesPage() {
           </div>
           <button
             onClick={() => abrirModal()}
-            className="bg-blue-600 dark:bg-blue-700 text-white px-5 py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-blue-200 dark:shadow-blue-900/20"
+            className="bg-blue-600 dark:bg-blue-700 text-white px-5 py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-all flex items-center gap-2 font-semibold shadow-lg "
           >
             <Plus size={20} />
             {t("newClient")}
@@ -257,8 +257,8 @@ export default function ClientesPage() {
                     </div>
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full border inline-block whitespace-nowrap"
                       style={(!cliente.pais || cliente.pais === "MX")
-                        ? { background: "#e8f5e9", color: "#2e7d32", borderColor: "#a5d6a7" }
-                        : { background: "#e3f2fd", color: "#1565c0", borderColor: "#90caf9" }
+                        ? { background: "#E4F1ED", color: "#115E50", borderColor: "#A3D0C5" }
+                        : { background: "#EEF3FF", color: "#0B4FE0", borderColor: "#9BB9FD" }
                       }>
                       {(!cliente.pais || cliente.pais === "MX") ? "MX" : "US"}
                     </span>
@@ -319,7 +319,7 @@ export default function ClientesPage() {
       </div>
 
       {modalAbierto && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-transparent dark:border-zinc-800">
             <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center sticky top-0 bg-white dark:bg-zinc-900 z-10 transition-colors">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">

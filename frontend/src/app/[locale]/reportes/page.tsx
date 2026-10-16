@@ -44,9 +44,9 @@ function computeMetrics(rawCotizaciones: any[]) {
     .sort((a: any, b: any) => b.value - a.value)
     .slice(0, 5);
   const pieData = [
-    { name: "Ganadas", value: conteoPorEstado.aceptada, color: "#10B981" },
-    { name: "Pendientes", value: conteoPorEstado.borrador, color: "#F59E0B" },
-    { name: "Perdidas", value: conteoPorEstado.rechazada, color: "#EF4444" },
+    { name: "Ganadas", value: conteoPorEstado.aceptada, color: "#167665" },
+    { name: "Pendientes", value: conteoPorEstado.borrador, color: "#A09B05" },
+    { name: "Perdidas", value: conteoPorEstado.rechazada, color: "#C4262E" },
   ];
 
   return {
@@ -153,7 +153,7 @@ export default function ReportesPage() {
   const formatMoney = (val: number) => `$${(val / 1000).toFixed(0)}k`;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 p-8">
       <div className="max-w-7xl mx-auto">
 
         {/* Header + Country Selector */}
@@ -177,7 +177,7 @@ export default function ReportesPage() {
                       : "bg-white dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-blue-400"
                   }`}
                 >
-                  {p === "todos" ? `🌎 ${tCommon("allRegions")}` : p === "MX" ? tCommon("mxOnly") : tCommon("usOnly")}
+                  {p === "todos" ? `${tCommon("allRegions")}` : p === "MX" ? tCommon("mxOnly") : tCommon("usOnly")}
                 </button>
               ))}
             </div>
@@ -185,7 +185,7 @@ export default function ReportesPage() {
         </div>
 
         {/* AI Panel */}
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-100 dark:border-purple-800 p-6 rounded-2xl mb-8 relative overflow-hidden transition-all">
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 p-6 rounded-2xl mb-8 relative overflow-hidden transition-all">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
             <Brain size={120} className="text-purple-600" />
           </div>
@@ -201,7 +201,7 @@ export default function ReportesPage() {
                 <p className="text-gray-600 dark:text-gray-300 max-w-2xl">{t("aiDesc")}</p>
                 <button
                   onClick={() => setShowInput(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg dark:shadow-none transition-all flex items-center gap-2"
                 >
                   <Brain size={18} /> {t("aiBtn")}
                 </button>
@@ -217,7 +217,7 @@ export default function ReportesPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("aiQuestionPlaceholder")}
-                  className="w-full p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-white/80 dark:bg-black/40 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none mb-4 min-h-[100px]"
+                  className="w-full p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-white/80 dark:bg-black/40 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none mb-4 min-h-[100px]"
                   disabled={generating}
                 />
                 <div className="flex gap-3">
@@ -308,8 +308,8 @@ export default function ReportesPage() {
           <CardKPI
             title={t("kpiTotalQuotes")}
             value={data.kpis.totalCotizaciones}
-            icon={<AlertCircle className="text-orange-600 dark:text-orange-400" />}
-            color="bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800"
+            icon={<AlertCircle className="text-gray-600 dark:text-gray-300" />}
+            color="bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700"
           />
         </div>
 
@@ -327,18 +327,18 @@ export default function ReportesPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" className="opacity-30" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#9CA3AF" }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatMoney} tick={{ fill: "#9CA3AF" }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#BFBAB5" className="opacity-30" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#9C9894" }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatMoney} tick={{ fill: "#9C9894" }} />
                   <Tooltip
                     contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)", backgroundColor: "#18181b", color: "#fff" }}
                     itemStyle={{ color: "#fff" }}
                     formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`, ""] : ["", ""]}
                   />
                   <Legend />
-                  <Bar dataKey="cotizado" name={t("chartQuoted")} fill="#93C5FD" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="ganado" name={t("chartWon")} fill="#2563EB" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pronostico" name={t("chartForecast")} fill="#A855F7" radius={[4, 4, 0, 0]} strokeDasharray="5 5" />
+                  <Bar dataKey="cotizado" name={t("chartQuoted")} fill="#C9D9FE" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ganado" name={t("chartWon")} fill="#145EFC" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pronostico" name={t("chartForecast")} fill="#73706D" radius={[4, 4, 0, 0]} strokeDasharray="5 5" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -411,7 +411,7 @@ export default function ReportesPage() {
 
 function CardKPI({ title, value, icon, color }: any) {
   return (
-    <div className={`p-6 rounded-2xl border ${color} flex items-start justify-between transition-transform hover:-translate-y-1`}>
+    <div className={`p-6 rounded-2xl border ${color} flex items-start justify-between transition-transform `}>
       <div>
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">{title}</p>
         <h3 className="text-2xl font-bold text-gray-800 dark:text-white">{value}</h3>

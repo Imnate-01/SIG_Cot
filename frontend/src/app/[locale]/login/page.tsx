@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 import Image from "next/image";
+import AuthShell, { campoClase } from "@/components/auth/AuthShell";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 /**
@@ -152,7 +153,7 @@ function LoginInner() {
             id="email"
             type="email"
             autoComplete="username"
-            className="h-10 w-full rounded border border-sig-line-strong bg-white px-3 text-sm text-sig-ink placeholder:text-sig-muted/70 outline-none transition-shadow focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
+            className={campoClase}
             placeholder={t("emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -168,7 +169,7 @@ function LoginInner() {
               id="password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              className="h-10 w-full rounded border border-sig-line-strong bg-white px-3 pr-10 text-sm text-sig-ink placeholder:text-sig-muted/70 outline-none transition-shadow focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
+              className={`${campoClase} pr-10`}
               placeholder={t("passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -233,49 +234,23 @@ function LoginInner() {
   );
 }
 
-// ─── Panel lateral con la identidad SIG (solo escritorio) ────────────────────
-function LoginSidePanel() {
-  const t = useTranslations("Login");
-  const modulos = [t("moduleQuotes"), t("moduleReports"), t("moduleFsa")];
-  return (
-    <aside className="hidden w-[400px] flex-none flex-col border-r border-sig-line bg-sig-sand p-10 md:flex">
-      <div>
-        <Image src="/sig-logo.webp" alt="SIG" width={74} height={48} priority unoptimized className="h-12 w-auto" />
-        <div className="mt-6">
-          <p className="text-xl font-bold text-sig-ink">{t("appName")}</p>
-          <p className="text-sm text-sig-muted">{t("appTagline")}</p>
-        </div>
-      </div>
-
-      <ul className="mt-12 border-t border-sig-line">
-        {modulos.map((m) => (
-          <li key={m} className="flex items-center gap-3 border-b border-sig-line py-3 text-sm text-sig-ink">
-            <span className="h-1.5 w-1.5 flex-none rounded-full bg-sig-blue" aria-hidden />
-            {m}
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-auto text-xs text-sig-muted">{t("internalUse")}</p>
-    </aside>
-  );
-}
-
 // ─── Export default: envuelve LoginInner en <Suspense> ───────────────────────
 // Next.js App Router requiere Suspense alrededor de cualquier componente
 // que use useSearchParams() para poder pre-renderizar la página en el build.
 export default function LoginPage() {
+  const t = useTranslations("Login");
   return (
-    // La identidad SIG es de fondo claro: el login no cambia con el modo oscuro
-    <div className="flex min-h-screen bg-white font-sig text-sig-ink">
-      <LoginSidePanel />
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <Suspense
-          fallback={<Loader2 size={24} className="animate-spin text-sig-blue" aria-label="Cargando" />}
-        >
-          <LoginInner />
-        </Suspense>
-      </main>
-    </div>
+    <AuthShell
+      appName={t("appName")}
+      appTagline={t("appTagline")}
+      items={[t("moduleQuotes"), t("moduleReports"), t("moduleFsa")]}
+      footer={t("internalUse")}
+    >
+      <Suspense
+        fallback={<Loader2 size={24} className="animate-spin text-sig-blue" aria-label="Cargando" />}
+      >
+        <LoginInner />
+      </Suspense>
+    </AuthShell>
   );
 }

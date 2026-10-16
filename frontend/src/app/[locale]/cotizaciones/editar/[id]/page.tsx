@@ -389,7 +389,7 @@ const EditarCotizacionPage: React.FC = () => {
     const totalServicios = subtotalServicios;
 
     if (initialLoading) return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center">
+        <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 <p className="text-gray-600 dark:text-gray-300 font-medium">Cargando datos de cotización...</p>
@@ -398,7 +398,7 @@ const EditarCotizacionPage: React.FC = () => {
     )
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-6">
+        <div className="min-h-screen bg-white dark:bg-zinc-950 p-6">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6">
                     <Link href={`/cotizaciones/${id}`} className="flex items-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors mb-4">
@@ -406,13 +406,13 @@ const EditarCotizacionPage: React.FC = () => {
                     </Link>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-amber-500">
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 mb-6 border-t-4 border-blue-600">
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Editar Cotización</h1>
                             <p className="text-gray-500 dark:text-gray-400">Modificando cotización folio: <b>{folioGenerado}</b></p>
                         </div>
-                        <div className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-4 py-2 rounded-full font-bold text-sm">
+                        <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full font-bold text-sm">
                             Modo Edición
                         </div>
                     </div>
@@ -630,7 +630,7 @@ const EditarCotizacionPage: React.FC = () => {
                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Condiciones</h3>
                     <textarea rows={3} value={formData.condiciones.observaciones} onChange={(e) => handleInputChange("condiciones", "observaciones", e.target.value)} className="w-full p-3 border border-gray-300 dark:border-zinc-700 rounded-xl text-sm mb-2 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Observaciones..." />
                     <div className="flex gap-2">
-                        <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Sparkles size={12} /> Mejorar con IA</button>
+                        <button onClick={mejorarObservaciones} disabled={mejorandoTexto} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Sparkles size={12} /> Mejorar con IA</button>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
@@ -652,7 +652,7 @@ const EditarCotizacionPage: React.FC = () => {
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-6 flex justify-end gap-4 border border-gray-200 dark:border-zinc-800">
                     <button onClick={() => router.push(`/cotizaciones/${id}`)} className="px-6 py-3 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancelar</button>
                     <button onClick={() => setModalVistaPreviaAbierto(true)} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 flex items-center gap-2 transition-colors"><Eye size={20} /> Vista Previa</button>
-                    <button onClick={handleGuardar} disabled={loading} className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 flex items-center gap-2 font-bold shadow-lg disabled:opacity-60 transition-colors">{loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Guardando...</> : <><Save size={18} /> Guardar Cambios</>}</button>
+                    <button onClick={handleGuardar} disabled={loading} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 flex items-center gap-2 font-bold shadow-lg disabled:opacity-60 transition-colors">{loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Guardando...</> : <><Save size={18} /> Guardar Cambios</>}</button>
                 </div>
 
             </div>

@@ -116,7 +116,7 @@ const MachineCombobox: React.FC<MachineComboboxProps> = ({
           transition-all duration-200 cursor-text
           ${disabled ? "bg-gray-100 dark:bg-zinc-800/50 cursor-not-allowed opacity-60" : "bg-white dark:bg-zinc-800"}
           ${isOpen
-            ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10 shadow-lg shadow-blue-500/5"
+            ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10 shadow-lg "
             : "border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600"
           }
         `}
@@ -229,7 +229,7 @@ const MachineCombobox: React.FC<MachineComboboxProps> = ({
                   `}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-500 flex items-center justify-center shrink-0 shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
                     <Cpu size={14} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
