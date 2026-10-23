@@ -15,6 +15,12 @@ describe('firmantes', () => {
     expect(puestoFirmante('Julio', '')).toBe(PUESTO_PREDETERMINADO);
     expect(puestoFirmante(undefined)).toBe(PUESTO_PREDETERMINADO);
   });
+  it('Geo: usa su firma y conserva el puesto registrado', () => {
+    expect(imagenFirma('Geo Pérez')).toBe('/geo_firma.png');
+    expect(imagenFirma('GEO')).toBe('/geo_firma.png');
+    expect(puestoFirmante('Geo', 'Gerente de Servicio')).toBe('Gerente de Servicio');
+    expect(puestoFirmante('Geo', '')).toBe(PUESTO_PREDETERMINADO);
+  });
   it('firma predeterminada para cualquier otro nombre', () => {
     expect(imagenFirma('Julio Ruiz')).toBe(FIRMA_PREDETERMINADA);
     expect(imagenFirma('')).toBe(FIRMA_PREDETERMINADA);

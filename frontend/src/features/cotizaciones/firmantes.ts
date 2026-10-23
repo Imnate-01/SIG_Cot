@@ -12,7 +12,8 @@
 export interface Firmante {
   /** Fragmentos de nombre (en minúsculas) que identifican al firmante. */
   coincidencias: string[];
-  puesto: string;
+  /** Si se omite, se usa el puesto registrado del usuario (o el predeterminado). */
+  puesto?: string;
   /** Ruta de la imagen de firma dentro de /public. */
   firma: string;
 }
@@ -20,6 +21,8 @@ export interface Firmante {
 export const FIRMANTES: Firmante[] = [
   { coincidencias: ["eduardo"], puesto: "Back Office Manager", firma: "/eduardo_firma.png" },
   { coincidencias: ["santoyo", "jonh", "john"], puesto: "Service Sales Manager", firma: "/santoyo.png" },
+  // Geo: sin puesto fijo; se muestra el puesto registrado en su usuario.
+  { coincidencias: ["geo"], firma: "/geo_firma.png" },
 ];
 
 export const FIRMA_PREDETERMINADA = "/firma_julio.png";
