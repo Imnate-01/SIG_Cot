@@ -471,6 +471,7 @@
     "categoryAseptic": "Aseptic Engineering Service",
     "categoryTravelExpenses": "Travel Expenses",
     "manualPrice": "Manual Price",
+    "manualPriceNotice": "Manual price is on: it does not change when you pick With or Without contract. Turn it off to use the catalog price.",
     "specialRate": "(Special Rate)",
     "scopeOfVisit": "Scope of visit",
     "scopeOfVisitPlaceholder": "Enter scope of visit...",
