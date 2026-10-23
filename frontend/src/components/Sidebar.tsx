@@ -19,6 +19,7 @@ import {
   X,
   ShieldCheck,
   UserCog,
+  ClipboardCheck,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
@@ -36,6 +37,8 @@ const RUTAS_MENU = [
   "/food-safety-audit/nuevo",
   "/food-safety-audit",
   "/reportes",
+  "/pm/nuevo",
+  "/pm",
   "/usuarios",
   "/configuracion",
   "/ayuda",
@@ -212,6 +215,12 @@ export default function Sidebar() {
               </Seccion>
             </>
           )}
+
+          {/* --- PM TRACKER: visible para TODOS los roles --- */}
+          <Seccion titulo={t("pmTracker")}>
+            <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
+            <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
+          </Seccion>
 
           {/* --- SECCIÓN FOOD SAFETY AUDIT --- */}
           <Seccion titulo="Auditoría (FSA)">

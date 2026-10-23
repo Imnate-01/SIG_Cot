@@ -20,6 +20,7 @@ import tarifasClienteRoutes from './routes/tarifas-cliente.routes';
 import cotizacionesUsRoutes from './routes/cotizaciones-us.routes';
 import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
 import adminUsuariosRoutes from './routes/admin-usuarios.routes';
+import pmRoutes from './routes/pm.routes';
 import { requireAuth } from './middlewares/requireAuth';
 import { responderError } from './utils/http';
 const app = express();
@@ -79,6 +80,7 @@ app.use('/api/tarifas-cliente', requireAuth, tarifasClienteRoutes);
 app.use('/api/cotizaciones-us', requireAuth, cotizacionesUsRoutes);
 app.use('/api/food-safety-audit', requireAuth, foodSafetyAuditRoutes);
 app.use('/api/admin/usuarios', requireAuth, adminUsuariosRoutes);
+app.use('/api/pm', requireAuth, pmRoutes);
 
 // Ruta inexistente → JSON (antes respondía una página HTML)
 app.use('/api', (_req, res) => {
