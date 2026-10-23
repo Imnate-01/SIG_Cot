@@ -471,6 +471,7 @@
     "categoryAseptic": "Servicio de Ingeniería Aséptica",
     "categoryTravelExpenses": "Gastos de Viaje",
     "manualPrice": "Precio Manual",
+    "manualPriceNotice": "Precio manual activo: no cambia al elegir Con o Sin contrato. Desmárcalo para usar el precio del catálogo.",
     "specialRate": "(Tarifa Especial)",
     "scopeOfVisit": "Alcance de la visita",
     "scopeOfVisitPlaceholder": "Ingrese el alcance de la visita...",

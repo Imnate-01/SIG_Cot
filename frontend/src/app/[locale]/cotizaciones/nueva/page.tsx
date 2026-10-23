@@ -823,6 +823,7 @@ const NuevaCotizacionPage: React.FC = () => {
                           <input type="number" min={0} step="0.01" value={item.precioManual !== undefined ? item.precioManual : (tarifa ? precioCatalogo(item, tarifa, tarifasCliente) : undefined)} onChange={(e) => actualizarLineaServicio(item.id, "precioManual", Number(e.target.value))} className="w-24 text-sm font-bold bg-transparent text-blue-900 dark:text-white outline-none placeholder-blue-300 dark:placeholder-blue-700" />
                         </div>
                       )}
+                      {item.esPrecioManual && !esCostoVuelo && (<p className="basis-full text-xs text-sig-muted dark:text-gray-400">{t("manualPriceNotice")}</p>)}
 
                       {tarifa && !item.esPrecioManual && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 hidden sm:inline">
