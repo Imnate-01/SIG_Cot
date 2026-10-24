@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
 import EvidenciasPanel from "@/features/pm/EvidenciasPanel";
+import { avisarCambioAlertas } from "@/features/pm/useAlertasPm";
 import {
   agruparPorEtapa, estadoEvidencia, etapaActual, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
@@ -55,7 +56,16 @@ export default function PmDetallePage() {
       setError(false);
       if (inicial) {
         const actual = etapaActual(agruparPorEtapa(detalle.tareas));
-        setAbiertas(new Set(actual !== null ? [actual] : []));
+        // Enlace desde Alertas: /pm/<id>?tarea=<tarea> abre su etapa y la tarea
+        const pedida = new URLSearchParams(window.location.search).get("tarea");
+        const destino = pedida ? detalle.tareas.find((x) => x.id === pedida) : undefined;
+        const abrir = new Set<number>(actual !== null ? [actual] : []);
+        if (destino) {
+          abrir.add(destino.etapa_orden);
+          setExpandida(destino.id);
+          setTimeout(() => document.getElementById(`tarea-${destino.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+        }
+        setAbiertas(abrir);
       }
     } catch {
       if (inicial) setError(true);
@@ -82,6 +92,7 @@ export default function PmDetallePage() {
     parchearTarea(tarea.id, local);
     try {
       await api.patch(`/pm/${id}/tareas/${tarea.id}`, cuerpo);
+      avisarCambioAlertas();
       await cargar();
     } catch (e) {
       toast.error(mensajeError(e, t("saveError")));
@@ -109,6 +120,7 @@ export default function PmDetallePage() {
     parchearTarea(tarea.id, { colaboradores: [...tarea.colaboradores, usuarioId] });
     try {
       await api.post(`/pm/${id}/tareas/${tarea.id}/colaboradores`, { usuario_id: usuarioId });
+      avisarCambioAlertas();
       await cargar();
     } catch (e) {
       toast.error(mensajeError(e, t("saveError")));
@@ -120,6 +132,7 @@ export default function PmDetallePage() {
     parchearTarea(tarea.id, { colaboradores: tarea.colaboradores.filter((c) => c !== usuarioId) });
     try {
       await api.delete(`/pm/${id}/tareas/${tarea.id}/colaboradores/${usuarioId}`);
+      avisarCambioAlertas();
       await cargar();
     } catch (e) {
       toast.error(mensajeError(e, t("saveError")));
@@ -240,7 +253,7 @@ export default function PmDetallePage() {
                     const sem = semaforoTarea(tarea, hoy);
                     const abiertaTarea = expandida === tarea.id;
                     return (
-                      <li key={tarea.id} className="px-4 py-3">
+                      <li key={tarea.id} id={`tarea-${tarea.id}`} className="scroll-mt-24 px-4 py-3">
                         <div className="flex items-start gap-3">
                           <button
                             role="checkbox"
@@ -273,6 +286,9 @@ export default function PmDetallePage() {
                                   {t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}
                                 </span>
                               )}
+                              {!tarea.completada && tarea.asignado_a && (
+                                <span className="text-sig-muted">{t("assignedTo", { name: nombreUsuario(pm.usuarios, tarea.asignado_a) })}</span>
+                              )}
                               {tarea.colaboradores.length > 0 && (
                                 <span className="text-sig-muted">+ {tarea.colaboradores.map((c) => nombreUsuario(pm.usuarios, c)).join(", ")}</span>
                               )}
@@ -303,6 +319,20 @@ export default function PmDetallePage() {
 
                             {(tarea.evidencia !== "none" || (tarea.evidencias?.length ?? 0) > 0) && (
                               <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
+                            )}
+
+                            {!tarea.completada && (
+                              <Campo label={t("responsible")}>
+                                <select
+                                  className={`${campo} max-w-xs`}
+                                  value={tarea.asignado_a || ""}
+                                  onChange={(ev) => enviarTarea(tarea, { asignado_a: ev.target.value || null }, { asignado_a: ev.target.value || null })}
+                                >
+                                  <option value="">{t("unassigned")}</option>
+                                  {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+                                </select>
+                                <span className="mt-1 block text-xs text-sig-muted">{t("responsibleHint")}</span>
+                              </Campo>
                             )}
 
                             <div>
@@ -412,6 +442,7 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
       const { fecha_inicio, ...resto } = f;
       await api.patch(`/pm/${pm.id}`, { ...resto, ...(cambioFecha ? { fecha_inicio } : {}), ...extra });
       toast.success(t("saved"));
+      avisarCambioAlertas();
       await onSaved();
     } catch (e) {
       toast.error(mensajeError(e, t("saveError")));

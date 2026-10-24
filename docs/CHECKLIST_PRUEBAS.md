@@ -102,3 +102,14 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] El enlace de un archivo expira a los 5 minutos y no se puede adivinar la ruta (bucket privado)
 - [ ] "View history" registra "Evidence added/removed"
 
+### PM Tracker (fase 3: alertas en la app) — no requiere migración
+- [ ] Menú: "Alerts" muestra un contador rojo si tienes tareas vencidas (azul si solo por vencer); en el celular aparece un punto en el botón del menú
+- [ ] /pm/alertas "Mine": salen solo tus tareas — eres responsable, colaborador, o creaste el PM y la tarea no tiene responsable
+- [ ] "All PMs": salen las de todos los PM activos (incluye tareas asignadas a otras personas)
+- [ ] Una tarea que vence hoy dice "Due today"; mañana "Due tomorrow"; hace 3 días "3 days overdue"; en 8 días ya no aparece
+- [ ] Clic en una alerta → abre el PM con la etapa desplegada y la tarea abierta
+- [ ] Asignar la tarea a otra persona → desaparece de tus alertas y el contador baja sin recargar
+- [ ] Completar la tarea → desaparece de las alertas
+- [ ] PM cancelado o completado → sus tareas no generan alertas
+- [ ] Revisar en la tarde (después de las 6 pm en México) que "hoy" sea la fecha local, no la del día siguiente
+
