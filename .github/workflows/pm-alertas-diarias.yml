@@ -1,0 +1,46 @@
+# Resumen diario de alertas del PM Tracker por correo.
+# Lunes a viernes a las 8:00 de Ciudad de México (14:00 UTC; México no usa horario de verano).
+#
+# Requiere dos secretos del repositorio (Settings → Secrets and variables → Actions):
+#   PM_BACKEND_URL           p. ej. https://<tu-backend>.onrender.com   (sin / final)
+#   PM_ALERTAS_CRON_SECRET   el mismo valor que la variable del backend en Render
+# Sin ellos, el job termina sin hacer nada.
+#
+# También se puede lanzar a mano (Actions → "PM Tracker daily alerts" → Run workflow),
+# con "dry_run" para ver a quién le llegaría sin enviar.
+name: PM Tracker daily alerts
+
+on:
+  schedule:
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo simular (no envía correos)"
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Send daily digest
+        env:
+          BACKEND_URL: ${{ secrets.PM_BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.PM_ALERTAS_CRON_SECRET }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::PM_BACKEND_URL o PM_ALERTAS_CRON_SECRET no configurados; no se envía nada."
+            exit 0
+          fi
+          # El plan gratuito de Render duerme el servidor: el primer intento lo despierta.
+          curl -sS --retry 4 --retry-delay 20 --retry-all-errors --max-time 120 -o /dev/null "$BACKEND_URL/api/health" || true
+          code=$(curl -sS --max-time 120 -o response.json -w "%{http_code}" -X POST \
+            -H "x-cron-secret: $CRON_SECRET" "$BACKEND_URL/api/cron/pm-resumen-diario?dry_run=$DRY_RUN")
+          # Solo el resumen (sin correos de las personas) en el log público de Actions
+          python3 -c "import json;d=json.load(open('response.json'));print(json.dumps({k:d.get(k) for k in ('hoy','dry_run','resumen','message')}, indent=2))" || cat response.json
+          if [ "$code" != "200" ]; then echo "::error::El backend respondió $code"; exit 1; fi

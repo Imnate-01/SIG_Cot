@@ -21,6 +21,7 @@ import cotizacionesUsRoutes from './routes/cotizaciones-us.routes';
 import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
 import adminUsuariosRoutes from './routes/admin-usuarios.routes';
 import pmRoutes from './routes/pm.routes';
+import cronRoutes from './routes/cron.routes';
 import { requireAuth } from './middlewares/requireAuth';
 import { responderError } from './utils/http';
 const app = express();
@@ -67,6 +68,8 @@ app.use(express.json({ limit: '2mb' }));
 // Públicas
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
+// Procesos programados (secreto compartido, sin sesión): resumen diario del PM Tracker
+app.use('/api/cron', cronRoutes);
 
 // Protegidas: requireAuth valida el token UNA vez y deja req.user / req.supabase
 app.use('/api/cotizaciones', requireAuth, cotizacionesRoutes);

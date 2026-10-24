@@ -113,3 +113,19 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] PM cancelado o completado → sus tareas no generan alertas
 - [ ] Revisar en la tarde (después de las 6 pm en México) que "hoy" sea la fecha local, no la del día siguiente
 
+### PM Tracker (fase 4: PDF de cierre y correos)
+**Reporte PDF** (no requiere configuración)
+- [ ] En el detalle de un PM, "Download report" descarga `PM_<cliente>_<planta>_<fecha>.pdf`
+- [ ] El PDF muestra datos del PM, los 5 indicadores (completadas, restantes, vencidas, evidencias, obligatorias sin evidencia) y las 8 etapas con estado, responsable, colaboradores, evidencias y notas
+- [ ] Una tarea obligatoria sin evidencia aparece como "Missing (required)" en rojo; las notas abiertas salen al final
+
+**Resumen diario por correo** (requiere configurar)
+1. Aplicar `supabase/migrations/20261023_03_pm_alertas_envios.sql`
+2. En Render, variables del backend: `PM_ALERTAS_CRON_SECRET` (largo, aleatorio), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`; confirmar `FRONTEND_URL` = la URL de la app (los enlaces del correo la usan)
+3. En GitHub → Settings → Secrets and variables → Actions: `PM_BACKEND_URL` (URL del backend, sin `/` final) y `PM_ALERTAS_CRON_SECRET` (el mismo valor)
+- [ ] Actions → "PM Tracker daily alerts" → Run workflow con "dry_run" marcado → el log muestra cuántos correos se enviarían, sin enviar
+- [ ] Run workflow sin "dry_run" → llega un correo a cada persona con alertas, con enlaces que abren la tarea
+- [ ] Correrlo otra vez el mismo día → "ya_enviados", no se duplica
+- [ ] Una persona sin tareas vencidas ni por vencer no recibe correo
+- [ ] El envío automático corre de lunes a viernes a las 8:00 (hora de México)
+
