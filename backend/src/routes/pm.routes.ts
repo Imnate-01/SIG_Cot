@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import pmController from '../controllers/pm.controller';
 import evidencias from '../controllers/pm-evidencias.controller';
+import alertas from '../controllers/pm-alertas.controller';
 
 const router = Router();
 
 router.get('/', pmController.listar);
 router.post('/', pmController.crear);
+router.get('/alertas', alertas.listar);
 router.get('/:id', pmController.obtener);
 router.patch('/:id', pmController.actualizar);
 router.patch('/:id/tareas/:tareaId', pmController.actualizarTarea);

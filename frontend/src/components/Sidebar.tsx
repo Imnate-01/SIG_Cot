@@ -20,11 +20,13 @@ import {
   ShieldCheck,
   UserCog,
   ClipboardCheck,
+  Bell,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
 import LanguageSwitcher from "./LanguageSwitcher";
 import api from "@/services/api";
+import { useAlertasPm } from "@/features/pm/useAlertasPm";
 
 /** Rutas del menú, de la más específica a la más general. */
 const RUTAS_MENU = [
@@ -37,6 +39,7 @@ const RUTAS_MENU = [
   "/food-safety-audit/nuevo",
   "/food-safety-audit",
   "/reportes",
+  "/pm/alertas",
   "/pm/nuevo",
   "/pm",
   "/usuarios",
@@ -51,7 +54,7 @@ function rutaActiva(pathname: string): string | undefined {
 }
 
 /** Ítem de navegación: fila de 38 px, activo = fondo blanco + barra azul a la izquierda (como en BOM Manager). */
-function NavItem({ href, icon: Icono, children }: { href: string; icon: React.ElementType; children: React.ReactNode }) {
+function NavItem({ href, icon: Icono, children, badge, badgeUrgente }: { href: string; icon: React.ElementType; children: React.ReactNode; badge?: number; badgeUrgente?: boolean }) {
   const pathname = usePathname();
   const on = rutaActiva(pathname) === href;
   return (
@@ -66,6 +69,11 @@ function NavItem({ href, icon: Icono, children }: { href: string; icon: React.El
       <span className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-sm ${on ? "bg-sig-blue" : "bg-transparent"}`} />
       <Icono size={18} strokeWidth={1.6} />
       <span className="flex-1 truncate">{children}</span>
+      {!!badge && badge > 0 && (
+        <span className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-5 text-white ${badgeUrgente ? "bg-sig-danger" : "bg-sig-blue"}`} aria-label={`${badge}`}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -83,6 +91,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("Sidebar");
+  const alertasPm = useAlertasPm();
   const tLogin = useTranslations("Login");
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -162,6 +171,9 @@ export default function Sidebar() {
         className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white border border-sig-line-strong rounded text-black hover:bg-sig-sand"
       >
         <Menu size={22} />
+        {(alertasPm?.total ?? 0) > 0 && (
+          <span className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white ${(alertasPm?.overdue ?? 0) > 0 ? "bg-sig-danger" : "bg-sig-blue"}`} aria-label={`${alertasPm?.total} PM alerts`} />
+        )}
       </button>
 
       {isMobileOpen && (
@@ -219,6 +231,7 @@ export default function Sidebar() {
           {/* --- PM TRACKER: visible para TODOS los roles --- */}
           <Seccion titulo={t("pmTracker")}>
             <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
+            <NavItem href="/pm/alertas" icon={Bell} badge={alertasPm?.total} badgeUrgente={(alertasPm?.overdue ?? 0) > 0}>{t("pmAlerts")}</NavItem>
             <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
           </Seccion>
 
