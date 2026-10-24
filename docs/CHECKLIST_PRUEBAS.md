@@ -75,3 +75,17 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] "¿Olvidaste tu contraseña?" → /recuperar → llega el correo (requiere SMTP propio en Supabase) → enlace abre /restablecer → nueva contraseña funciona
 - [ ] Enlace de recuperación viejo o ya usado → "El enlace no es válido o expiró"
 - [ ] Con Supabase inaccesible, registro/login muestran el mensaje de conexión (no "fetch failed")
+
+### PM Tracker (fase 1)
+- [ ] Con la migración `20261023_01_modulo_pm.sql` aplicada: /pm abre sin error y el menú muestra "PM Tracker" y "New PM"
+- [ ] Nuevo PM con inicio 08/08/2027 → la vista previa muestra 04/04, 11/04, 18/04, 11/07, 25/07, 08/08, 15/08 y 29/08 de 2027
+- [ ] Crear el PM → abre su detalle con 31 tareas en 8 etapas, y se abre solo la primera etapa con pendientes
+- [ ] Marcar una tarea → avance +1, queda "Completed by <tú>"; desmarcarla → avance −1
+- [ ] Completar las 31 tareas → el PM pasa a "Completed"; reabrir una → vuelve a "Active"
+- [ ] Notas de una tarea y "Open notes" se guardan al salir del campo y siguen ahí al recargar
+- [ ] Agregar y quitar un colaborador → aparece junto a "Completed by"; "View history" lo registra
+- [ ] Editar detalles → cambiar la fecha de inicio avisa cuántas tareas pendientes se recalculan; las completadas conservan su fecha
+- [ ] Cancelar un PM → sale de "Active", y "Reactivate PM" lo regresa
+- [ ] Una tarea vencida muestra "Due <fecha>" en rojo; el PM con tareas vencidas aparece como "Overdue" en la lista
+- [ ] Tareas con evidencia muestran "Evidence required/optional" (los adjuntos llegan en la fase 2)
+
