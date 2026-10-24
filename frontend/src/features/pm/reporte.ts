@@ -1,4 +1,4 @@
-import { agruparPorEtapa, formatearFecha, nombreUsuario, progreso, semaforoTarea, type PmDetalle } from "./pm";
+import { agruparPorEtapa, fechaEtapa, fechaLocalDe, formatearFecha, nombreUsuario, progreso, semaforoTarea, type PmDetalle } from "./pm";
 
 /** Estado de una tarea tal como se imprime en el reporte. */
 export type EstadoReporte = "Completed" | "Overdue" | "Due soon" | "Pending";
@@ -43,7 +43,7 @@ export function prepararReporte(pm: PmDetalle, hoy: string): Reporte {
   const todas = pm.tareas.flatMap((t) => t.evidencias ?? []);
   const etapas = agruparPorEtapa(pm.tareas).map((e) => ({
     nombre: e.nombre,
-    fecha: formatearFecha(e.fecha_limite),
+    fecha: formatearFecha(fechaEtapa(pm.fecha_inicio, e.semanas)),
     completadas: e.completadas,
     total: e.tareas.length,
     filas: e.tareas.map((t) => ({
@@ -52,7 +52,7 @@ export function prepararReporte(pm: PmDetalle, hoy: string): Reporte {
       fecha: formatearFecha(t.fecha_limite),
       estado: ESTADO[semaforoTarea(t, hoy)],
       responsable: t.completada ? nombreUsuario(pm.usuarios, t.completada_por) : t.asignado_a ? nombreUsuario(pm.usuarios, t.asignado_a) : "",
-      cuando: t.completada && t.completada_en ? formatearFecha(t.completada_en.slice(0, 10)) : "",
+      cuando: t.completada && t.completada_en ? formatearFecha(fechaLocalDe(t.completada_en)) : "",
       colaboradores: t.colaboradores.map((c) => nombreUsuario(pm.usuarios, c)).join(", "),
       evidencias: textoEvidencias(t),
       notas: t.notas || "",
