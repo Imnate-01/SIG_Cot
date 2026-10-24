@@ -1,0 +1,23 @@
+// Prueba de la migración 20261023_03 (registro de resúmenes diarios) contra PGlite.
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync } from 'node:fs';
+const db = new PGlite();
+const q = (s, p) => db.query(s, p);
+let ok = 0, fail = 0;
+const check = (n, c, x = '') => { if (c) { ok++; console.log('  ✓', n); } else { fail++; console.log('  ✗', n, x); } };
+const expectError = async (n, fn) => { try { await fn(); check(n, false, '(no lanzó error)'); } catch { check(n, true); } };
+await db.exec(`create role anon; create role authenticated;`);
+const sql = readFileSync(new URL('../migrations/20261023_03_pm_alertas_envios.sql', import.meta.url), 'utf8');
+await db.exec(sql); await db.exec(sql);
+console.log('Migración aplicada y re-aplicada (idempotente) ✓');
+const U = '11111111-1111-1111-1111-111111111111';
+await q(`insert into pm_alertas_envios (usuario_id, fecha, alertas, vencidas) values ($1, '2026-10-23', 3, 1)`, [U]);
+await expectError('mismo usuario y día dos veces → error (no se duplica)', () => q(`insert into pm_alertas_envios (usuario_id, fecha) values ($1, '2026-10-23')`, [U]));
+await q(`insert into pm_alertas_envios (usuario_id, fecha) values ($1, '2026-10-24') on conflict do nothing`, [U]);
+check('otro día sí se registra', (await q(`select count(*)::int n from pm_alertas_envios`)).rows[0].n === 2);
+await expectError('conteo negativo → error', () => q(`insert into pm_alertas_envios (usuario_id, fecha, alertas) values ($1, '2026-10-25', -1)`, [U]));
+check('RLS activa', (await q(`select relrowsecurity r from pg_class where relname='pm_alertas_envios'`)).rows[0].r === true);
+check('sin políticas (solo la clave de servicio)', (await q(`select count(*)::int n from pg_policies where tablename='pm_alertas_envios'`)).rows[0].n === 0);
+check('anon y authenticated sin permisos', (await q(`select count(*)::int n from information_schema.role_table_grants where grantee in ('anon','authenticated') and table_name='pm_alertas_envios'`)).rows[0].n === 0);
+console.log(`\n${ok} pasaron, ${fail} fallaron`);
+process.exit(fail ? 1 : 0);

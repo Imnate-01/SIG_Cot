@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, History, Loader2, Paperclip, Pencil, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Download, History, Loader2, Paperclip, Pencil, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
@@ -45,6 +45,7 @@ export default function PmDetallePage() {
   const [expandida, setExpandida] = useState<string | null>(null);
   const [usuariosLista, setUsuariosLista] = useState<UsuarioPm[]>([]);
   const [modalEditar, setModalEditar] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
   const [historial, setHistorial] = useState<{ tarea: PmTarea; items: HistorialItem[]; usuarios: Record<string, UsuarioPm> } | null>(null);
   const hoy = hoyISO();
 
@@ -159,6 +160,30 @@ export default function PmDetallePage() {
     }
   };
 
+  /** Reporte de cierre en PDF: se arma en el navegador (no carga al servidor). */
+  const descargarReporte = async () => {
+    if (!pm) return;
+    setGenerandoPdf(true);
+    try {
+      const [{ pdf }, { default: ReportePmPDF }, { prepararReporte, nombreArchivoReporte }] = await Promise.all([
+        import("@react-pdf/renderer"), import("@/features/pm/pdf/ReportePmPDF"), import("@/features/pm/reporte"),
+      ]);
+      const generado = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+      const blob = await pdf(<ReportePmPDF pm={pm} reporte={prepararReporte(pm, hoy)} generado={generado} logoUrl={`${window.location.origin}/SIG_logo.png`} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreArchivoReporte(pm);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (e) {
+      console.error(e);
+      toast.error(t("reportError"));
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
   if (cargando) return <div className="flex items-center justify-center py-32 text-sig-muted"><Loader2 className="animate-spin" size={22} /></div>;
   if (error || !pm) {
     return (
@@ -196,7 +221,12 @@ export default function PmDetallePage() {
             </div>
             <p className="mt-1 text-sm text-sig-muted">{[pm.planta, pm.linea].filter(Boolean).join(" · ") || t("noPlantLine")}</p>
           </div>
-          <button className={btnSecundario} onClick={() => setModalEditar(true)}><Pencil size={14} /> {t("editDetails")}</button>
+          <div className="flex flex-wrap gap-2">
+            <button className={btnSecundario} onClick={descargarReporte} disabled={generandoPdf}>
+              {generandoPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {t("downloadReport")}
+            </button>
+            <button className={btnSecundario} onClick={() => setModalEditar(true)}><Pencil size={14} /> {t("editDetails")}</button>
+          </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">

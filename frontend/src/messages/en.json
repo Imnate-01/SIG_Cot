@@ -910,6 +910,8 @@
       "assignedTo": "Responsible: {name}",
       "responsible": "Responsible",
       "unassigned": "Unassigned",
-      "responsibleHint": "Alerts go to the responsible and collaborators. Without a responsible, they go to whoever created the PM."
+      "responsibleHint": "Alerts go to the responsible and collaborators. Without a responsible, they go to whoever created the PM.",
+      "downloadReport": "Download report",
+      "reportError": "Could not generate the PDF report"
   }
 }
