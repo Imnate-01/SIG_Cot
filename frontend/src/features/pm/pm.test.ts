@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ETAPAS_ESTANDAR, cuentaRegresiva, estadoEtapa, etiquetaSemana, iniciales, dimensionesAjustadas, estadoEvidencia, puedeCompletar, sumarDias, agruparPorEtapa, diasHasta, etapaActual, formatearFecha, hoyISO, progreso, semaforoPm, semaforoTarea,
+  ETAPAS_ESTANDAR, fechaEtapa, fechaLocalDe, cuentaRegresiva, estadoEtapa, etiquetaSemana, iniciales, dimensionesAjustadas, estadoEvidencia, puedeCompletar, sumarDias, agruparPorEtapa, diasHasta, etapaActual, formatearFecha, hoyISO, progreso, semaforoPm, semaforoTarea,
   type PmTarea,
 } from "./pm";
 
@@ -139,5 +139,19 @@ describe("línea de tiempo del PM", () => {
     expect(iniciales("Ana")).toBe("A");
     expect(iniciales("claudio.depa@sig.biz")).toBe("CD");
     expect(iniciales(null)).toBe("?");
+  });
+});
+
+describe("fechas mostradas", () => {
+  it("fechaLocalDe usa el día local, no el de UTC (7:30 pm en México ya es mañana en UTC)", () => {
+    expect(fechaLocalDe(new Date(2026, 9, 23, 19, 30).toISOString())).toBe("2026-10-23");
+    expect(fechaLocalDe(new Date(2026, 9, 23, 0, 5).toISOString())).toBe("2026-10-23");
+  });
+  it("fechaEtapa con inicio 23-oct-2026: T−18 = 19 jun, T−17 = 26 jun, T−16 = 3 jul, PM day = 23 oct", () => {
+    // 19 jun → 23 oct: 11 + 31 + 31 + 30 + 23 = 126 días = 18 × 7
+    expect(fechaEtapa("2026-10-23", -18)).toBe("2026-06-19");
+    expect(fechaEtapa("2026-10-23", -17)).toBe("2026-06-26");
+    expect(fechaEtapa("2026-10-23", -16)).toBe("2026-07-03");
+    expect(fechaEtapa("2026-10-23", 0)).toBe("2026-10-23");
   });
 });

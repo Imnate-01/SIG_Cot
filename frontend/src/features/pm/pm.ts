@@ -254,3 +254,17 @@ export function iniciales(nombre: string | null | undefined): string {
   const partes = limpio.split(/[\s._-]+/).filter(Boolean);
   return (partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0][0]).toUpperCase();
 }
+
+/**
+ * Fecha (AAAA-MM-DD) de una marca de tiempo en la zona horaria del usuario.
+ * La base de datos guarda UTC: después de las 6 pm en México, cortar el texto
+ * ("2026-10-24T00:56Z".slice(0, 10)) daría el día siguiente.
+ */
+export function fechaLocalDe(marca: string): string {
+  return hoyISO(new Date(marca));
+}
+
+/** Fecha planeada de una etapa según el inicio ACTUAL del PM (inicio + semanas × 7). */
+export function fechaEtapa(fechaInicio: string, semanas: number): string {
+  return sumarDias(fechaInicio, semanas * 7);
+}

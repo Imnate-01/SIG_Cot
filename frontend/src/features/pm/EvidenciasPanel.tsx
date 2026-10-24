@@ -9,7 +9,7 @@ import api from "@/services/api";
 import { supabase } from "@/lib/supabase";
 import { ACCEPT_EVIDENCIAS, esImagen, formatearTamano, validarArchivo } from "./evidencias";
 import { comprimirImagen } from "./comprimirImagen";
-import { formatearFecha, nombreUsuario, type PmEvidencia, type PmTarea, type UsuarioPm } from "./pm";
+import { fechaLocalDe, formatearFecha, nombreUsuario, type PmEvidencia, type PmTarea, type UsuarioPm } from "./pm";
 import { campo } from "./ui";
 
 const btnCompacto = "inline-flex h-8 items-center justify-center gap-1.5 rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 text-xs font-semibold text-black dark:text-white hover:bg-sig-sand dark:hover:bg-zinc-700";
@@ -109,7 +109,7 @@ export default function EvidenciasPanel({
               <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold text-black dark:text-white">{ev.nombre}</div>
                 <div className="text-xs text-sig-muted">
-                  {ev.tipo === "quote" ? t("linkedQuotation") : formatearTamano(ev.tamano)} · {nombreUsuario(usuarios, ev.subido_por)} · {formatearFecha(ev.created_at.slice(0, 10))}
+                  {ev.tipo === "quote" ? t("linkedQuotation") : formatearTamano(ev.tamano)} · {nombreUsuario(usuarios, ev.subido_por)} · {formatearFecha(fechaLocalDe(ev.created_at))}
                 </div>
               </div>
               {ev.tipo === "quote" && ev.cotizacion_id ? (

@@ -10,7 +10,7 @@ import api from "@/services/api";
 import EvidenciasPanel from "@/features/pm/EvidenciasPanel";
 import { avisarCambioAlertas } from "@/features/pm/useAlertasPm";
 import {
-  agruparPorEtapa, cuentaRegresiva, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
+  agruparPorEtapa, cuentaRegresiva, fechaEtapa, fechaLocalDe, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
 } from "@/features/pm/pm";
 import { Avatar, BarraEtapas, Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
@@ -283,7 +283,7 @@ export default function PmDetallePage() {
               <li key={e.orden} className="grid grid-cols-1 gap-3 sm:grid-cols-[72px_minmax(0,1fr)]">
                 <div className="hidden pt-3.5 text-right sm:block">
                   <div className={`text-sm font-bold tabular-nums ${esDiaPm ? "text-sig-blue" : "text-black dark:text-white"}`}>{etiquetaSemana(e.semanas)}</div>
-                  <div className="text-[11px] tabular-nums text-sig-muted">{formatearFecha(e.fecha_limite).replace(/, \d{4}$/, "")}</div>
+                  <div className="text-[11px] tabular-nums text-sig-muted">{formatearFecha(fechaEtapa(pm.fecha_inicio, e.semanas)).replace(/, \d{4}$/, "")}</div>
                 </div>
                 <div className={`relative pl-7 ${ultima ? "" : "pb-4"}`}>
                   {!ultima && <span className="absolute bottom-0 left-[9px] top-5 w-px bg-sig-line-strong dark:bg-zinc-600" aria-hidden />}
@@ -298,7 +298,7 @@ export default function PmDetallePage() {
                   <section className={`overflow-hidden rounded border bg-white dark:bg-zinc-900 ${estado === "current" ? "border-sig-blue" : "border-sig-line dark:border-zinc-700"}`}>
                     <button className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sig-sand/50 dark:hover:bg-zinc-800" aria-expanded={abierta} onClick={() => alternarEtapa(e.orden)}>
                       <span className="min-w-0 flex-1">
-                        <span className="mb-0.5 block text-xs font-bold tabular-nums text-sig-muted sm:hidden">{etiquetaSemana(e.semanas)}, {formatearFecha(e.fecha_limite)}</span>
+                        <span className="mb-0.5 block text-xs font-bold tabular-nums text-sig-muted sm:hidden">{etiquetaSemana(e.semanas)}, {formatearFecha(fechaEtapa(pm.fecha_inicio, e.semanas))}</span>
                         <span className="block font-bold text-black dark:text-white">{e.nombre}</span>
                         <span className="mt-0.5 block text-xs text-sig-muted">
                           {estado === "done" ? t("stageDone") : estado === "overdue" ? <span className="font-semibold text-sig-danger">{t("stageOverdue")}</span> : estado === "current" ? t("stageCurrent") : t("stageUpcoming")}
@@ -345,10 +345,10 @@ export default function PmDetallePage() {
                                   </span>
                                 </button>
                                 <span className="flex shrink-0 items-center gap-2 pt-0.5">
-                                  {(responsable || tarea.colaboradores.length > 0) && (
+                                  {(responsable || tarea.colaboradores.some((c) => c !== responsable)) && (
                                     <span className="hidden items-center sm:flex">
                                       {responsable && <Avatar nombre={nombreUsuario(pm.usuarios, responsable)} tono={tarea.completada ? "hecho" : "neutro"} />}
-                                      {tarea.colaboradores.slice(0, 3).map((c) => <span key={c} className="-ml-1.5"><Avatar nombre={nombreUsuario(pm.usuarios, c)} /></span>)}
+                                      {tarea.colaboradores.filter((c) => c !== responsable).slice(0, 3).map((c) => <span key={c} className="-ml-1.5"><Avatar nombre={nombreUsuario(pm.usuarios, c)} /></span>)}
                                     </span>
                                   )}
                                   <button onClick={() => setExpandida(abiertaTarea ? null : tarea.id)} aria-label={abiertaTarea ? t("hideDetails") : t("details")} className="rounded p-1 text-sig-muted hover:bg-sig-sand dark:hover:bg-zinc-700">
@@ -381,7 +381,7 @@ export default function PmDetallePage() {
                                         <span className="mb-1 block text-xs font-semibold text-sig-muted">{t("completedSection")}</span>
                                         <div className="flex items-center gap-2 text-sm text-black dark:text-white">
                                           <Avatar nombre={nombreUsuario(pm.usuarios, tarea.completada_por)} tono="hecho" />
-                                          <span>{t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}</span>
+                                          <span>{t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(fechaLocalDe(tarea.completada_en)) : "—" })}</span>
                                         </div>
                                       </div>
                                     ) : (
