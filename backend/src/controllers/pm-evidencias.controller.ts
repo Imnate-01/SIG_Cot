@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../config/supabase'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { ErrorHttp, responderError } from '../utils/http'
+import { formatearFolio } from './cotizaciones.controller'
 import {
   BUCKET_EVIDENCIAS, MAX_BYTES_EVIDENCIA, MIMES_PERMITIDOS, carpetaEvidencia, rutaEvidencia, validarArchivo,
 } from '../domain/pmEvidencias'
@@ -136,14 +137,15 @@ export class PmEvidenciasController {
       await exigirTarea(supabase, expedienteId, tareaId)
 
       const { data: cot, error: errCot } = await supabase
-        .from('cotizaciones').select('id, numero_cotizacion').eq('id', cotizacionId).single()
+        // La tabla no guarda el folio: se arma igual que en el resto de la app (SIG-<entidad>-<id>)
+        .from('cotizaciones').select('id, condiciones').eq('id', cotizacionId).single()
       if (errCot) throw errCot
 
       const { data, error } = await supabase
         .from('pm_evidencias')
         .insert({
           tarea_id: tareaId, expediente_id: expedienteId, tipo: 'quote',
-          nombre: cot.numero_cotizacion || `Quotation ${cot.id}`, cotizacion_id: cot.id, subido_por: user.id,
+          nombre: formatearFolio(cot), cotizacion_id: cot.id, subido_por: user.id,
         })
         .select().single()
       if (error) {
