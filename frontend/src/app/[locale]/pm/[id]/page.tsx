@@ -7,8 +7,9 @@ import { ArrowLeft, Check, ChevronDown, ChevronRight, History, Loader2, Papercli
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
+import EvidenciasPanel from "@/features/pm/EvidenciasPanel";
 import {
-  agruparPorEtapa, etapaActual, formatearFecha, hoyISO, nombreUsuario, progreso, semaforoTarea,
+  agruparPorEtapa, estadoEvidencia, etapaActual, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
 } from "@/features/pm/pm";
 import { Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
@@ -88,7 +89,15 @@ export default function PmDetallePage() {
     }
   };
 
-  const alternar = (tarea: PmTarea) => enviarTarea(tarea, { completada: !tarea.completada }, { completada: !tarea.completada });
+  const alternar = (tarea: PmTarea) => {
+    // Evidencia obligatoria: se pide antes de completar (el servidor también lo exige)
+    if (!puedeCompletar(tarea)) {
+      toast.warning(t("evidenceNeeded"));
+      setExpandida(tarea.id);
+      return;
+    }
+    return enviarTarea(tarea, { completada: !tarea.completada }, { completada: !tarea.completada });
+  };
 
   const guardarNotas = (tarea: PmTarea, texto: string) => {
     if (texto === (tarea.notas || "")) return;
@@ -249,11 +258,16 @@ export default function PmDetallePage() {
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                               <EstadoBadge tono={sem} etiquetaPropia={sem === "done" ? undefined : `${t("dueDate")} ${formatearFecha(tarea.fecha_limite)}`} />
-                              {tarea.evidencia !== "none" && (
-                                <span className="inline-flex items-center gap-1 rounded border border-sig-line-strong px-1.5 py-0.5 font-semibold text-black dark:text-gray-200" title={t("evidenceSoon")}>
-                                  <Paperclip size={12} /> {tarea.evidencia === "required" ? t("evidenceRequired") : t("evidenceOptional")}
-                                </span>
-                              )}
+                              {(tarea.evidencia !== "none" || (tarea.evidencias?.length ?? 0) > 0) && (() => {
+                                const ee = estadoEvidencia(tarea);
+                                const n = tarea.evidencias?.length ?? 0;
+                                return (
+                                  <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-semibold ${ee === "provided" ? "border-sig-success text-sig-success" : ee === "missing" ? "border-sig-danger text-sig-danger" : "border-sig-line-strong text-black dark:text-gray-200"}`}>
+                                    <Paperclip size={12} />
+                                    {ee === "provided" ? t("evidenceCount", { count: n }) : tarea.evidencia === "required" ? t("evidenceRequired") : t("evidenceOptional")}
+                                  </span>
+                                );
+                              })()}
                               {tarea.completada && (
                                 <span className="text-sig-muted">
                                   {t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}
@@ -286,6 +300,10 @@ export default function PmDetallePage() {
                                 onBlur={(ev) => guardarNotas(tarea, ev.target.value.trim())}
                               />
                             </Campo>
+
+                            {(tarea.evidencia !== "none" || (tarea.evidencias?.length ?? 0) > 0) && (
+                              <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
+                            )}
 
                             <div>
                               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-sig-muted">{t("collaborators")}</span>
@@ -362,6 +380,7 @@ export default function PmDetallePage() {
                   {(h.accion === "collaborator_added" || h.accion === "collaborator_removed") && h.detalle?.usuario_id ? (
                     <div className="text-xs text-sig-muted">{nombreUsuario(historial.usuarios, String(h.detalle.usuario_id))}</div>
                   ) : null}
+                  {(h.accion === "evidence_added" || h.accion === "evidence_removed") && h.detalle?.nombre ? <div className="text-xs text-sig-muted">{String(h.detalle.nombre)}</div> : null}
                   {h.accion === "note" && h.detalle?.notas ? <div className="text-xs italic text-sig-muted">“{String(h.detalle.notas)}”</div> : null}
                 </li>
               ))}

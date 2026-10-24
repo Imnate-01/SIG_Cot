@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ETAPAS_ESTANDAR, sumarDias, agruparPorEtapa, diasHasta, etapaActual, formatearFecha, hoyISO, progreso, semaforoPm, semaforoTarea,
+  ETAPAS_ESTANDAR, dimensionesAjustadas, estadoEvidencia, puedeCompletar, sumarDias, agruparPorEtapa, diasHasta, etapaActual, formatearFecha, hoyISO, progreso, semaforoPm, semaforoTarea,
   type PmTarea,
 } from "./pm";
 
@@ -86,5 +86,28 @@ describe("vista previa de fechas", () => {
   });
   it("las 8 etapas suman las 31 tareas", () => {
     expect(ETAPAS_ESTANDAR.reduce((a, e) => a + e.tareas, 0)).toBe(31);
+  });
+});
+
+describe("evidencia de una tarea", () => {
+  const ev = { id: "e", tipo: "file" as const, nombre: "po.pdf", mime: "application/pdf", tamano: 1, cotizacion_id: null, subido_por: null, created_at: "2026-10-23T00:00:00Z" };
+  it("estados según nivel y archivos", () => {
+    expect(estadoEvidencia({ evidencia: "required", evidencias: [] })).toBe("missing");
+    expect(estadoEvidencia({ evidencia: "required" })).toBe("missing");
+    expect(estadoEvidencia({ evidencia: "required", evidencias: [ev] })).toBe("provided");
+    expect(estadoEvidencia({ evidencia: "optional", evidencias: [] })).toBe("optional_empty");
+    expect(estadoEvidencia({ evidencia: "none", evidencias: [] })).toBe("not_needed");
+    expect(estadoEvidencia({ evidencia: "none", evidencias: [ev] })).toBe("provided");
+  });
+  it("solo bloquea completar una obligatoria sin evidencia", () => {
+    expect(puedeCompletar({ evidencia: "required", evidencias: [], completada: false })).toBe(false);
+    expect(puedeCompletar({ evidencia: "required", evidencias: [ev], completada: false })).toBe(true);
+    expect(puedeCompletar({ evidencia: "optional", evidencias: [], completada: false })).toBe(true);
+    expect(puedeCompletar({ evidencia: "required", evidencias: [], completada: true })).toBe(true); // desmarcar siempre se puede
+  });
+  it("dimensionesAjustadas: reduce proporcional y nunca agranda", () => {
+    expect(dimensionesAjustadas(4000, 3000, 2000)).toEqual({ ancho: 2000, alto: 1500 });
+    expect(dimensionesAjustadas(3000, 4000, 2000)).toEqual({ ancho: 1500, alto: 2000 });
+    expect(dimensionesAjustadas(1200, 800, 2000)).toEqual({ ancho: 1200, alto: 800 });
   });
 });
