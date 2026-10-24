@@ -46,7 +46,7 @@ export default function PmAlertasPage() {
 
   const grupo = (titulo: string, lista: Alerta[], tono: "overdue" | "due_soon") => (
     <section className="mb-6">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-black dark:text-white">
+      <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-black dark:text-white">
         {titulo} <EstadoBadge tono={tono} etiquetaPropia={String(lista.length)} />
       </h2>
       {lista.length === 0 ? (
@@ -86,7 +86,7 @@ export default function PmAlertasPage() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-black dark:text-white">{t("alertsTitle")}</h1>
+          <h1 className="text-3xl font-bold leading-tight text-black dark:text-white">{t("alertsTitle")}</h1>
           <p className="mt-1 text-sm text-sig-muted">{t("alertsSubtitle")}</p>
         </div>
         <div className="flex items-center gap-2">

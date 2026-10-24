@@ -2,15 +2,16 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ClipboardCheck, Loader2, Plus, Search } from "lucide-react";
+import { Bell, ChevronRight, ClipboardCheck, Loader2, Plus, Search } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
-import { formatearFecha, hoyISO, semaforoPm, type PmResumen } from "@/features/pm/pm";
-import { BarraProgreso, EstadoBadge, btnPrimario, campo } from "@/features/pm/ui";
+import { cuentaRegresiva, formatearFecha, hoyISO, semaforoPm, type PmResumen } from "@/features/pm/pm";
+import { useAlertasPm } from "@/features/pm/useAlertasPm";
+import { BarraProgreso, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
 
-type Filtro = "active" | "completed" | "cancelled" | "all";
+type Filtro = "active" | "attention" | "completed" | "cancelled" | "all";
 
-/** Lista de PMs: un renglón por PM de cada cliente, con avance y semáforo. */
+/** Lista de PMs: pestañas por estado (con conteo), búsqueda y una fila por PM con su cuenta regresiva. */
 export default function PmListaPage() {
   const t = useTranslations("PM");
   const [pms, setPms] = useState<PmResumen[]>([]);
@@ -18,79 +19,89 @@ export default function PmListaPage() {
   const [error, setError] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("active");
+  const alertas = useAlertasPm();
   const hoy = hoyISO();
 
   const cargar = useCallback(async () => {
-    setError(false);
     try {
       const { data } = await api.get("/pm");
       setPms(data.data || []);
+      setError(false);
     } catch {
       setError(true);
     } finally {
       setCargando(false);
     }
   }, []);
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    const id = setTimeout(cargar, 0);
+    return () => clearTimeout(id);
+  }, [cargar]);
 
-  const resumen = useMemo(() => {
-    const activos = pms.filter((p) => p.estado === "active");
-    const sem = activos.map((p) => semaforoPm(p, hoy));
-    return {
-      active: activos.length,
-      overdue: sem.filter((s) => s === "overdue").length,
-      dueSoon: sem.filter((s) => s === "due_soon").length,
-      completed: pms.filter((p) => p.estado === "completed").length,
-    };
-  }, [pms, hoy]);
+  const pide = useCallback((p: PmResumen) => { const s = semaforoPm(p, hoy); return s === "overdue" || s === "due_soon"; }, [hoy]);
+  const conteo: Record<Filtro, number> = useMemo(() => ({
+    active: pms.filter((p) => p.estado === "active").length,
+    attention: pms.filter(pide).length,
+    completed: pms.filter((p) => p.estado === "completed").length,
+    cancelled: pms.filter((p) => p.estado === "cancelled").length,
+    all: pms.length,
+  }), [pms, pide]);
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return pms.filter((p) => {
-      if (filtro !== "all" && p.estado !== filtro) return false;
+      if (filtro === "attention" ? !pide(p) : filtro !== "all" && p.estado !== filtro) return false;
       if (!q) return true;
-      return [p.clientes?.nombre, p.clientes?.empresa, p.planta, p.linea, p.po_numero, p.sam]
-        .some((v) => (v || "").toLowerCase().includes(q));
+      return [p.clientes?.nombre, p.clientes?.empresa, p.planta, p.linea, p.po_numero, p.sam].some((v) => (v || "").toLowerCase().includes(q));
     });
-  }, [pms, busqueda, filtro]);
+  }, [pms, busqueda, filtro, pide]);
 
-  const tarjetas = [
-    { clave: "active", valor: resumen.active, etiqueta: t("statActive"), color: "text-black dark:text-white" },
-    { clave: "overdue", valor: resumen.overdue, etiqueta: t("statOverdue"), color: "text-sig-danger" },
-    { clave: "dueSoon", valor: resumen.dueSoon, etiqueta: t("statDueSoon"), color: "text-black dark:text-white" },
-    { clave: "completed", valor: resumen.completed, etiqueta: t("statCompleted"), color: "text-sig-success" },
+  const cuando = (p: PmResumen) => {
+    const c = cuentaRegresiva(p.fecha_inicio, hoy);
+    if (c.tipo === "hoy") return t("countdownToday");
+    const v = c.unidad === "dias" ? t("countdownDays", { count: c.valor }) : t("countdownWeeks", { count: c.valor });
+    return c.tipo === "antes" ? t("pmIn", { when: v }) : t("pmAgo", { when: v });
+  };
+
+  const pestañas: Array<[Filtro, string]> = [
+    ["active", t("filterActive")], ["attention", t("tabNeedsAttention")], ["completed", t("filterCompleted")], ["cancelled", t("filterCancelled")], ["all", t("filterAll")],
   ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black dark:text-white">{t("title")}</h1>
+          <h1 className="text-3xl font-bold leading-tight text-black dark:text-white">{t("title")}</h1>
           <p className="mt-1 text-sm text-sig-muted">{t("subtitle")}</p>
         </div>
-        <Link href="/pm/nuevo" className={btnPrimario}><Plus size={16} /> {t("newPm")}</Link>
-      </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/pm/alertas" className={btnSecundario}>
+            <Bell size={15} /> {t("alertsButton")}
+            {!!alertas?.total && (
+              <span className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-5 text-white ${alertas.overdue > 0 ? "bg-sig-danger" : "bg-sig-blue"}`}>{alertas.total}</span>
+            )}
+          </Link>
+          <Link href="/pm/nuevo" className={btnPrimario}><Plus size={16} /> {t("newPm")}</Link>
+        </div>
+      </header>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {tarjetas.map((c) => (
-          <div key={c.clave} className="rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3">
-            <div className={`text-2xl font-bold tabular-nums ${c.color}`}>{c.valor}</div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-sig-muted">{c.etiqueta}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-3">
-        <div className="relative min-w-[220px] flex-1">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-sig-line dark:border-zinc-700">
+        <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label={t("filterStatus")}>
+          {pestañas.map(([k, etiqueta]) => {
+            const on = filtro === k;
+            return (
+              <button key={k} onClick={() => setFiltro(k)} aria-pressed={on}
+                className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-sm font-semibold transition-colors ${on ? "border-sig-blue text-black dark:text-white" : "border-transparent text-sig-muted hover:text-black dark:hover:text-white"}`}>
+                {etiqueta}
+                <span className={`rounded px-1.5 text-xs tabular-nums ${on ? "bg-sig-blue text-white" : k === "attention" && conteo.attention > 0 ? "bg-sig-danger-soft text-sig-danger dark:bg-zinc-800" : "bg-sig-sand text-sig-muted dark:bg-zinc-800"}`}>{conteo[k]}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="relative mb-2 w-full sm:w-72">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sig-muted" />
           <input className={`${campo} pl-9`} placeholder={t("searchPlaceholder")} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} aria-label={t("searchPlaceholder")} />
         </div>
-        <select className={`${campo} sm:w-48`} value={filtro} onChange={(e) => setFiltro(e.target.value as Filtro)} aria-label={t("filterStatus")}>
-          <option value="active">{t("filterActive")}</option>
-          <option value="completed">{t("filterCompleted")}</option>
-          <option value="cancelled">{t("filterCancelled")}</option>
-          <option value="all">{t("filterAll")}</option>
-        </select>
       </div>
 
       {cargando ? (
@@ -98,59 +109,46 @@ export default function PmListaPage() {
       ) : error ? (
         <div className="rounded border border-sig-danger bg-sig-danger-soft dark:bg-zinc-900 px-4 py-6 text-center text-sm">
           <p className="mb-3 font-semibold text-sig-danger">{t("loadError")}</p>
-          <button className="rounded border border-sig-line-strong bg-white px-3 py-1.5 text-sm font-semibold text-black" onClick={() => { setCargando(true); cargar(); }}>{t("retry")}</button>
+          <button className={btnSecundario} onClick={() => { setCargando(true); cargar(); }}>{t("retry")}</button>
         </div>
       ) : visibles.length === 0 ? (
         <div className="rounded border border-dashed border-sig-line-strong dark:border-zinc-700 px-4 py-16 text-center">
           <ClipboardCheck className="mx-auto mb-3 text-sig-muted" size={32} />
           <p className="font-semibold text-black dark:text-white">{pms.length === 0 ? t("emptyTitle") : t("noResults")}</p>
-          {pms.length === 0 && <p className="mt-1 text-sm text-sig-muted">{t("emptyBody")}</p>}
+          {pms.length === 0 && (
+            <>
+              <p className="mt-1 text-sm text-sig-muted">{t("emptyBody")}</p>
+              <Link href="/pm/nuevo" className={`${btnPrimario} mt-4`}><Plus size={16} /> {t("newPm")}</Link>
+            </>
+          )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900">
-          <table className="hidden w-full text-sm md:table">
-            <thead className="bg-sig-sand dark:bg-zinc-800 text-left text-xs font-semibold uppercase tracking-wide text-sig-muted">
-              <tr>
-                <th className="px-4 py-2.5">{t("colCustomer")}</th>
-                <th className="px-4 py-2.5">{t("colPlantLine")}</th>
-                <th className="px-4 py-2.5">{t("colPmDate")}</th>
-                <th className="px-4 py-2.5">{t("colProgress")}</th>
-                <th className="px-4 py-2.5">{t("colNextDue")}</th>
-                <th className="px-4 py-2.5">{t("colStatus")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibles.map((p) => (
-                <tr key={p.id} className="border-t border-sig-line dark:border-zinc-700 hover:bg-sig-sand/60 dark:hover:bg-zinc-800">
-                  <td className="px-4 py-3">
-                    <Link href={`/pm/${p.id}`} className="font-bold text-black dark:text-white hover:text-sig-blue">{p.clientes?.nombre || "—"}</Link>
-                    {p.po_numero && <div className="text-xs text-sig-muted">PO {p.po_numero}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-black dark:text-gray-200">{[p.planta, p.linea].filter(Boolean).join(" · ") || "—"}</td>
-                  <td className="px-4 py-3 tabular-nums">{formatearFecha(p.fecha_inicio)}</td>
-                  <td className="px-4 py-3"><BarraProgreso completadas={p.progreso.completadas} total={p.progreso.total} vencidas={p.progreso.vencidas} /></td>
-                  <td className="px-4 py-3 tabular-nums">{p.estado === "active" ? formatearFecha(p.progreso.proxima_fecha) : "—"}</td>
-                  <td className="px-4 py-3"><EstadoBadge tono={semaforoPm(p, hoy)} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <ul className="divide-y divide-sig-line dark:divide-zinc-700 md:hidden">
-            {visibles.map((p) => (
+        <ul className="divide-y divide-sig-line overflow-hidden rounded border border-sig-line dark:divide-zinc-700 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+          <li className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_120px_20px] gap-4 bg-sig-sand dark:bg-zinc-800 px-5 py-2.5 text-xs font-semibold text-sig-muted md:grid" aria-hidden>
+            <span>{t("colCustomer")}</span><span>{t("colPmDate")}</span><span>{t("colProgress")}</span><span>{t("colNextDue")}</span><span>{t("colStatus")}</span><span />
+          </li>
+          {visibles.map((p) => {
+            const tono = semaforoPm(p, hoy);
+            return (
               <li key={p.id}>
-                <Link href={`/pm/${p.id}`} className="block px-4 py-3 hover:bg-sig-sand/60 dark:hover:bg-zinc-800">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-bold text-black dark:text-white">{p.clientes?.nombre || "—"}</span>
-                    <EstadoBadge tono={semaforoPm(p, hoy)} />
+                <Link href={`/pm/${p.id}`} className="group grid gap-2 px-5 py-4 hover:bg-sig-sand/50 dark:hover:bg-zinc-800 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_120px_20px] md:items-center md:gap-4">
+                  <div className="min-w-0">
+                    <div className="truncate font-bold text-black group-hover:text-sig-blue dark:text-white">{p.clientes?.nombre || "—"}</div>
+                    <div className="truncate text-xs text-sig-muted">{[p.planta, p.linea].filter(Boolean).join(", ") || "—"}{p.po_numero ? `, ${/^po/i.test(p.po_numero) ? "" : "PO "}${p.po_numero}` : ""}</div>
                   </div>
-                  <div className="mt-0.5 text-xs text-sig-muted">{[p.planta, p.linea].filter(Boolean).join(" · ") || "—"} · {formatearFecha(p.fecha_inicio)}</div>
-                  <div className="mt-2"><BarraProgreso completadas={p.progreso.completadas} total={p.progreso.total} vencidas={p.progreso.vencidas} /></div>
+                  <div className="text-sm">
+                    <div className="tabular-nums text-black dark:text-gray-200">{formatearFecha(p.fecha_inicio)}</div>
+                    <div className="text-xs text-sig-muted">{p.estado === "active" ? cuando(p) : ""}</div>
+                  </div>
+                  <BarraProgreso completadas={p.progreso.completadas} total={p.progreso.total} vencidas={p.progreso.vencidas} />
+                  <div className="text-sm tabular-nums text-black dark:text-gray-200">{p.estado === "active" ? formatearFecha(p.progreso.proxima_fecha) : "—"}</div>
+                  <div><EstadoBadge tono={tono} /></div>
+                  <ChevronRight size={16} className="hidden text-sig-muted md:block" />
                 </Link>
               </li>
-            ))}
-          </ul>
-        </div>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

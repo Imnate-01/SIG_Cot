@@ -6,7 +6,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useRouter } from "@/i18n/routing";
 import api from "@/services/api";
-import { ETAPAS_ESTANDAR, formatearFecha, sumarDias } from "@/features/pm/pm";
+import { ETAPAS_ESTANDAR, etiquetaSemana, formatearFecha, sumarDias } from "@/features/pm/pm";
 import { Campo, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
 
 interface ClienteOpcion {
@@ -82,7 +82,7 @@ export default function PmNuevoPage() {
       <Link href="/pm" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-sig-muted hover:text-black dark:hover:text-white">
         <ArrowLeft size={16} /> {t("backToList")}
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-black dark:text-white">{t("newPm")}</h1>
+      <h1 className="mb-6 text-3xl font-bold leading-tight text-black dark:text-white">{t("newPm")}</h1>
 
       <form onSubmit={guardar} className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
@@ -138,18 +138,25 @@ export default function PmNuevoPage() {
         <aside className="h-fit rounded border border-sig-line dark:border-zinc-700 bg-sig-sand dark:bg-zinc-900 p-5 lg:sticky lg:top-6">
           <h2 className="text-base font-bold text-black dark:text-white">{t("previewTitle")}</h2>
           <p className="mb-4 mt-1 text-xs text-sig-muted">{form.fecha_inicio ? t("previewBody") : t("previewEmpty")}</p>
-          <ol className="space-y-2.5">
-            {ETAPAS_ESTANDAR.map((e) => (
-              <li key={e.nombre} className="flex items-start justify-between gap-3 text-sm">
-                <div>
-                  <div className="font-semibold text-black dark:text-white">{e.nombre}</div>
-                  <div className="text-xs text-sig-muted">{t("tasksCount", { count: e.tareas })}</div>
-                </div>
-                <div className="whitespace-nowrap font-semibold tabular-nums text-black dark:text-white">
-                  {form.fecha_inicio ? formatearFecha(sumarDias(form.fecha_inicio, e.semanas * 7)) : "—"}
-                </div>
-              </li>
-            ))}
+          <ol>
+            {ETAPAS_ESTANDAR.map((e, i) => {
+              const ultima = i === ETAPAS_ESTANDAR.length - 1;
+              const diaPm = e.semanas === 0;
+              return (
+                <li key={e.nombre} className="grid grid-cols-[52px_minmax(0,1fr)] gap-3">
+                  <div className={`pt-0.5 text-right text-xs font-bold tabular-nums ${diaPm ? "text-sig-blue" : "text-black dark:text-white"}`}>{etiquetaSemana(e.semanas)}</div>
+                  <div className={`relative pl-6 ${ultima ? "" : "pb-4"}`}>
+                    {!ultima && <span className="absolute bottom-0 left-[6px] top-4 w-px bg-sig-line-strong dark:bg-zinc-600" aria-hidden />}
+                    <span className={`absolute left-0 top-1 h-3.5 w-3.5 border-2 ${diaPm ? "rotate-45 rounded-[2px] border-sig-blue bg-sig-blue-soft" : "rounded-full border-sig-line-strong bg-white dark:bg-zinc-900"}`} aria-hidden />
+                    <div className="flex items-start justify-between gap-2 text-sm">
+                      <span className="font-semibold text-black dark:text-white">{e.nombre}</span>
+                      <span className="whitespace-nowrap font-semibold tabular-nums text-black dark:text-white">{form.fecha_inicio ? formatearFecha(sumarDias(form.fecha_inicio, e.semanas * 7)) : "—"}</span>
+                    </div>
+                    <div className="text-xs text-sig-muted">{t("tasksCount", { count: e.tareas })}</div>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         </aside>
       </form>

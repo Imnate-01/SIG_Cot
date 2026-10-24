@@ -3,17 +3,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, Download, History, Loader2, Paperclip, Pencil, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Download, History, Loader2, Paperclip, Pencil, StickyNote, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
 import EvidenciasPanel from "@/features/pm/EvidenciasPanel";
 import { avisarCambioAlertas } from "@/features/pm/useAlertasPm";
 import {
-  agruparPorEtapa, estadoEvidencia, etapaActual, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
+  agruparPorEtapa, cuentaRegresiva, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
 } from "@/features/pm/pm";
-import { Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { Avatar, BarraEtapas, Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
 
 const mensajeError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -195,228 +195,278 @@ export default function PmDetallePage() {
   }
 
   const tonoPm = pm.estado === "completed" ? "done" : pm.estado === "cancelled" ? "cancelled" : vencidas > 0 ? "overdue" : "on_track";
-  const datos: Array<[string, string]> = [
-    [t("fieldContact"), pm.contacto_nombre || "—"],
-    [t("fieldPhone"), pm.contacto_telefono || "—"],
-    [t("fieldEmail"), pm.contacto_correo || "—"],
-    [t("fieldSam"), pm.sam || "—"],
-    [t("fieldPo"), pm.po_numero || "—"],
-    [t("fieldFseFiller"), pm.fse_filler || "—"],
-    [t("fieldFseDownline"), pm.fse_downline || "—"],
-    [t("fieldCreatedBy"), nombreUsuario(pm.usuarios, pm.creado_por)],
+  const ordenActual = etapaActual(etapas);
+  const etapasConVencidas = new Set(etapas.filter((e) => e.tareas.some((x) => semaforoTarea(x, hoy) === "overdue")).map((e) => e.orden));
+  const faltaEvidencia = pm.tareas.filter((x) => estadoEvidencia(x) === "missing").length;
+  const cuenta = cuentaRegresiva(pm.fecha_inicio, hoy);
+  const cuentaNumero = cuenta.tipo === "hoy" ? t("countdownToday") : cuenta.unidad === "dias" ? t("countdownDays", { count: cuenta.valor }) : t("countdownWeeks", { count: cuenta.valor });
+  const cuentaTexto = cuenta.tipo === "hoy" ? t("countdownIsToday") : cuenta.tipo === "antes" ? t("untilPmDay") : t("sincePmDay");
+  const alternarEtapa = (orden: number) => setAbiertas((s) => { const n = new Set(s); if (n.has(orden)) n.delete(orden); else n.add(orden); return n; });
+  const ficha: Array<{ titulo: string; filas: Array<[string, React.ReactNode]> }> = [
+    { titulo: t("customerSection"), filas: [
+      [t("shortContact"), pm.contacto_nombre || "—"],
+      [t("shortPhone"), pm.contacto_telefono ? <a href={`tel:${pm.contacto_telefono}`} className="text-sig-blue hover:underline">{pm.contacto_telefono}</a> : "—"],
+      [t("shortEmail"), pm.contacto_correo ? <a href={`mailto:${pm.contacto_correo}`} className="break-all text-sig-blue hover:underline">{pm.contacto_correo}</a> : "—"],
+    ] },
+    { titulo: t("teamSection"), filas: [
+      [t("fieldSam"), pm.sam || "—"],
+      [t("shortFseFiller"), pm.fse_filler || "—"],
+      [t("shortFseDownline"), pm.fse_downline || "—"],
+      [t("shortCreatedBy"), nombreUsuario(pm.usuarios, pm.creado_por)],
+    ] },
+    { titulo: t("orderSection"), filas: [
+      [t("shortPo"), pm.po_numero || "—"],
+      [t("shortStart"), formatearFecha(pm.fecha_inicio)],
+      [t("shortEnd"), formatearFecha(pm.fecha_fin)],
+    ] },
   ];
 
+  const NODO: Record<string, string> = {
+    done: "border-sig-success bg-sig-success text-white",
+    overdue: "border-sig-danger bg-white dark:bg-zinc-900",
+    current: "border-sig-blue bg-sig-blue-soft dark:bg-zinc-800 shadow-[0_0_0_4px_var(--sig-blue-focus)]",
+    upcoming: "border-sig-line-strong bg-white dark:bg-zinc-900",
+  };
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <Link href="/pm" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-sig-muted hover:text-black dark:hover:text-white">
         <ArrowLeft size={16} /> {t("backToList")}
       </Link>
 
-      <section className="mb-6 rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold text-black dark:text-white">{pm.clientes?.nombre || "—"}</h1>
-              <EstadoBadge tono={tonoPm} />
-            </div>
-            <p className="mt-1 text-sm text-sig-muted">{[pm.planta, pm.linea].filter(Boolean).join(" · ") || t("noPlantLine")}</p>
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold leading-tight text-black dark:text-white">{pm.clientes?.nombre || "—"}</h1>
+            <EstadoBadge tono={tonoPm} />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className={btnSecundario} onClick={descargarReporte} disabled={generandoPdf}>
-              {generandoPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {t("downloadReport")}
-            </button>
-            <button className={btnSecundario} onClick={() => setModalEditar(true)}><Pencil size={14} /> {t("editDetails")}</button>
-          </div>
+          <p className="mt-1 text-sm text-sig-muted">{[pm.planta, pm.linea].filter(Boolean).join(", ") || t("noPlantLine")}</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button className={btnSecundario} onClick={() => setModalEditar(true)}><Pencil size={14} /> {t("editDetails")}</button>
+          <button className={btnPrimario} onClick={descargarReporte} disabled={generandoPdf}>
+            {generandoPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {t("downloadReport")}
+          </button>
+        </div>
+      </header>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <div className="col-span-2 sm:col-span-1">
-            <div className="text-xs font-semibold uppercase tracking-wide text-sig-muted">{t("colProgress")}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-black dark:text-white">{avance.completadas}/{avance.total} <span className="text-sm font-semibold text-sig-muted">({avance.porcentaje}%)</span></div>
-            <div className="mt-1 text-xs text-sig-muted">{t("remaining", { count: avance.restantes })}{vencidas > 0 && <span className="font-semibold text-sig-danger"> · {t("overdueCount", { count: vencidas })}</span>}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-sig-muted">{t("fieldStart")}</div>
-            <div className="mt-1 text-lg font-bold tabular-nums text-black dark:text-white">{formatearFecha(pm.fecha_inicio)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-sig-muted">{t("fieldEnd")}</div>
-            <div className="mt-1 text-lg font-bold tabular-nums text-black dark:text-white">{formatearFecha(pm.fecha_fin)}</div>
-          </div>
+      <section className="mb-6 grid overflow-hidden rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div className="border-b border-sig-line dark:border-zinc-700 p-5 sm:border-b-0 sm:border-r">
+          <div className="text-4xl font-bold tabular-nums leading-none text-black dark:text-white">{cuentaNumero}</div>
+          <div className="mt-2 text-sm text-sig-muted">{cuentaTexto}, {formatearFecha(pm.fecha_inicio)}</div>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-sig-line dark:bg-zinc-700">
-          <div className={`h-full ${avance.restantes === 0 ? "bg-sig-success" : "bg-sig-blue"}`} style={{ width: `${avance.porcentaje}%` }} />
-        </div>
-
-        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-sig-line dark:border-zinc-700 pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          {datos.map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-sig-muted">{k}</dt>
-              <dd className="mt-0.5 break-words text-black dark:text-gray-200">{v}</dd>
+        <div className="p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-sm text-black dark:text-white">
+              <span className="text-2xl font-bold tabular-nums">{avance.completadas}</span>
+              <span className="text-sig-muted"> {t("ofTasksDone", { total: avance.total })}</span>
             </div>
-          ))}
-        </dl>
+            <div className="text-sm font-bold tabular-nums text-black dark:text-white">{avance.porcentaje}%</div>
+          </div>
+          <BarraEtapas etapas={etapas} conVencidas={etapasConVencidas} />
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            <span className="text-sig-muted">{t("remaining", { count: avance.restantes })}</span>
+            {vencidas > 0 && <span className="font-semibold text-sig-danger">{t("overdueCount", { count: vencidas })}</span>}
+            {faltaEvidencia > 0 && <span className="font-semibold text-black dark:text-white">{t("missingEvidenceCount", { count: faltaEvidencia })}</span>}
+          </div>
+        </div>
       </section>
 
-      <div className="space-y-3">
-        {etapas.map((e) => {
-          const abierta = abiertas.has(e.orden);
-          const completa = e.completadas === e.tareas.length;
-          return (
-            <section key={e.orden} className="overflow-hidden rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900">
-              <button
-                className="flex w-full items-center gap-3 bg-sig-sand dark:bg-zinc-800 px-4 py-3 text-left"
-                aria-expanded={abierta}
-                onClick={() => setAbiertas((s) => { const n = new Set(s); if (n.has(e.orden)) n.delete(e.orden); else n.add(e.orden); return n; })}
-              >
-                {abierta ? <ChevronDown size={18} className="text-sig-muted" /> : <ChevronRight size={18} className="text-sig-muted" />}
-                <span className="flex-1">
-                  <span className="block text-sm font-bold uppercase tracking-wide text-black dark:text-white">{e.nombre}</span>
-                  <span className="block text-xs text-sig-muted">{t("dueDate")}: <span className="font-semibold tabular-nums text-black dark:text-gray-200">{formatearFecha(e.fecha_limite)}</span></span>
-                </span>
-                <EstadoBadge tono={completa ? "done" : "no_date"} etiquetaPropia={`${e.completadas}/${e.tareas.length}`} />
-              </button>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <ol aria-label={t("timelineLabel")}>
+          {etapas.map((e, i) => {
+            const abierta = abiertas.has(e.orden);
+            const estado = estadoEtapa(e, hoy, ordenActual);
+            const esDiaPm = e.semanas === 0;
+            const ultima = i === etapas.length - 1;
+            return (
+              <li key={e.orden} className="grid grid-cols-1 gap-3 sm:grid-cols-[72px_minmax(0,1fr)]">
+                <div className="hidden pt-3.5 text-right sm:block">
+                  <div className={`text-sm font-bold tabular-nums ${esDiaPm ? "text-sig-blue" : "text-black dark:text-white"}`}>{etiquetaSemana(e.semanas)}</div>
+                  <div className="text-[11px] tabular-nums text-sig-muted">{formatearFecha(e.fecha_limite).replace(/, \d{4}$/, "")}</div>
+                </div>
+                <div className={`relative pl-7 ${ultima ? "" : "pb-4"}`}>
+                  {!ultima && <span className="absolute bottom-0 left-[9px] top-5 w-px bg-sig-line-strong dark:bg-zinc-600" aria-hidden />}
+                  <span
+                    className={`absolute left-0 top-4 flex h-5 w-5 items-center justify-center border-2 ${esDiaPm ? "rotate-45 rounded-[3px]" : "rounded-full"} ${NODO[estado]}`}
+                    aria-hidden
+                  >
+                    {estado === "done" && <Check size={12} strokeWidth={3} className={esDiaPm ? "-rotate-45" : ""} />}
+                    {estado === "overdue" && <span className="h-2 w-2 rounded-full bg-sig-danger" />}
+                  </span>
 
-              {abierta && (
-                <ul className="divide-y divide-sig-line dark:divide-zinc-700">
-                  {e.tareas.map((tarea) => {
-                    const sem = semaforoTarea(tarea, hoy);
-                    const abiertaTarea = expandida === tarea.id;
-                    return (
-                      <li key={tarea.id} id={`tarea-${tarea.id}`} className="scroll-mt-24 px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <button
-                            role="checkbox"
-                            aria-checked={tarea.completada}
-                            aria-label={`${tarea.codigo} ${tarea.titulo}`}
-                            onClick={() => alternar(tarea)}
-                            className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 transition-colors ${tarea.completada ? "border-sig-success bg-sig-success text-white" : "border-sig-line-strong bg-white dark:bg-zinc-800 hover:border-sig-blue"}`}
-                          >
-                            {tarea.completada && <Check size={16} strokeWidth={3} />}
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-baseline gap-x-2">
-                              <span className="text-xs font-bold tabular-nums text-sig-muted">{tarea.codigo}</span>
-                              <span className={`text-sm font-semibold ${tarea.completada ? "text-sig-muted line-through" : "text-black dark:text-white"}`}>{tarea.titulo}</span>
-                            </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                              <EstadoBadge tono={sem} etiquetaPropia={sem === "done" ? undefined : `${t("dueDate")} ${formatearFecha(tarea.fecha_limite)}`} />
-                              {(tarea.evidencia !== "none" || (tarea.evidencias?.length ?? 0) > 0) && (() => {
-                                const ee = estadoEvidencia(tarea);
-                                const n = tarea.evidencias?.length ?? 0;
-                                return (
-                                  <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-semibold ${ee === "provided" ? "border-sig-success text-sig-success" : ee === "missing" ? "border-sig-danger text-sig-danger" : "border-sig-line-strong text-black dark:text-gray-200"}`}>
-                                    <Paperclip size={12} />
-                                    {ee === "provided" ? t("evidenceCount", { count: n }) : tarea.evidencia === "required" ? t("evidenceRequired") : t("evidenceOptional")}
+                  <section className={`overflow-hidden rounded border bg-white dark:bg-zinc-900 ${estado === "current" ? "border-sig-blue" : "border-sig-line dark:border-zinc-700"}`}>
+                    <button className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sig-sand/50 dark:hover:bg-zinc-800" aria-expanded={abierta} onClick={() => alternarEtapa(e.orden)}>
+                      <span className="min-w-0 flex-1">
+                        <span className="mb-0.5 block text-xs font-bold tabular-nums text-sig-muted sm:hidden">{etiquetaSemana(e.semanas)}, {formatearFecha(e.fecha_limite)}</span>
+                        <span className="block font-bold text-black dark:text-white">{e.nombre}</span>
+                        <span className="mt-0.5 block text-xs text-sig-muted">
+                          {estado === "done" ? t("stageDone") : estado === "overdue" ? <span className="font-semibold text-sig-danger">{t("stageOverdue")}</span> : estado === "current" ? t("stageCurrent") : t("stageUpcoming")}
+                        </span>
+                      </span>
+                      <span className="text-sm font-bold tabular-nums text-black dark:text-white">{e.completadas}/{e.tareas.length}</span>
+                      <ChevronDown size={18} className={`text-sig-muted transition-transform ${abierta ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {abierta && (
+                      <ul className="divide-y divide-sig-line border-t border-sig-line dark:divide-zinc-700 dark:border-zinc-700">
+                        {e.tareas.map((tarea) => {
+                          const sem = semaforoTarea(tarea, hoy);
+                          const abiertaTarea = expandida === tarea.id;
+                          const ee = estadoEvidencia(tarea);
+                          const nEv = tarea.evidencias?.length ?? 0;
+                          const responsable = tarea.completada ? tarea.completada_por : tarea.asignado_a;
+                          return (
+                            <li key={tarea.id} id={`tarea-${tarea.id}`} className="scroll-mt-24">
+                              <div className={`flex items-start gap-3 px-4 py-3 ${abiertaTarea ? "bg-sig-sand/50 dark:bg-zinc-800/60" : ""}`}>
+                                <button
+                                  role="checkbox"
+                                  aria-checked={tarea.completada}
+                                  aria-label={`${tarea.codigo} ${tarea.titulo}`}
+                                  onClick={() => alternar(tarea)}
+                                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 transition-colors ${tarea.completada ? "border-sig-success bg-sig-success text-white" : "border-sig-line-strong bg-white dark:bg-zinc-800 hover:border-sig-blue"}`}
+                                >
+                                  {tarea.completada && <Check size={16} strokeWidth={3} />}
+                                </button>
+                                <button className="min-w-0 flex-1 text-left" aria-expanded={abiertaTarea} onClick={() => setExpandida(abiertaTarea ? null : tarea.id)}>
+                                  <span className="flex flex-wrap items-baseline gap-x-2">
+                                    <span className="text-xs font-bold tabular-nums text-sig-muted">{tarea.codigo}</span>
+                                    <span className={`text-sm font-semibold ${tarea.completada ? "text-sig-muted line-through" : "text-black dark:text-white"}`}>{tarea.titulo}</span>
                                   </span>
-                                );
-                              })()}
-                              {tarea.completada && (
-                                <span className="text-sig-muted">
-                                  {t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}
+                                  <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                                    {sem !== "done" && <EstadoBadge tono={sem} etiquetaPropia={`${t("dueDate")} ${formatearFecha(tarea.fecha_limite)}`} />}
+                                    {(tarea.evidencia !== "none" || nEv > 0) && (
+                                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-semibold ${ee === "provided" ? "border-sig-success text-sig-success" : ee === "missing" ? "border-sig-danger text-sig-danger" : "border-sig-line-strong text-black dark:text-gray-200"}`}>
+                                        <Paperclip size={12} />
+                                        {ee === "provided" ? t("evidenceCount", { count: nEv }) : tarea.evidencia === "required" ? t("evidenceRequired") : t("evidenceOptional")}
+                                      </span>
+                                    )}
+                                    {tarea.notas && <span className="inline-flex items-center gap-1 text-sig-muted" title={tarea.notas}><StickyNote size={12} /> {t("hasNote")}</span>}
+                                  </span>
+                                </button>
+                                <span className="flex shrink-0 items-center gap-2 pt-0.5">
+                                  {(responsable || tarea.colaboradores.length > 0) && (
+                                    <span className="hidden items-center sm:flex">
+                                      {responsable && <Avatar nombre={nombreUsuario(pm.usuarios, responsable)} tono={tarea.completada ? "hecho" : "neutro"} />}
+                                      {tarea.colaboradores.slice(0, 3).map((c) => <span key={c} className="-ml-1.5"><Avatar nombre={nombreUsuario(pm.usuarios, c)} /></span>)}
+                                    </span>
+                                  )}
+                                  <button onClick={() => setExpandida(abiertaTarea ? null : tarea.id)} aria-label={abiertaTarea ? t("hideDetails") : t("details")} className="rounded p-1 text-sig-muted hover:bg-sig-sand dark:hover:bg-zinc-700">
+                                    <ChevronDown size={16} className={`transition-transform ${abiertaTarea ? "rotate-180" : ""}`} />
+                                  </button>
                                 </span>
-                              )}
-                              {!tarea.completada && tarea.asignado_a && (
-                                <span className="text-sig-muted">{t("assignedTo", { name: nombreUsuario(pm.usuarios, tarea.asignado_a) })}</span>
-                              )}
-                              {tarea.colaboradores.length > 0 && (
-                                <span className="text-sig-muted">+ {tarea.colaboradores.map((c) => nombreUsuario(pm.usuarios, c)).join(", ")}</span>
-                              )}
-                              {tarea.notas && !abiertaTarea && <span className="truncate text-sig-muted">“{tarea.notas}”</span>}
-                            </div>
-                          </div>
-                          <button
-                            className="shrink-0 rounded px-2 py-1 text-xs font-semibold text-sig-blue hover:bg-sig-blue-soft dark:hover:bg-zinc-800"
-                            aria-expanded={abiertaTarea}
-                            onClick={() => setExpandida(abiertaTarea ? null : tarea.id)}
-                          >
-                            {abiertaTarea ? t("hideDetails") : t("details")}
-                          </button>
-                        </div>
-
-                        {abiertaTarea && (
-                          <div className="ml-9 mt-3 space-y-4 rounded bg-sig-sand/60 dark:bg-zinc-800/60 p-4">
-                            <Campo label={t("notes")}>
-                              <textarea
-                                key={tarea.notas || ""}
-                                className="min-h-[72px] w-full rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
-                                defaultValue={tarea.notas || ""}
-                                maxLength={4000}
-                                placeholder={t("notesPlaceholder")}
-                                onBlur={(ev) => guardarNotas(tarea, ev.target.value.trim())}
-                              />
-                            </Campo>
-
-                            {(tarea.evidencia !== "none" || (tarea.evidencias?.length ?? 0) > 0) && (
-                              <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
-                            )}
-
-                            {!tarea.completada && (
-                              <Campo label={t("responsible")}>
-                                <select
-                                  className={`${campo} max-w-xs`}
-                                  value={tarea.asignado_a || ""}
-                                  onChange={(ev) => enviarTarea(tarea, { asignado_a: ev.target.value || null }, { asignado_a: ev.target.value || null })}
-                                >
-                                  <option value="">{t("unassigned")}</option>
-                                  {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
-                                </select>
-                                <span className="mt-1 block text-xs text-sig-muted">{t("responsibleHint")}</span>
-                              </Campo>
-                            )}
-
-                            <div>
-                              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-sig-muted">{t("collaborators")}</span>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {tarea.colaboradores.length === 0 && <span className="text-sm text-sig-muted">{t("noCollaborators")}</span>}
-                                {tarea.colaboradores.map((c) => (
-                                  <span key={c} className="inline-flex items-center gap-1 rounded bg-white dark:bg-zinc-800 border border-sig-line-strong px-2 py-1 text-xs font-semibold text-black dark:text-white">
-                                    {nombreUsuario(pm.usuarios, c)}
-                                    <button onClick={() => quitarColaborador(tarea, c)} aria-label={t("removeCollaborator", { name: nombreUsuario(pm.usuarios, c) })} className="text-sig-muted hover:text-sig-danger"><X size={12} /></button>
-                                  </span>
-                                ))}
                               </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                <UserPlus size={16} className="text-sig-muted" />
-                                <select
-                                  className={`${campo} max-w-xs`}
-                                  value=""
-                                  onChange={(ev) => agregarColaborador(tarea, ev.target.value)}
-                                  aria-label={t("addCollaborator")}
-                                >
-                                  <option value="">{t("addCollaborator")}</option>
-                                  {usuariosLista.filter((u) => !tarea.colaboradores.includes(u.id) && u.id !== tarea.completada_por).map((u) => (
-                                    <option key={u.id} value={u.id}>{u.nombre || u.email}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
 
-                            <button className="inline-flex items-center gap-1.5 text-xs font-semibold text-sig-blue hover:underline" onClick={() => verHistorial(tarea)}>
-                              <History size={14} /> {t("viewHistory")}
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                              {abiertaTarea && (
+                                <div className="grid gap-5 border-t border-sig-line dark:border-zinc-700 bg-sig-sand/50 dark:bg-zinc-800/60 px-4 pb-5 pt-4 sm:pl-[52px] md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                                  <div className="space-y-4">
+                                    <Campo label={t("notes")}>
+                                      <textarea
+                                        key={tarea.notas || ""}
+                                        className="min-h-[72px] w-full rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
+                                        defaultValue={tarea.notas || ""}
+                                        maxLength={4000}
+                                        placeholder={t("notesPlaceholder")}
+                                        onBlur={(ev) => guardarNotas(tarea, ev.target.value.trim())}
+                                      />
+                                    </Campo>
+                                    {(tarea.evidencia !== "none" || nEv > 0) && (
+                                      <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-4">
+                                    {tarea.completada ? (
+                                      <div>
+                                        <span className="mb-1 block text-xs font-semibold text-sig-muted">{t("completedSection")}</span>
+                                        <div className="flex items-center gap-2 text-sm text-black dark:text-white">
+                                          <Avatar nombre={nombreUsuario(pm.usuarios, tarea.completada_por)} tono="hecho" />
+                                          <span>{t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Campo label={t("responsible")}>
+                                        <select
+                                          className={campo}
+                                          value={tarea.asignado_a || ""}
+                                          onChange={(ev) => enviarTarea(tarea, { asignado_a: ev.target.value || null }, { asignado_a: ev.target.value || null })}
+                                        >
+                                          <option value="">{t("unassigned")}</option>
+                                          {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+                                        </select>
+                                        <span className="mt-1 block text-xs text-sig-muted">{t("responsibleHint")}</span>
+                                      </Campo>
+                                    )}
+
+                                    <div>
+                                      <span className="mb-1 block text-xs font-semibold text-sig-muted">{t("collaborators")}</span>
+                                      {tarea.colaboradores.length > 0 && (
+                                        <ul className="mb-2 space-y-1.5">
+                                          {tarea.colaboradores.map((c) => (
+                                            <li key={c} className="flex items-center gap-2 text-sm text-black dark:text-white">
+                                              <Avatar nombre={nombreUsuario(pm.usuarios, c)} />
+                                              <span className="flex-1 truncate">{nombreUsuario(pm.usuarios, c)}</span>
+                                              <button onClick={() => quitarColaborador(tarea, c)} aria-label={t("removeCollaborator", { name: nombreUsuario(pm.usuarios, c) })} className="rounded p-1 text-sig-muted hover:bg-sig-danger-soft hover:text-sig-danger dark:hover:bg-zinc-700"><X size={14} /></button>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                      <div className="relative">
+                                        <UserPlus size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sig-muted" />
+                                        <select className={`${campo} pl-9`} value="" onChange={(ev) => agregarColaborador(tarea, ev.target.value)} aria-label={t("addCollaborator")}>
+                                          <option value="">{t("addCollaborator")}</option>
+                                          {usuariosLista.filter((u) => !tarea.colaboradores.includes(u.id) && u.id !== tarea.completada_por).map((u) => (
+                                            <option key={u.id} value={u.id}>{u.nombre || u.email}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-sig-blue hover:underline" onClick={() => verHistorial(tarea)}>
+                                      <History size={15} /> {t("viewHistory")}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+
+        <aside className="h-fit overflow-hidden rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 lg:sticky lg:top-6">
+          {ficha.map((g) => (
+            <section key={g.titulo} className="border-b border-sig-line dark:border-zinc-700 px-5 py-4">
+              <h2 className="mb-2 text-sm font-bold text-black dark:text-white">{g.titulo}</h2>
+              <dl className="space-y-2 text-sm">
+                {g.filas.map(([k, v]) => (
+                  <div key={k} className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
+                    <dt className="text-sig-muted">{k}</dt>
+                    <dd className="break-words text-black dark:text-gray-200">{v}</dd>
+                  </div>
+                ))}
+              </dl>
             </section>
-          );
-        })}
+          ))}
+          <section className="bg-sig-sand/60 dark:bg-zinc-800/60 px-5 py-4">
+            <h2 className="text-sm font-bold text-black dark:text-white">{t("openNotesShort")}</h2>
+            <p className="mb-2 mt-0.5 text-xs text-sig-muted">{t("openNotesShortHint")}</p>
+            <textarea
+              key={pm.notas_abiertas || ""}
+              className="min-h-[120px] w-full rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
+              defaultValue={pm.notas_abiertas || ""}
+              placeholder={t("openNotesPlaceholder")}
+              onBlur={(e) => guardarNotasAbiertas(e.target.value.trim())}
+            />
+          </section>
+        </aside>
       </div>
-
-      <section className="mt-6 rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-black dark:text-white">{t("openNotes")}</h2>
-        <p className="mb-3 text-xs text-sig-muted">{t("openNotesHint")}</p>
-        <textarea
-          key={pm.notas_abiertas || ""}
-          className="min-h-[96px] w-full rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]"
-          defaultValue={pm.notas_abiertas || ""}
-          onBlur={(e) => guardarNotasAbiertas(e.target.value.trim())}
-        />
-      </section>
 
       {modalEditar && (
         <EditarModal pm={pm} onClose={() => setModalEditar(false)} onSaved={async () => { setModalEditar(false); await cargar(); }} />

@@ -114,6 +114,7 @@ export function semaforoTarea(
 export interface Etapa {
   orden: number;
   nombre: string;
+  semanas: number;
   fecha_limite: string | null;
   tareas: PmTarea[];
   completadas: number;
@@ -125,7 +126,7 @@ export function agruparPorEtapa(tareas: PmTarea[]): Etapa[] {
   for (const t of [...tareas].sort((a, b) => a.orden - b.orden)) {
     let e = mapa.get(t.etapa_orden);
     if (!e) {
-      e = { orden: t.etapa_orden, nombre: t.etapa, fecha_limite: t.fecha_limite, tareas: [], completadas: 0 };
+      e = { orden: t.etapa_orden, nombre: t.etapa, semanas: t.semanas, fecha_limite: t.fecha_limite, tareas: [], completadas: 0 };
       mapa.set(t.etapa_orden, e);
     }
     e.tareas.push(t);
@@ -211,4 +212,45 @@ export function dimensionesAjustadas(ancho: number, alto: number, max: number): 
   if (mayor <= max) return { ancho, alto };
   const f = max / mayor;
   return { ancho: Math.round(ancho * f), alto: Math.round(alto * f) };
+}
+
+/** Etiqueta de una etapa respecto al día del PM: "T−18 wk", "PM day", "T+1 wk". */
+export function etiquetaSemana(semanas: number): string {
+  if (semanas === 0) return "PM day";
+  return semanas < 0 ? `T\u2212${-semanas} wk` : `T+${semanas} wk`;
+}
+
+export type CuentaRegresiva =
+  | { tipo: "antes"; unidad: "semanas" | "dias"; valor: number }
+  | { tipo: "hoy" }
+  | { tipo: "despues"; unidad: "semanas" | "dias"; valor: number };
+
+/**
+ * Cuánto falta para el día del PM (o cuánto pasó). Menos de 14 días se dice en
+ * días; si no, en semanas redondeadas hacia arriba (faltan 85 días → 13 semanas).
+ */
+export function cuentaRegresiva(fechaInicio: string, hoy: string): CuentaRegresiva {
+  const dias = diasHasta(fechaInicio, hoy);
+  if (dias === 0) return { tipo: "hoy" };
+  const abs = Math.abs(dias);
+  const medida = abs < 14 ? { unidad: "dias" as const, valor: abs } : { unidad: "semanas" as const, valor: dias > 0 ? Math.ceil(abs / 7) : Math.floor(abs / 7) };
+  return { tipo: dias > 0 ? "antes" : "despues", ...medida };
+}
+
+export type EstadoEtapa = "done" | "overdue" | "current" | "upcoming";
+
+/** Estado de una etapa para la línea de tiempo: completa, con vencidas, la actual o próxima. */
+export function estadoEtapa(e: Etapa, hoy: string, ordenActual: number | null): EstadoEtapa {
+  if (e.tareas.length > 0 && e.completadas === e.tareas.length) return "done";
+  if (e.tareas.some((t) => semaforoTarea(t, hoy) === "overdue")) return "overdue";
+  if (e.orden === ordenActual) return "current";
+  return "upcoming";
+}
+
+/** Iniciales para el avatar: "Geo Martínez" → "GM"; "claudio@sig.biz" → "C". */
+export function iniciales(nombre: string | null | undefined): string {
+  const limpio = (nombre || "").replace(/@.*/, "").trim();
+  if (!limpio) return "?";
+  const partes = limpio.split(/[\s._-]+/).filter(Boolean);
+  return (partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0][0]).toUpperCase();
 }
