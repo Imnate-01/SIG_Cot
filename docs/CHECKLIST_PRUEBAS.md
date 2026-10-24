@@ -89,3 +89,16 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] Una tarea vencida muestra "Due <fecha>" en rojo; el PM con tareas vencidas aparece como "Overdue" en la lista
 - [ ] Tareas con evidencia muestran "Evidence required/optional" (los adjuntos llegan en la fase 2)
 
+### PM Tracker (fase 2: evidencias) — requiere la migración `20261023_02_pm_evidencias.sql`
+- [ ] Marcar PM-01 (obligatoria) sin evidencia → aviso "This task requires evidence…" y se abre el panel; no se completa
+- [ ] Subir un PDF → aparece en la lista con tamaño, quién lo subió y fecha; el botón de abrir lo muestra en otra pestaña
+- [ ] Subir una foto de celular (varios MB) → se sube reducida (más ligera) y se ve bien al abrirla
+- [ ] Foto con la cámara en el celular ("Take photo") y foto HEIC de iPhone → se suben
+- [ ] Arrastrar 2 archivos juntos al recuadro → se suben los dos
+- [ ] Archivo .exe o de más de 20 MB → mensaje de error claro, no se sube
+- [ ] Con evidencia ya cargada, PM-01 sí se completa
+- [ ] PM-31: "Link quotation" → elegir una cotización → queda ligada (enlace abre la cotización) y cuenta como evidencia; ligar la misma dos veces → aviso
+- [ ] Borrar la única evidencia de una tarea completada obligatoria → rechazado ("Reopen the task first"); reabrir y borrar sí funciona
+- [ ] El enlace de un archivo expira a los 5 minutos y no se puede adivinar la ruta (bucket privado)
+- [ ] "View history" registra "Evidence added/removed"
+

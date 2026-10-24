@@ -8,6 +8,17 @@
 export type Evidencia = "none" | "optional" | "required";
 export type EstadoPm = "active" | "completed" | "cancelled";
 
+export interface PmEvidencia {
+  id: string;
+  tipo: "file" | "quote";
+  nombre: string;
+  mime: string | null;
+  tamano: number | null;
+  cotizacion_id: number | null;
+  subido_por: string | null;
+  created_at: string;
+}
+
 export interface PmTarea {
   id: string;
   codigo: string;
@@ -24,6 +35,7 @@ export interface PmTarea {
   completada_en: string | null;
   notas: string | null;
   colaboradores: string[];
+  evidencias?: PmEvidencia[];
 }
 
 export interface UsuarioPm {
@@ -178,3 +190,25 @@ export const ETAPAS_ESTANDAR: Array<{ nombre: string; semanas: number; tareas: n
   { nombre: "1 week post PM", semanas: 1, tareas: 6 },
   { nombre: "3 weeks post PM", semanas: 3, tareas: 4 },
 ];
+
+/** Reglas de la evidencia de una tarea (la base de datos la exige igual). */
+export function estadoEvidencia(t: Pick<PmTarea, "evidencia" | "evidencias">): "not_needed" | "missing" | "optional_empty" | "provided" {
+  const n = t.evidencias?.length ?? 0;
+  if (n > 0) return "provided";
+  if (t.evidencia === "required") return "missing";
+  if (t.evidencia === "optional") return "optional_empty";
+  return "not_needed";
+}
+
+/** ¿Se puede marcar como completada ahora? Obligatoria sin evidencia → no. */
+export function puedeCompletar(t: Pick<PmTarea, "evidencia" | "evidencias" | "completada">): boolean {
+  return t.completada || estadoEvidencia(t) !== "missing";
+}
+
+/** Reduce (ancho, alto) para que el lado mayor no pase de `max`, sin agrandar nunca. */
+export function dimensionesAjustadas(ancho: number, alto: number, max: number): { ancho: number; alto: number } {
+  const mayor = Math.max(ancho, alto);
+  if (mayor <= max) return { ancho, alto };
+  const f = max / mayor;
+  return { ancho: Math.round(ancho * f), alto: Math.round(alto * f) };
+}

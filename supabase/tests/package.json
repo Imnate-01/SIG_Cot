@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node rpc_escrituras_atomicas.test.mjs && node rls_tablas_expuestas.test.mjs && node pm.test.mjs"
+    "test": "node rpc_escrituras_atomicas.test.mjs && node rls_tablas_expuestas.test.mjs && node pm.test.mjs && node pm_evidencias.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.2.17"

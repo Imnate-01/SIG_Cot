@@ -16,13 +16,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 function uuid(valor: unknown, campo: string): string {
-  if (typeof valor !== 'string' || !UUID.test(valor)) throw new ErrorHttp(400, `${campo} inválido`)
+  if (typeof valor !== 'string' || !UUID.test(valor)) throw new ErrorHttp(400, `Invalid ${campo}`)
   return valor
 }
 
 function fecha(valor: unknown, campo: string): string {
   if (typeof valor !== 'string' || !FECHA.test(valor) || Number.isNaN(Date.parse(valor))) {
-    throw new ErrorHttp(400, `${campo} debe tener formato AAAA-MM-DD`)
+    throw new ErrorHttp(400, `${campo} must use the format YYYY-MM-DD`)
   }
   return valor
 }
@@ -122,10 +122,10 @@ export class PmController {
     try {
       const { supabase, user } = contextoAuth(req)
       const clienteId = Number(req.body?.cliente_id)
-      if (!Number.isInteger(clienteId) || clienteId <= 0) throw new ErrorHttp(400, 'Selecciona un cliente')
+      if (!Number.isInteger(clienteId) || clienteId <= 0) throw new ErrorHttp(400, 'Select a customer')
       const inicio = fecha(req.body?.fecha_inicio, 'fecha_inicio')
       const fin = req.body?.fecha_fin ? fecha(req.body.fecha_fin, 'fecha_fin') : null
-      if (fin && fin < inicio) throw new ErrorHttp(400, 'La fecha de fin no puede ser anterior a la de inicio')
+      if (fin && fin < inicio) throw new ErrorHttp(400, 'The end date cannot be before the start date')
 
       const datos = {
         ...pickFields(req.body, CAMPOS_ENCABEZADO),
@@ -154,20 +154,27 @@ export class PmController {
         .eq('id', id).single()
       if (error) throw error
 
-      const { data: tareas, error: errTareas } = await supabase
-        .from('pm_tareas')
-        .select('*, pm_tarea_colaboradores(usuario_id)')
-        .eq('expediente_id', id)
-        .order('orden', { ascending: true })
+      // Con las evidencias (migración 20261023_02). Si esa migración aún no está
+      // aplicada, el detalle sigue funcionando sin ellas: el orden de despliegue no importa.
+      const BASE = '*, pm_tarea_colaboradores(usuario_id)'
+      const CON_EVIDENCIAS = `${BASE}, pm_evidencias(id, tipo, nombre, mime, tamano, cotizacion_id, subido_por, created_at)`
+      let { data: tareas, error: errTareas } = await supabase
+        .from('pm_tareas').select(CON_EVIDENCIAS).eq('expediente_id', id).order('orden', { ascending: true })
+      if (errTareas && /pm_evidencias/.test(`${errTareas.message} ${errTareas.details ?? ''}`)) {
+        console.warn('[migración pendiente] pm_evidencias: aplica 20261023_02_pm_evidencias.sql')
+        ;({ data: tareas, error: errTareas } = await supabase
+          .from('pm_tareas').select(BASE).eq('expediente_id', id).order('orden', { ascending: true }))
+      }
       if (errTareas) throw errTareas
 
       const lista = (tareas || []).map((t: any) => {
-        const { pm_tarea_colaboradores: colab, ...resto } = t
-        return { ...resto, colaboradores: (colab || []).map((c: { usuario_id: string }) => c.usuario_id) }
+        const { pm_tarea_colaboradores: colab, pm_evidencias: evid, ...resto } = t
+        const evidencias = [...((evid as any[]) || [])].sort((a: any, b: any) => String(a.created_at).localeCompare(String(b.created_at)))
+        return { ...resto, colaboradores: (colab || []).map((c: { usuario_id: string }) => c.usuario_id), evidencias }
       })
       const usuarios = await nombresDeUsuarios(supabase, [
         exp.creado_por,
-        ...lista.flatMap((t: any) => [t.asignado_a, t.completada_por, ...t.colaboradores]),
+        ...lista.flatMap((t: any) => [t.asignado_a, t.completada_por, ...t.colaboradores, ...t.evidencias.map((e: any) => e.subido_por)]),
       ])
       res.json({ success: true, data: { ...exp, tareas: lista, usuarios } })
     } catch (error) {
@@ -187,7 +194,7 @@ export class PmController {
       }
       if (cambios.fecha_fin) cambios.fecha_fin = fecha(cambios.fecha_fin, 'fecha_fin')
       if (req.body?.estado !== undefined) {
-        if (!ESTADOS_MANUALES.includes(req.body.estado)) throw new ErrorHttp(400, 'Estado inválido')
+        if (!ESTADOS_MANUALES.includes(req.body.estado)) throw new ErrorHttp(400, 'Invalid status')
         cambios.estado = req.body.estado
       }
 
@@ -230,6 +237,13 @@ export class PmController {
 
       if (req.body?.completada !== undefined) {
         const completada = req.body.completada === true
+        if (completada && !actual.completada && actual.evidencia === 'required') {
+          const { count, error: errEv } = await supabase
+            .from('pm_evidencias').select('id', { count: 'exact', head: true }).eq('tarea_id', tareaId)
+          // Sin la migración 20261023_02 no existe pm_evidencias: no se puede exigir
+          if (errEv && !/pm_evidencias/.test(errEv.message || '')) throw errEv
+          if (!errEv && (count ?? 0) === 0) throw new ErrorHttp(400, 'This task requires at least one piece of evidence before it can be completed.')
+        }
         if (completada !== actual.completada) {
           cambios.completada = completada
           cambios.completada_por = completada ? user.id : null
@@ -238,7 +252,7 @@ export class PmController {
         }
       }
       if (req.body?.notas !== undefined) {
-        if (req.body.notas !== null && typeof req.body.notas !== 'string') throw new ErrorHttp(400, 'Notas inválidas')
+        if (req.body.notas !== null && typeof req.body.notas !== 'string') throw new ErrorHttp(400, 'Invalid notes')
         const notas = (req.body.notas || '').toString().slice(0, 4000)
         if (notas !== (actual.notas || '')) {
           cambios.notas = notas || null
