@@ -10,7 +10,9 @@ import { supabase } from "@/lib/supabase";
 import { ACCEPT_EVIDENCIAS, esImagen, formatearTamano, validarArchivo } from "./evidencias";
 import { comprimirImagen } from "./comprimirImagen";
 import { formatearFecha, nombreUsuario, type PmEvidencia, type PmTarea, type UsuarioPm } from "./pm";
-import { btnSecundario, campo } from "./ui";
+import { campo } from "./ui";
+
+const btnCompacto = "inline-flex h-8 items-center justify-center gap-1.5 rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 text-xs font-semibold text-black dark:text-white hover:bg-sig-sand dark:hover:bg-zinc-700";
 
 const mensajeError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -94,9 +96,9 @@ export default function EvidenciasPanel({
 
   return (
     <div>
-      <span className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sig-muted">
+      <span className="mb-1 flex items-center gap-2 text-xs font-semibold text-sig-muted">
         {t("evidence")}
-        {tarea.evidencia === "required" && <span className="rounded bg-sig-warning-soft dark:bg-zinc-700 px-1.5 py-0.5 normal-case tracking-normal text-black dark:text-white">{t("evidenceRequired")}</span>}
+        {tarea.evidencia === "required" && <span className="rounded bg-sig-warning-soft dark:bg-zinc-700 px-1.5 py-0.5 text-black dark:text-white">{t("evidenceRequired")}</span>}
       </span>
 
       {evidencias.length > 0 && (
@@ -133,9 +135,9 @@ export default function EvidenciasPanel({
       >
         <p className="mb-2 text-sig-muted">{evidencias.length === 0 ? t("noEvidence") : t("addMoreEvidence")} <span className="hidden sm:inline">{t("dragHere")}</span></p>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <button className={btnSecundario} onClick={() => inputArchivo.current?.click()}><Upload size={14} /> {t("uploadFiles")}</button>
-          <button className={btnSecundario} onClick={() => inputFoto.current?.click()}><Camera size={14} /> {t("takePhoto")}</button>
-          <button className={btnSecundario} onClick={() => setSelector(true)}><Link2 size={14} /> {t("linkQuotation")}</button>
+          <button className={btnCompacto} onClick={() => inputArchivo.current?.click()}><Upload size={14} /> {t("uploadFiles")}</button>
+          <button className={btnCompacto} onClick={() => inputFoto.current?.click()}><Camera size={14} /> {t("takePhoto")}</button>
+          <button className={btnCompacto} onClick={() => setSelector(true)}><Link2 size={14} /> {t("linkQuotation")}</button>
         </div>
         <p className="mt-2 text-xs text-sig-muted">{t("evidenceLimits")}</p>
         <input ref={inputArchivo} type="file" multiple accept={ACCEPT_EVIDENCIAS} className="sr-only" tabIndex={-1} onChange={(e) => { if (e.target.files?.length) subirVarios(e.target.files); e.target.value = ""; }} />
