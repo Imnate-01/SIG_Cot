@@ -21,8 +21,8 @@ export interface Firmante {
 export const FIRMANTES: Firmante[] = [
   { coincidencias: ["eduardo"], puesto: "Back Office Manager", firma: "/eduardo_firma.png" },
   { coincidencias: ["santoyo", "jonh", "john"], puesto: "Service Sales Manager", firma: "/santoyo.png" },
-  // Geo: sin puesto fijo; se muestra el puesto registrado en su usuario.
-  { coincidencias: ["geo"], firma: "/geo_firma.png" },
+  // Geovanni Zayas. La tabla `usuarios` no tiene columna de puesto, por eso va fijo aquí.
+  { coincidencias: ["geo"], puesto: "Coordinator Administrative Operations", firma: "/geo_firma.png" },
 ];
 
 export const FIRMA_PREDETERMINADA = "/firma_julio.png";
