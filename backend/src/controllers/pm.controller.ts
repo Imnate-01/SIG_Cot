@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { ErrorHttp, responderError } from '../utils/http'
 import { pickFields } from '../utils/pickFields'
+import { ordenGuardadoFechas } from '../domain/pmFechas'
 
 /**
  * Módulo PM (Preventive Maintenance): checklist de actividades por cliente.
@@ -172,11 +173,26 @@ export class PmController {
         const evidencias = [...((evid as any[]) || [])].sort((a: any, b: any) => String(a.created_at).localeCompare(String(b.created_at)))
         return { ...resto, colaboradores: (colab || []).map((c: { usuario_id: string }) => c.usuario_id), evidencias }
       })
+      // Acciones de seguimiento (migración 20261029_02). Sin ella: lista vacía y
+      // `acciones_disponibles: false` para que el frontend avise.
+      let acciones: any[] = []
+      let accionesDisponibles = true
+      const { data: filasAcciones, error: errAcciones } = await supabase
+        .from('pm_acciones').select('*').eq('expediente_id', id).order('created_at', { ascending: true })
+      if (errAcciones) {
+        if (!/pm_acciones/.test(`${errAcciones.message} ${errAcciones.details ?? ''}`) && errAcciones.code !== '42P01' && errAcciones.code !== 'PGRST205') throw errAcciones
+        console.warn('[migración pendiente] pm_acciones: aplica 20261029_02_pm_acciones.sql')
+        accionesDisponibles = false
+      } else {
+        acciones = filasAcciones || []
+      }
+
       const usuarios = await nombresDeUsuarios(supabase, [
         exp.creado_por,
         ...lista.flatMap((t: any) => [t.asignado_a, t.completada_por, ...t.colaboradores, ...t.evidencias.map((e: any) => e.subido_por)]),
+        ...acciones.flatMap((a: any) => [a.asignado_a, a.completada_por, a.creado_por]),
       ])
-      res.json({ success: true, data: { ...exp, tareas: lista, usuarios } })
+      res.json({ success: true, data: { ...exp, tareas: lista, acciones, acciones_disponibles: accionesDisponibles, usuarios } })
     } catch (error) {
       responderError(res, error)
     }
@@ -198,17 +214,41 @@ export class PmController {
         cambios.estado = req.body.estado
       }
 
-      if (req.body?.fecha_inicio !== undefined) {
-        const nueva = fecha(req.body.fecha_inicio, 'fecha_inicio')
-        const { error } = await supabase.rpc('pm_cambiar_fecha_inicio', {
-          p_expediente: id, p_fecha: nueva, p_usuario: user.id,
-        })
-        if (error) throw error
+      const { data: previo, error: errPrevio } = await supabase
+        .from('pm_expedientes').select('fecha_inicio, fecha_fin').eq('id', id).single()
+      if (errPrevio) throw errPrevio
+
+      const nuevaInicio = req.body?.fecha_inicio !== undefined ? fecha(req.body.fecha_inicio, 'fecha_inicio') : null
+      const cambiaInicio = !!nuevaInicio && nuevaInicio !== previo.fecha_inicio
+      const inicioFinal: string = nuevaInicio ?? previo.fecha_inicio
+      const finFinal = ('fecha_fin' in cambios ? cambios.fecha_fin : previo.fecha_fin) as string | null
+      if (finFinal && finFinal < inicioFinal) {
+        throw new ErrorHttp(400, `The end date (${finFinal}) cannot be before the start date (${inicioFinal}). Change both dates.`)
       }
-      if (Object.keys(cambios).length > 0) {
+
+      // La base exige fecha_fin >= fecha_inicio en TODO momento. Si el PM se mueve
+      // a después de su fin anterior, primero se guarda el nuevo fin y luego se
+      // recalcula el inicio; si no, al revés. Así ningún paso intermedio rompe la regla
+      // (antes se recalculaba primero y fallaba con "Un dato no cumple las reglas").
+      const guardarEncabezado = async () => {
+        if (Object.keys(cambios).length === 0) return
         const { error } = await supabase
           .from('pm_expedientes').update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', id)
         if (error) throw error
+      }
+      const recalcularInicio = async () => {
+        if (!cambiaInicio) return
+        const { error } = await supabase.rpc('pm_cambiar_fecha_inicio', {
+          p_expediente: id, p_fecha: nuevaInicio, p_usuario: user.id,
+        })
+        if (error) throw error
+      }
+      if (cambiaInicio && ordenGuardadoFechas(previo.fecha_fin, nuevaInicio) === 'fin_primero') {
+        await guardarEncabezado()
+        await recalcularInicio()
+      } else {
+        await recalcularInicio()
+        await guardarEncabezado()
       }
       if (req.body?.estado === 'active') await sincronizarEstado(supabase, id)
 
@@ -220,7 +260,7 @@ export class PmController {
     }
   }
 
-  // PATCH /api/pm/:id/tareas/:tareaId   { completada?, notas?, asignado_a? }
+  // PATCH /api/pm/:id/tareas/:tareaId   { completada?, completada_por?, notas?, asignado_a? }
   async actualizarTarea(req: Request, res: Response) {
     try {
       const { supabase, user } = contextoAuth(req)
@@ -234,6 +274,7 @@ export class PmController {
       const ahora = new Date().toISOString()
       const cambios: Record<string, unknown> = { updated_by: user.id, updated_at: ahora }
       const bitacora: Array<[string, unknown]> = []
+      const porSolicitado = req.body?.completada_por ? uuid(req.body.completada_por, 'completada_por') : null
 
       if (req.body?.completada !== undefined) {
         const completada = req.body.completada === true
@@ -245,10 +286,21 @@ export class PmController {
           if (!errEv && (count ?? 0) === 0) throw new ErrorHttp(400, 'This task requires at least one piece of evidence before it can be completed.')
         }
         if (completada !== actual.completada) {
+          // A nombre de quién: el que se indique; si no, el responsable asignado;
+          // si no hay responsable, quien da clic. Quien dio clic queda en la bitácora.
+          const por = completada ? (porSolicitado ?? actual.asignado_a ?? user.id) : null
           cambios.completada = completada
-          cambios.completada_por = completada ? user.id : null
+          cambios.completada_por = por
           cambios.completada_en = completada ? ahora : null
-          bitacora.push([completada ? 'completed' : 'reopened', null])
+          bitacora.push([completada ? 'completed' : 'reopened', completada && por !== user.id ? { usuario_id: por } : null])
+        }
+      }
+      // Corregir a nombre de quién quedó una tarea ya completada
+      if (porSolicitado && req.body?.completada === undefined) {
+        if (!actual.completada) throw new ErrorHttp(400, 'Only a completed task can change who completed it.')
+        if (porSolicitado !== actual.completada_por) {
+          cambios.completada_por = porSolicitado
+          bitacora.push(['completed_by_changed', { usuario_id: porSolicitado }])
         }
       }
       if (req.body?.notas !== undefined) {

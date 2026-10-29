@@ -8,7 +8,13 @@ export class ErrorHttp extends Error {
   }
 }
 
-type ErrorConCodigo = { code?: string; status?: number; message?: string; details?: string; hint?: string };
+/** Reglas CHECK conocidas → mensaje que entiende el usuario (en vez del genérico). */
+const REGLAS_CHECK: Array<[RegExp, string]> = [
+  [/pm_expedientes_check/, 'The end date cannot be before the start date.'],
+  [/pm_tareas_check/, 'A task can only have "completed by" once it is completed.'],
+];
+
+type ErrorConCodigo ={ code?: string; status?: number; message?: string; details?: string; hint?: string };
 
 /**
  * Traduce errores de Postgres/PostgREST a respuestas HTTP con sentido.
@@ -24,7 +30,12 @@ export function clasificarError(error: unknown): { status: number; mensaje: stri
     case '23505':    return { status: 409, mensaje: 'El registro ya existe' };
     case '23503':    return { status: 409, mensaje: 'El registro está relacionado con otros datos' };
     case '23502':    return { status: 400, mensaje: 'Falta un dato obligatorio' };
-    case '23514':    return { status: 400, mensaje: 'Un dato no cumple las reglas permitidas' };
+    case '23514': {
+      // Mensajes propios (raise ... errcode '23514' de nuestras funciones) se muestran tal cual
+      if (e.message && !/violates check constraint/i.test(e.message)) return { status: 400, mensaje: e.message };
+      const regla = REGLAS_CHECK.find(([patron]) => patron.test(`${e.message ?? ''} ${e.details ?? ''}`));
+      return { status: 400, mensaje: regla ? regla[1] : 'Un dato no cumple las reglas permitidas' };
+    }
     case '22P02':
     case '22003':
     case '22007':

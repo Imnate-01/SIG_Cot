@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { supabaseAdmin } from '../config/supabase'
+import { SUPABASE_ANON_KEY_PUBLICA, supabaseAdmin } from '../config/supabase'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { ErrorHttp, responderError } from '../utils/http'
 import { formatearFolio } from './cotizaciones.controller'
@@ -81,7 +81,9 @@ export class PmEvidenciasController {
       const path = rutaEvidencia(expedienteId, tareaId, randomUUID(), nombre)
       const { data, error } = await supabaseAdmin.storage.from(BUCKET_EVIDENCIAS).createSignedUploadUrl(path)
       if (error) throw error
-      res.json({ success: true, data: { bucket: BUCKET_EVIDENCIAS, path: data.path, token: data.token, mime: v.mime } })
+      // signedUrl: el navegador sube el archivo con un PUT directo (sin depender de
+      // las variables NEXT_PUBLIC_SUPABASE_* del frontend). apikey es la clave pública.
+      res.json({ success: true, data: { bucket: BUCKET_EVIDENCIAS, path: data.path, token: data.token, signedUrl: data.signedUrl, apikey: SUPABASE_ANON_KEY_PUBLICA, mime: v.mime } })
     } catch (error) {
       responderError(res, error)
     }

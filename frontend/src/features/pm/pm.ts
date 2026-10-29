@@ -68,8 +68,33 @@ export interface PmResumen extends PmExpediente {
   progreso: { total: number; completadas: number; vencidas: number; proxima_fecha: string | null };
 }
 
+/** Acción de seguimiento asignable (Open notes). */
+export interface PmAccion {
+  id: string;
+  expediente_id: string;
+  texto: string;
+  asignado_a: string | null;
+  fecha_limite: string | null;
+  completada: boolean;
+  completada_por: string | null;
+  completada_en: string | null;
+  creado_por: string | null;
+  created_at: string;
+}
+
+/** Pendientes primero (por fecha compromiso, sin fecha al final), luego las hechas. */
+export function ordenarAcciones(acciones: PmAccion[]): PmAccion[] {
+  return [...acciones].sort((a, b) => {
+    if (a.completada !== b.completada) return a.completada ? 1 : -1;
+    const fa = a.fecha_limite ?? "9999-12-31", fb = b.fecha_limite ?? "9999-12-31";
+    return fa === fb ? a.created_at.localeCompare(b.created_at) : fa.localeCompare(fb);
+  });
+}
+
 export interface PmDetalle extends PmExpediente {
   tareas: PmTarea[];
+  acciones?: PmAccion[];
+  acciones_disponibles?: boolean;
   usuarios: Record<string, UsuarioPm>;
 }
 
@@ -175,6 +200,15 @@ export function sumarDias(fecha: string, dias: number): string {
   const d = parseFecha(fecha);
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Al mover la fecha de inicio, el fin se mueve los mismos días (conserva la
+ * duración del PM). Sin fin, o con inicio inválido, el fin no cambia.
+ */
+export function moverFin(inicioAnterior: string, inicioNuevo: string, fin: string): string {
+  if (!fin || !/^\d{4}-\d{2}-\d{2}$/.test(inicioAnterior) || !/^\d{4}-\d{2}-\d{2}$/.test(inicioNuevo)) return fin;
+  return sumarDias(fin, diasHasta(inicioNuevo, inicioAnterior));
 }
 
 /**

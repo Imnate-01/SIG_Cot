@@ -6,9 +6,9 @@ import { Camera, ExternalLink, File as FileIcon, FileText, Image as ImageIcon, L
 import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
-import { supabase } from "@/lib/supabase";
 import { ACCEPT_EVIDENCIAS, esImagen, formatearTamano, validarArchivo } from "./evidencias";
 import { comprimirImagen } from "./comprimirImagen";
+import { subirAUrlFirmada } from "./subirEvidencia";
 import { formatearFecha, nombreUsuario, type PmEvidencia, type PmTarea, type UsuarioPm } from "./pm";
 import { campo } from "./ui";
 
@@ -46,13 +46,14 @@ export default function EvidenciasPanel({
     try {
       const archivo = await comprimirImagen(original);
       const { data } = await api.post(`/pm/${pmId}/tareas/${tarea.id}/evidencias/subida`, { nombre: archivo.name, mime: archivo.type, tamano: archivo.size });
-      const { bucket, path, token, mime } = data.data;
-      const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, archivo, { contentType: mime });
-      if (error) throw error;
+      const { path } = data.data;
+      await subirAUrlFirmada(data.data, archivo);
       await api.post(`/pm/${pmId}/tareas/${tarea.id}/evidencias`, { path, nombre: archivo.name });
       toast.success(t("evidenceAdded", { name: archivo.name }));
     } catch (e) {
-      toast.error(`${original.name}: ${mensajeError(e, t("uploadError"))}`);
+      const propio = e instanceof Error && e.name === "ErrorSubida" ? e.message : null;
+      console.error("[evidencias] subida fallida", original.name, e);
+      toast.error(`${original.name}: ${propio || mensajeError(e, t("uploadError"))}`);
     } finally {
       setSubiendo((s) => { const i = s.indexOf(original.name); return i < 0 ? s : [...s.slice(0, i), ...s.slice(i + 1)]; });
     }

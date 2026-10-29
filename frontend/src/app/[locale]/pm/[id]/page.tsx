@@ -8,12 +8,16 @@ import { toast } from "sonner";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
 import EvidenciasPanel from "@/features/pm/EvidenciasPanel";
+import AccionesPanel from "@/features/pm/AccionesPanel";
 import { avisarCambioAlertas } from "@/features/pm/useAlertasPm";
 import {
-  agruparPorEtapa, cuentaRegresiva, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
+  agruparPorEtapa, cuentaRegresiva, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, moverFin, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
 } from "@/features/pm/pm";
-import { Avatar, BarraEtapas, Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { Avatar, BarraEtapas, Campo, CampoSugerencias, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import {
+  contactoSugerido, contactosDe, opcionesMaquina, opcionesPersona, opcionesPlanta, type ClienteAutollenado, type PmPrevio,
+} from "@/features/pm/autollenado";
 
 const mensajeError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -108,7 +112,12 @@ export default function PmDetallePage() {
       setExpandida(tarea.id);
       return;
     }
-    return enviarTarea(tarea, { completada: !tarea.completada }, { completada: !tarea.completada });
+    // Al completar queda a nombre del responsable asignado (si lo hay), no de quien da clic
+    return enviarTarea(
+      tarea,
+      { completada: !tarea.completada },
+      { completada: !tarea.completada, completada_por: tarea.completada ? null : tarea.asignado_a },
+    );
   };
 
   const guardarNotas = (tarea: PmTarea, texto: string) => {
@@ -370,9 +379,9 @@ export default function PmDetallePage() {
                                         onBlur={(ev) => guardarNotas(tarea, ev.target.value.trim())}
                                       />
                                     </Campo>
-                                    {(tarea.evidencia !== "none" || nEv > 0) && (
-                                      <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
-                                    )}
+                                    {/* Toda tarea acepta evidencia, aunque no la pida (comentario 7) */}
+                                    <EvidenciasPanel pmId={pm.id} tarea={tarea} usuarios={pm.usuarios} onChange={() => cargar()} />
+
                                   </div>
 
                                   <div className="space-y-4">
@@ -383,6 +392,20 @@ export default function PmDetallePage() {
                                           <Avatar nombre={nombreUsuario(pm.usuarios, tarea.completada_por)} tono="hecho" />
                                           <span>{t("completedBy", { name: nombreUsuario(pm.usuarios, tarea.completada_por), date: tarea.completada_en ? formatearFecha(tarea.completada_en.slice(0, 10)) : "—" })}</span>
                                         </div>
+                                        {/* Completar a nombre de alguien más (comentario 6) */}
+                                        <label className="mt-2 block">
+                                          <span className="mb-1 block text-xs text-sig-muted">{t("completedByChange")}</span>
+                                          <select
+                                            className={campo}
+                                            value={tarea.completada_por || ""}
+                                            onChange={(ev) => ev.target.value && enviarTarea(tarea, { completada_por: ev.target.value }, { completada_por: ev.target.value })}
+                                          >
+                                            {!usuariosLista.some((u) => u.id === tarea.completada_por) && tarea.completada_por && (
+                                              <option value={tarea.completada_por}>{nombreUsuario(pm.usuarios, tarea.completada_por)}</option>
+                                            )}
+                                            {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+                                          </select>
+                                        </label>
                                       </div>
                                     ) : (
                                       <Campo label={t("responsible")}>
@@ -464,6 +487,10 @@ export default function PmDetallePage() {
               placeholder={t("openNotesPlaceholder")}
               onBlur={(e) => guardarNotasAbiertas(e.target.value.trim())}
             />
+            <AccionesPanel
+              pmId={pm.id} acciones={pm.acciones || []} disponibles={pm.acciones_disponibles !== false}
+              usuarios={pm.usuarios} usuariosLista={usuariosLista} onChange={() => cargar()}
+            />
           </section>
         </aside>
       </div>
@@ -487,7 +514,7 @@ export default function PmDetallePage() {
                   {h.accion === "due_date_changed" && h.detalle && (
                     <div className="text-xs tabular-nums text-sig-muted">{formatearFecha(String(h.detalle.from))} → {formatearFecha(String(h.detalle.to))}</div>
                   )}
-                  {(h.accion === "collaborator_added" || h.accion === "collaborator_removed") && h.detalle?.usuario_id ? (
+                  {["collaborator_added", "collaborator_removed", "completed", "completed_by_changed", "assigned"].includes(h.accion) && h.detalle?.usuario_id ? (
                     <div className="text-xs text-sig-muted">{nombreUsuario(historial.usuarios, String(h.detalle.usuario_id))}</div>
                   ) : null}
                   {(h.accion === "evidence_added" || h.accion === "evidence_removed") && h.detalle?.nombre ? <div className="text-xs text-sig-muted">{String(h.detalle.nombre)}</div> : null}
@@ -512,6 +539,26 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
   });
   const [guardando, setGuardando] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const setValor = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+
+  // Sugerencias del cliente (comentario 1): plantas, máquinas, contactos y equipo de PM anteriores
+  const [cliente, setCliente] = useState<ClienteAutollenado | undefined>();
+  const [previos, setPrevios] = useState<PmPrevio[]>([]);
+  const [usuarios, setUsuarios] = useState<Array<{ nombre: string | null; departamento?: string | null }>>([]);
+  useEffect(() => {
+    api.get("/clientes").then(({ data }) => setCliente((data.data || []).find((c: ClienteAutollenado) => c.id === pm.cliente_id))).catch(() => {});
+    api.get("/pm", { params: { cliente_id: pm.cliente_id } }).then(({ data }) => setPrevios((data.data || []).filter((x: { id: string }) => x.id !== pm.id))).catch(() => {});
+    api.get("/usuarios").then(({ data }) => setUsuarios(data.data || [])).catch(() => {});
+  }, [pm.cliente_id, pm.id]);
+  const contactos = useMemo(() => contactosDe(cliente, f.planta), [cliente, f.planta]);
+  const elegirPlanta = (planta: string) => {
+    const c = contactoSugerido(cliente, planta);
+    if (c.nombre) setF((x) => ({ ...x, contacto_nombre: c.nombre, contacto_correo: c.correo, contacto_telefono: c.telefono }));
+  };
+  const elegirContacto = (nombre: string) => {
+    const c = contactos.find((x) => x.nombre === nombre);
+    if (c) setF((x) => ({ ...x, contacto_correo: c.correo || x.contacto_correo, contacto_telefono: c.telefono || x.contacto_telefono }));
+  };
   const cambioFecha = f.fecha_inicio !== pm.fecha_inicio;
   const pendientes = pm.tareas.filter((x) => !x.completada).length;
   const finInvalido = !!f.fecha_fin && f.fecha_fin < f.fecha_inicio;
@@ -533,16 +580,21 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
   return (
     <Modal titulo={t("editDetails")} onClose={onClose}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo label={t("fieldPlant")}><input className={campo} value={f.planta} onChange={set("planta")} /></Campo>
-        <Campo label={t("fieldLine")}><input className={campo} value={f.linea} onChange={set("linea")} /></Campo>
-        <Campo label={t("fieldContact")}><input className={campo} value={f.contacto_nombre} onChange={set("contacto_nombre")} /></Campo>
+        <Campo label={t("fieldPlant")}><CampoSugerencias value={f.planta} onChange={setValor("planta")} onElegir={elegirPlanta} opciones={opcionesPlanta(cliente)} /></Campo>
+        <Campo label={t("fieldLine")}><CampoSugerencias value={f.linea} onChange={setValor("linea")} opciones={opcionesMaquina(cliente, f.planta)} /></Campo>
+        <Campo label={t("fieldContact")}><CampoSugerencias value={f.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined }))} /></Campo>
         <Campo label={t("fieldPhone")}><input className={campo} value={f.contacto_telefono} onChange={set("contacto_telefono")} /></Campo>
         <Campo label={t("fieldEmail")} className="sm:col-span-2"><input className={campo} type="email" value={f.contacto_correo} onChange={set("contacto_correo")} /></Campo>
-        <Campo label={t("fieldSam")}><input className={campo} value={f.sam} onChange={set("sam")} /></Campo>
+        <Campo label={t("fieldSam")}><CampoSugerencias value={f.sam} onChange={setValor("sam")} opciones={opcionesPersona(previos, "sam", usuarios)} /></Campo>
         <Campo label={t("fieldPo")}><input className={campo} value={f.po_numero} onChange={set("po_numero")} /></Campo>
-        <Campo label={t("fieldFseFiller")}><input className={campo} value={f.fse_filler} onChange={set("fse_filler")} /></Campo>
-        <Campo label={t("fieldFseDownline")}><input className={campo} value={f.fse_downline} onChange={set("fse_downline")} /></Campo>
-        <Campo label={t("fieldStart")}><input type="date" required className={campo} value={f.fecha_inicio} onChange={set("fecha_inicio")} /></Campo>
+        <Campo label={t("fieldFseFiller")}><CampoSugerencias value={f.fse_filler} onChange={setValor("fse_filler")} opciones={opcionesPersona(previos, "fse_filler", usuarios)} /></Campo>
+        <Campo label={t("fieldFseDownline")}><CampoSugerencias value={f.fse_downline} onChange={setValor("fse_downline")} opciones={opcionesPersona(previos, "fse_downline", usuarios)} /></Campo>
+        <Campo label={t("fieldStart")}>
+          <input
+            type="date" required className={campo} value={f.fecha_inicio}
+            onChange={(e) => { const v = e.target.value; setF((x) => ({ ...x, fecha_inicio: v, fecha_fin: v ? moverFin(x.fecha_inicio, v, x.fecha_fin) : x.fecha_fin })); }}
+          />
+        </Campo>
         <Campo label={t("fieldEnd")}><input type="date" className={campo} min={f.fecha_inicio} value={f.fecha_fin} onChange={set("fecha_fin")} /></Campo>
       </div>
       {cambioFecha && (
