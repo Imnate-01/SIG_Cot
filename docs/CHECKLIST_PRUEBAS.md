@@ -67,9 +67,18 @@ Marca cada punto; si algo falla, el commit de esa fase se puede revertir con `gi
 - [ ] Editar una cotización con servicios externos → aparecen en su tabla, no como líneas de servicio
 - [ ] Sin servicios y sin filas externas → mensaje "Agrega al menos un servicio…"
 
+### Inicio y acceso por área
+- [ ] Iniciar sesión → llega a /inicio (Service Operations Workspace) y solo ve sus áreas + Administración
+- [ ] Luis David / Eduardo: ven las 3 áreas, el recuadro "Tu rol" y, en Administración, "Usuarios y áreas"
+- [ ] Geovanni: solo Cotizaciones; escribir /pm en la barra lo regresa a /inicio y la API responde 403
+- [ ] Julio: Cotizaciones y Mantenimiento; dentro de Mantenimiento el menú solo muestra PM
+- [ ] Un usuario pide acceso en Administración › Solicitudes → un administrador lo aprueba → al recargar aparece el área
+- [ ] Administración › Mi actividad muestra el inicio de sesión y el cambio de áreas
+- [ ] En Mantenimiento, ligar una cotización como evidencia sigue funcionando sin tener el área Cotizaciones
+
 ### Usuarios y contraseñas
-- [ ] Backend con `ROLES_ADMIN_USUARIOS` vacío → el menú no muestra "Usuarios" y /usuarios dice "Sin acceso"
-- [ ] Con un rol configurado: crear usuario → aparece la contraseña temporal → ese usuario inicia sesión sin confirmar correo
+- [ ] Un usuario que no es administrador del sistema no ve "Usuarios" y /usuarios lo regresa a Inicio
+- [ ] Como administrador: crear usuario con áreas → aparece la contraseña temporal → ese usuario inicia sesión sin confirmar correo
 - [ ] Restablecer contraseña de un usuario → la anterior deja de funcionar y la temporal sí
 - [ ] Desactivar un usuario → no puede iniciar sesión; activarlo → vuelve a entrar
 - [ ] "¿Olvidaste tu contraseña?" → /recuperar → llega el correo (requiere SMTP propio en Supabase) → enlace abre /restablecer → nueva contraseña funciona

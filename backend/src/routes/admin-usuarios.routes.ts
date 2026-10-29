@@ -1,14 +1,20 @@
 import { Router } from 'express';
-import { requireRole } from '../middlewares/requireRole';
-import { VARIABLE_ROLES_ADMIN, permisos, listar, crear, restablecerContrasena, actualizar } from '../controllers/admin-usuarios.controller';
+import { requireAdminSistema } from '../middlewares/requireArea';
+import {
+  permisos, listar, crear, restablecerContrasena, actualizar,
+  actualizarAreas, listarSolicitudes, resolverSolicitud,
+} from '../controllers/admin-usuarios.controller';
 
+// Gestión de usuarios: solo administradores del sistema (usuarios.es_admin_sistema)
 const router = Router();
-const soloAdmin = requireRole(VARIABLE_ROLES_ADMIN, { cerradoSiNoConfigurado: true });
 
 router.get('/permisos', permisos);
-router.get('/', soloAdmin, listar);
-router.post('/', soloAdmin, crear);
-router.post('/:id/password', soloAdmin, restablecerContrasena);
-router.patch('/:id', soloAdmin, actualizar);
+router.get('/solicitudes', requireAdminSistema, listarSolicitudes);
+router.patch('/solicitudes/:id', requireAdminSistema, resolverSolicitud);
+router.get('/', requireAdminSistema, listar);
+router.post('/', requireAdminSistema, crear);
+router.post('/:id/password', requireAdminSistema, restablecerContrasena);
+router.put('/:id/areas', requireAdminSistema, actualizarAreas);
+router.patch('/:id', requireAdminSistema, actualizar);
 
 export default router;

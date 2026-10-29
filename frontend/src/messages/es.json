@@ -1,7 +1,7 @@
 {
   "Common": {
-    "appName": "SIG Cotizaciones",
-    "appTagline": "Plataforma interna • Control y trazabilidad",
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · herramientas internas",
     "loading": "Cargando...",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -55,8 +55,8 @@
     "connectionError": "Error de conexión",
     "resetPassword": "Restablecer contraseña",
     "title": "Iniciar sesión",
-    "appName": "Cotizaciones",
-    "appTagline": "Servicio técnico",
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · herramientas internas",
     "moduleQuotes": "Cotizaciones MX y US",
     "moduleReports": "Reportes técnicos de servicio",
     "moduleFsa": "Food Safety Audit",
@@ -764,7 +764,12 @@
     "errorDomain": "Solo se permiten correos @sig.biz.",
     "errorMinLength": "La contraseña debe tener al menos 8 caracteres.",
     "noPermissionTitle": "Sin acceso",
-    "noPermissionDesc": "Tu rol no tiene permiso para administrar usuarios."
+    "noPermissionDesc": "Tu rol no tiene permiso para administrar usuarios.",
+    "colAreas": "Áreas",
+    "fieldAreas": "Áreas de trabajo",
+    "adminAllAreas": "Administrador · todas",
+    "adminNote": "Es administrador del sistema: tiene todas las áreas.",
+    "noAreas": "Sin áreas"
   },
   "PM": {
       "title": "PM Tracker",
@@ -948,5 +953,138 @@
       "shortEnd": "End",
       "openNotesShort": "Open notes",
       "openNotesShortHint": "Unusual items and follow-up actions. Saved when you leave the field."
+  },
+  "Accesos": {
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · herramientas internas",
+    "loading": "Cargando…",
+    "retry": "Reintentar",
+    "noAccessTitle": "No tienes acceso a esa área",
+    "noAccessDesc": "Te regresamos a Inicio. Puedes pedir acceso desde Administración › Solicitudes de acceso.",
+    "areas": {
+      "cotizaciones": "Cotizaciones",
+      "mantenimiento": "Mantenimiento",
+      "food_safety": "Food Safety Audit",
+      "administracion": "Administración"
+    },
+    "tags": {
+      "cotizaciones": "Comercial",
+      "mantenimiento": "PM · BOM",
+      "food_safety": "Calidad",
+      "administracion": "Mi cuenta",
+      "administracionAdmin": "Sistema"
+    },
+    "descs": {
+      "cotizaciones": "Crea, revisa, firma y envía cotizaciones a clientes.",
+      "mantenimiento": "Programa mantenimientos preventivos y da seguimiento a sus tareas.",
+      "food_safety": "Reportes de auditoría de inocuidad alimentaria.",
+      "administracion": "Tu perfil, tus solicitudes de acceso y tu actividad.",
+      "administracionAdmin": "Usuarios, áreas, solicitudes de acceso y bitácora."
+    },
+    "items": {
+      "cotizaciones": [
+        "Cotizaciones MX y US",
+        "Clientes",
+        "Tarifas y servicios"
+      ],
+      "mantenimiento": [
+        "PM Tracker",
+        "Alertas",
+        "Nuevo PM"
+      ],
+      "food_safety": [
+        "Reportes de auditoría",
+        "Nuevo reporte"
+      ],
+      "administracion": [
+        "Mi perfil",
+        "Solicitudes de acceso",
+        "Mi actividad"
+      ],
+      "administracionAdmin": [
+        "Usuarios y áreas",
+        "Solicitudes por aprobar",
+        "Mi perfil y actividad"
+      ]
+    },
+    "greeting": "Hola, {nombre}",
+    "homeSubtitle": "Elige el área en la que vas a trabajar.",
+    "yourRole": "Tu rol",
+    "roleAdmin": "Administrador del sistema",
+    "assignedAreas": "Áreas asignadas",
+    "yourAreas": "Tus áreas",
+    "enter": "Entrar",
+    "onlyAssigned": "Solo se muestran las áreas que tienes asignadas.",
+    "requestAccess": "Solicitar acceso a otra área",
+    "logout": "Cerrar sesión",
+    "noAreasTitle": "Aún no tienes áreas de trabajo",
+    "noAreasDesc": "Pide acceso al área en la que trabajas; un administrador del sistema la aprobará.",
+    "pending": "{n, plural, one {# pendiente} other {# pendientes}}",
+    "currentArea": "Área actual",
+    "change": "Cambiar",
+    "home": "Inicio",
+    "nav": {
+      "myProfile": "Mi perfil",
+      "requests": "Solicitudes de acceso",
+      "activity": "Mi actividad",
+      "users": "Usuarios y áreas",
+      "help": "Ayuda y soporte",
+      "account": "Mi cuenta",
+      "system": "Sistema"
+    },
+    "requestsTitle": "Solicitudes de acceso",
+    "requestsSubtitle": "Pide acceso a otra área. Un administrador del sistema la aprueba o la rechaza.",
+    "requestsSubtitleAdmin": "Aprueba o rechaza las solicitudes de acceso a las áreas.",
+    "newRequest": "Nueva solicitud",
+    "fieldArea": "Área",
+    "fieldReason": "Motivo (opcional)",
+    "reasonPlaceholder": "¿Para qué necesitas el acceso?",
+    "chooseArea": "Elige un área",
+    "send": "Enviar solicitud",
+    "sent": "Solicitud enviada",
+    "errorSend": "No se pudo enviar la solicitud",
+    "mine": "Mis solicitudes",
+    "noRequests": "Aún no has pedido acceso a otras áreas.",
+    "nothingToRequest": "Ya tienes acceso a todas las áreas o tus solicitudes están pendientes.",
+    "status": {
+      "pendiente": "Pendiente",
+      "aprobada": "Aprobada",
+      "rechazada": "Rechazada"
+    },
+    "colArea": "Área",
+    "colStatus": "Estado",
+    "colDate": "Fecha",
+    "colReason": "Motivo",
+    "colNote": "Nota",
+    "colUser": "Usuario",
+    "toApprove": "Por aprobar",
+    "noPending": "No hay solicitudes pendientes.",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "approved": "Acceso aprobado",
+    "rejected": "Solicitud rechazada",
+    "errorResolve": "No se pudo resolver la solicitud",
+    "notePrompt": "Nota para {nombre} (opcional):",
+    "errorLoad": "No se pudo cargar la información",
+    "activityTitle": "Mi actividad",
+    "activitySubtitle": "Inicios de sesión, cambios en tu cuenta y en tus accesos.",
+    "noActivity": "Todavía no hay actividad registrada.",
+    "by": "por {nombre}",
+    "added": "Agregadas: {lista}",
+    "removed": "Quitadas: {lista}",
+    "events": {
+      "inicio_sesion": "Iniciaste sesión",
+      "perfil_actualizado": "Actualizaste tu perfil",
+      "contrasena_cambiada": "Cambiaste tu contraseña",
+      "contrasena_restablecida": "Se restableció tu contraseña",
+      "areas_actualizadas": "Cambiaron tus áreas de trabajo",
+      "cuenta_activada": "Se activó tu cuenta",
+      "cuenta_desactivada": "Se desactivó tu cuenta",
+      "cuenta_creada": "Se creó tu cuenta",
+      "solicitud_creada": "Pediste acceso a {area}",
+      "solicitud_aprobada": "Te dieron acceso a {area}",
+      "solicitud_rechazada": "Rechazaron tu solicitud para {area}",
+      "otro": "Evento"
+    }
   }
 }

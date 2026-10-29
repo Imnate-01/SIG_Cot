@@ -5,7 +5,6 @@ import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import Cookies from "js-cookie";
 import {
   LayoutDashboard,
   FilePlus,
@@ -21,12 +20,17 @@ import {
   UserCog,
   ClipboardCheck,
   Bell,
+  ShieldPlus,
+  History,
+  Home,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
 import LanguageSwitcher from "./LanguageSwitcher";
-import api from "@/services/api";
 import { useAlertasPm } from "@/features/pm/useAlertasPm";
+import { useAccesos } from "@/features/accesos/AccesosProvider";
+import { seccionDeRuta, tieneArea, type Seccion } from "@/features/accesos/areas";
+import { limpiarSesion } from "@/features/accesos/sesion";
 
 /** Rutas del menú, de la más específica a la más general. */
 const RUTAS_MENU = [
@@ -44,6 +48,8 @@ const RUTAS_MENU = [
   "/pm",
   "/usuarios",
   "/configuracion",
+  "/cuenta/solicitudes",
+  "/cuenta/actividad",
   "/ayuda",
 ];
 
@@ -91,28 +97,22 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("Sidebar");
-  const alertasPm = useAlertasPm();
-  const tLogin = useTranslations("Login");
-
+  const tA = useTranslations("Accesos");
+  const { datos } = useAccesos();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
   const { userData } = useAuthMigration();
 
-  // El panel de Usuarios solo aparece para los roles administradores (lo decide el backend)
-  const [esAdminUsuarios, setEsAdminUsuarios] = useState(false);
-  useEffect(() => {
-    let vigente = true;
-    api.get("/admin/usuarios/permisos")
-      .then(({ data }) => { if (vigente) setEsAdminUsuarios(!!data?.data?.adminUsuarios); })
-      .catch(() => {});
-    return () => { vigente = false; };
-  }, []);
+  // Cada área tiene su propio menú: solo se muestra el del área en la que estás.
+  // Una ruta sin área (p. ej. /reportestec) usa el menú de Administración.
+  const seccion: Seccion = seccionDeRuta(pathname) ?? "administracion";
+  const esAdmin = !!datos?.esAdmin;
+  const conMantenimiento = !!datos && tieneArea(datos, "mantenimiento");
+  const alertasPm = useAlertasPm(conMantenimiento);
+  const pendientes = esAdmin ? datos?.solicitudesPendientes ?? 0 : 0;
 
-  const usuario = userData || {
-    nombre: "Usuario",
-    email: "...",
-    rol: "",
-    departamento: ""
+  const usuario = {
+    nombre: datos?.usuario.nombre || userData?.nombre || "Usuario",
+    rol: datos?.usuario.rol || userData?.rol || "",
   };
 
   useEffect(() => {
@@ -120,41 +120,9 @@ export default function Sidebar() {
   }, [pathname]);
 
   const handleLogout = () => {
-    // Eliminar cookie (fuente de verdad para el middleware)
-    Cookies.remove("auth_token");
-    // Limpiar localStorage
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_data");
-    localStorage.removeItem("user");
-    localStorage.removeItem("onboarding_completed");
+    limpiarSesion();
     router.push("/login");
   };
-
-  /**
-   * Detecta si el usuario pertenece al grupo de Ingeniería Aséptica / Calidad Aséptica.
-   * Aplica a roles en español e inglés:
-   * - "Aseptic Engineer", "Aseptic Engineering"
-   * - "Ingeniero Aséptico", "Ingeniería Aséptica"
-   * - "Calidad Aséptica", "Calidad"
-   * - "Intern" (practicante del área)
-   * - Cualquier rol que contenga: aseptic | aséptic | calidad | ingeniero | engineer
-   */
-  const rolLower   = (usuario.rol          || '').toLowerCase();
-  const deptLower  = (usuario.departamento || '').toLowerCase();
-
-  const ASEPTICO_KEYWORDS = [
-    'aseptic', 'aséptic',   // inglés y español
-    'calidad',               // Calidad Aséptica, etc.
-    'ingeniero', 'engineer', // ingeniero/engineer aséptico o de campo
-    'intern',                // practicante del área
-  ];
-
-  const esAseptico = ASEPTICO_KEYWORDS.some(
-    (kw) => rolLower.includes(kw) || deptLower.includes(kw)
-  );
-
-  // Alias para mantener compatibilidad con el código existente
-  const esIngeniero = esAseptico;
 
   const iniciales = (usuario.nombre || "U")
     .split(/\s+/)
@@ -162,6 +130,13 @@ export default function Sidebar() {
     .slice(0, 2)
     .map((p: string) => p[0]?.toUpperCase())
     .join("") || "U";
+
+  const subtitulo: Record<Seccion, string> = {
+    cotizaciones: tA("tags.cotizaciones"),
+    mantenimiento: tA("tags.mantenimiento"),
+    food_safety: tA("tags.food_safety"),
+    administracion: esAdmin ? tA("tags.administracionAdmin") : tA("tags.administracion"),
+  };
 
   return (
     <>
@@ -171,7 +146,7 @@ export default function Sidebar() {
         className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white border border-sig-line-strong rounded text-black hover:bg-sig-sand"
       >
         <Menu size={22} />
-        {(alertasPm?.total ?? 0) > 0 && (
+        {seccion === "mantenimiento" && (alertasPm?.total ?? 0) > 0 && (
           <span className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white ${(alertasPm?.overdue ?? 0) > 0 ? "bg-sig-danger" : "bg-sig-blue"}`} aria-label={`${alertasPm?.total} PM alerts`} />
         )}
       </button>
@@ -190,13 +165,13 @@ export default function Sidebar() {
           lg:translate-x-0 lg:shadow-none
         `}
       >
-        {/* HEADER: logo + nombre de la app */}
+        {/* HEADER: logo + área actual */}
         <div className="px-5 pt-5 pb-4 flex items-start justify-between">
           <div className="flex flex-col gap-3.5">
             <Image src="/sig-logo.webp" alt="SIG" width={76} height={36} unoptimized priority className="h-9 w-auto object-contain dark:bg-white dark:p-1 dark:rounded" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-bold text-black dark:text-white leading-tight">{tLogin("appName")}</span>
-              <span className="text-xs text-sig-muted leading-tight">{tLogin("appTagline")}</span>
+              <span className="text-sm font-bold text-black dark:text-white leading-tight">{tA(`areas.${seccion}`)}</span>
+              <span className="text-xs text-sig-muted leading-tight">{subtitulo[seccion]}</span>
             </div>
           </div>
           <button
@@ -208,11 +183,22 @@ export default function Sidebar() {
           </button>
         </div>
 
+        {/* Cambiar de área: regresa a Inicio, que solo muestra las áreas asignadas */}
+        <Link
+          href="/inicio"
+          className="mx-3 mb-3 flex items-center justify-between rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-2 hover:border-sig-line-strong"
+        >
+          <span className="flex flex-col leading-tight">
+            <span className="text-[11px] text-sig-muted">{tA("currentArea")}</span>
+            <span className="text-[13px] font-semibold text-black dark:text-white">{tA(`areas.${seccion}`)}</span>
+          </span>
+          <span className="flex items-center gap-1 text-xs font-semibold text-sig-blue"><Home size={13} aria-hidden="true" />{tA("change")}</span>
+        </Link>
+
         {/* NAV SCROLLABLE */}
         <nav className="flex-1 px-3 pt-2 pb-4 space-y-5 overflow-y-auto custom-scrollbar">
 
-          {/* --- MENÚ EXCLUSIVO PARA VENTAS / ADMIN --- */}
-          {!esIngeniero && (
+          {seccion === "cotizaciones" && (
             <>
               <Seccion titulo={t("commercial")}>
                 <NavItem href="/cotizaciones" icon={LayoutDashboard}>{t("dashboard")}</NavItem>
@@ -220,38 +206,45 @@ export default function Sidebar() {
                 <NavItem href="/cotizaciones-us" icon={LayoutDashboard}>US Standard Quotes</NavItem>
                 <NavItem href="/cotizaciones-us/nueva" icon={FilePlus}>New US Quote</NavItem>
               </Seccion>
-
               <Seccion titulo={t("management")}>
                 <NavItem href="/clientes" icon={Users}>{t("clients")}</NavItem>
                 <NavItem href="/servicios" icon={Tags}>{t("ratesAndServices")}</NavItem>
+                <NavItem href="/reportes" icon={BarChart3}>{t("salesMetrics")}</NavItem>
               </Seccion>
             </>
           )}
 
-          {/* --- PM TRACKER: visible para TODOS los roles --- */}
-          <Seccion titulo={t("pmTracker")}>
-            <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
-            <NavItem href="/pm/alertas" icon={Bell} badge={alertasPm?.total} badgeUrgente={(alertasPm?.overdue ?? 0) > 0}>{t("pmAlerts")}</NavItem>
-            <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
-          </Seccion>
+          {seccion === "mantenimiento" && (
+            <Seccion titulo={t("pmTracker")}>
+              <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
+              <NavItem href="/pm/alertas" icon={Bell} badge={alertasPm?.total} badgeUrgente={(alertasPm?.overdue ?? 0) > 0}>{t("pmAlerts")}</NavItem>
+              <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
+            </Seccion>
+          )}
 
-          {/* --- SECCIÓN FOOD SAFETY AUDIT --- */}
-          <Seccion titulo="Auditoría (FSA)">
-            <NavItem href="/food-safety-audit" icon={ShieldCheck}>Food Safety Audit</NavItem>
-            {esIngeniero && (
+          {seccion === "food_safety" && (
+            <Seccion titulo="Food Safety Audit">
+              <NavItem href="/food-safety-audit" icon={ShieldCheck}>Food Safety Audit</NavItem>
               <NavItem href="/food-safety-audit/nuevo" icon={FilePlus}>{t("newReport")}</NavItem>
-            )}
-            {!esIngeniero && (
-              <NavItem href="/reportes" icon={BarChart3}>{t("salesMetrics")}</NavItem>
-            )}
-          </Seccion>
+            </Seccion>
+          )}
 
-          {/* --- SECCIÓN SISTEMA: visible para TODOS los roles --- */}
-          <Seccion titulo={t("system")}>
-            {esAdminUsuarios && <NavItem href="/usuarios" icon={UserCog}>{t("users")}</NavItem>}
-            <NavItem href="/configuracion" icon={Settings}>{t("settings")}</NavItem>
-            <NavItem href="/ayuda" icon={HelpCircle}>{t("helpAndSupport")}</NavItem>
-          </Seccion>
+          {seccion === "administracion" && (
+            <>
+              {esAdmin && (
+                <Seccion titulo={tA("nav.system")}>
+                  <NavItem href="/usuarios" icon={UserCog}>{tA("nav.users")}</NavItem>
+                  <NavItem href="/cuenta/solicitudes" icon={ShieldPlus} badge={pendientes}>{tA("nav.requests")}</NavItem>
+                </Seccion>
+              )}
+              <Seccion titulo={tA("nav.account")}>
+                <NavItem href="/configuracion" icon={Settings}>{tA("nav.myProfile")}</NavItem>
+                {!esAdmin && <NavItem href="/cuenta/solicitudes" icon={ShieldPlus}>{tA("nav.requests")}</NavItem>}
+                <NavItem href="/cuenta/actividad" icon={History}>{tA("nav.activity")}</NavItem>
+                <NavItem href="/ayuda" icon={HelpCircle}>{tA("nav.help")}</NavItem>
+              </Seccion>
+            </>
+          )}
 
           {/* --- SELECTOR DE IDIOMA --- */}
           <LanguageSwitcher />
@@ -259,24 +252,25 @@ export default function Sidebar() {
 
         {/* FOOTER: usuario, tema y cierre de sesión */}
         <div className="px-5 py-4 border-t border-sig-line dark:border-zinc-800 space-y-3">
-          <div className="flex items-center gap-2.5">
+          <Link href="/configuracion" className="flex items-center gap-2.5 rounded -mx-1 px-1 py-0.5 hover:bg-white dark:hover:bg-zinc-800">
             <div className="w-8 h-8 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-bold flex items-center justify-center shrink-0">
               {iniciales}
             </div>
             <div className="flex flex-col leading-tight min-w-0 flex-1">
               <span className="text-[13px] font-semibold text-black dark:text-white truncate capitalize">{usuario.nombre}</span>
-              <span className="text-xs text-sig-muted truncate">{usuario.rol || t("user")}</span>
+              <span className="text-xs text-sig-muted truncate">{esAdmin ? tA("roleAdmin") : usuario.rol || t("user")}</span>
             </div>
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex-1 h-9 flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-black dark:text-gray-200 border border-sig-line-strong dark:border-zinc-700 rounded text-sm font-semibold hover:bg-sig-sand dark:hover:bg-zinc-700 transition-colors"
+            >
+              <LogOut size={15} />
+              {t("logout")}
+            </button>
             <ThemeToggle />
           </div>
-
-          <button
-            onClick={handleLogout}
-            className="w-full h-9 flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-black dark:text-gray-200 border border-sig-line-strong dark:border-zinc-700 rounded text-sm font-semibold hover:bg-sig-sand dark:hover:bg-zinc-700 transition-colors"
-          >
-            <LogOut size={15} />
-            {t("logout")}
-          </button>
         </div>
       </aside>
     </>
