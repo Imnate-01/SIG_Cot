@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import AuthShell, { campoClase } from "@/components/auth/AuthShell";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { esEnlaceRecuperacion } from "@/lib/recuperacion";
 
 /**
  * Después de iniciar sesión todos llegan a Inicio, donde eligen el área en la
@@ -32,6 +33,14 @@ function LoginInner() {
   // Efecto para cargar el email recordado + warm-up del backend
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Enlace de recuperación que cayó aquí (Redirect URL no permitida en Supabase):
+    // se reenvía a /restablecer conservando el #token. Va antes que todo lo demás.
+    if (esEnlaceRecuperacion(window.location.hash)) {
+      const locale = window.location.pathname.match(/^\/(en|es)(\/|$)/)?.[1];
+      window.location.replace(`${locale ? `/${locale}` : ""}/restablecer${window.location.hash}`);
+      return;
+    }
 
     // Mostrar aviso si la sesión expiró y el usuario fue redirigido automáticamente
     if (searchParams?.get('expired') === '1') {

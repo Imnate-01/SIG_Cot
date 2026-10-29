@@ -1,23 +1,20 @@
 "use client";
 
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useRouter } from "@/i18n/routing";
 import api from "@/services/api";
 import { ETAPAS_ESTANDAR, etiquetaSemana, formatearFecha, sumarDias } from "@/features/pm/pm";
-import { Campo, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { Campo, CampoSugerencias, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import {
+  aplicarSugerencias, contactoSugerido, contactosDe, equipoAnterior, opcionesMaquina, opcionesPersona, opcionesPlanta,
+  type ClienteAutollenado, type PmPrevio,
+} from "@/features/pm/autollenado";
 
-interface ClienteOpcion {
-  id: number;
-  nombre: string;
-  empresa?: string | null;
-  contacto_nombre?: string | null;
-  correo?: string | null;
-  telefono?: string | null;
-  cliente_direcciones?: Array<{ empresa_planta_nombre?: string | null }>;
-}
+type ClienteOpcion = ClienteAutollenado;
+interface UsuarioOpcion { id: string; nombre: string | null; email: string | null; departamento?: string | null }
 
 const VACIO = {
   cliente_id: "", planta: "", linea: "", contacto_nombre: "", contacto_telefono: "", contacto_correo: "",
@@ -34,31 +31,81 @@ export default function PmNuevoPage() {
   const [clientes, setClientes] = useState<ClienteOpcion[]>([]);
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
+  const [usuarios, setUsuarios] = useState<UsuarioOpcion[]>([]);
+  const [previos, setPrevios] = useState<PmPrevio[]>([]);
+  // Lo que se llenó solo: si el usuario no lo cambió, se puede reemplazar al cambiar cliente/planta
+  const auto = useRef<Partial<Record<keyof typeof VACIO, string>>>({});
+  const clientePedido = useRef("");
 
   useEffect(() => {
     api.get("/clientes")
       .then(({ data }) => setClientes(data.data || []))
       .catch(() => toast.error(t("customersLoadError")));
+    api.get("/usuarios").then(({ data }) => setUsuarios(data.data || [])).catch(() => {});
   }, [t]);
 
   const cliente = useMemo(() => clientes.find((c) => String(c.id) === form.cliente_id), [clientes, form.cliente_id]);
-  const plantas = useMemo(
-    () => [...new Set((cliente?.cliente_direcciones || []).map((d) => d.empresa_planta_nombre).filter((x): x is string => !!x))],
-    [cliente],
-  );
+  const plantas = useMemo(() => opcionesPlanta(cliente), [cliente]);
+  const maquinas = useMemo(() => opcionesMaquina(cliente, form.planta), [cliente, form.planta]);
+  const contactos = useMemo(() => contactosDe(cliente, form.planta), [cliente, form.planta]);
+  const personas = useMemo(() => ({
+    sam: opcionesPersona(previos, "sam", usuarios),
+    fse_filler: opcionesPersona(previos, "fse_filler", usuarios),
+    fse_downline: opcionesPersona(previos, "fse_downline", usuarios),
+  }), [previos, usuarios]);
+
   const set = (k: keyof typeof VACIO) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setValor = (k: keyof typeof VACIO) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const sugerir = (sugeridos: Partial<Record<keyof typeof VACIO, string>>) =>
+    setForm((f) => {
+      const r = aplicarSugerencias(f, auto.current, sugeridos);
+      auto.current = r.auto;
+      return r.form;
+    });
 
-  /** Al elegir cliente se sugieren sus datos de contacto (editables). */
-  const elegirCliente = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const c = clientes.find((x) => String(x.id) === e.target.value);
-    setForm((f) => ({
-      ...f,
-      cliente_id: e.target.value,
-      contacto_nombre: f.contacto_nombre || c?.contacto_nombre || "",
-      contacto_correo: f.contacto_correo || c?.correo || "",
-      contacto_telefono: f.contacto_telefono || c?.telefono || "",
-    }));
+  /**
+   * Al elegir cliente (comentario 1): planta (si solo hay una), contacto de la planta
+   * y SAM/FSE del último PM de ese cliente. Todo queda editable.
+   */
+  const elegirCliente = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    const c = clientes.find((x) => String(x.id) === id);
+    setForm((f) => ({ ...f, cliente_id: id }));
+    setPrevios([]);
+    if (!c) return;
+    const lista = opcionesPlanta(c);
+    const planta = lista.length === 1 ? lista[0].valor : "";
+    const maqs = opcionesMaquina(c, planta);
+    const contacto = contactoSugerido(c, planta);
+    sugerir({
+      planta, linea: maqs.length === 1 ? maqs[0].valor : "",
+      contacto_nombre: contacto.nombre, contacto_correo: contacto.correo, contacto_telefono: contacto.telefono,
+    });
+    clientePedido.current = id;
+    try {
+      const { data } = await api.get("/pm", { params: { cliente_id: id } });
+      if (clientePedido.current !== id) return; // ya eligió otro cliente
+      const pms: PmPrevio[] = data.data || [];
+      setPrevios(pms);
+      sugerir(equipoAnterior(pms));
+    } catch { /* sin historial: no se sugiere equipo */ }
+  };
+
+  /** Al elegir una planta conocida se sugiere su contacto y, si tiene una sola máquina, esa. */
+  const elegirPlanta = (planta: string) => {
+    const contacto = contactoSugerido(cliente, planta);
+    const maqs = opcionesMaquina(cliente, planta);
+    sugerir({
+      linea: maqs.length === 1 ? maqs[0].valor : "",
+      contacto_nombre: contacto.nombre, contacto_correo: contacto.correo, contacto_telefono: contacto.telefono,
+    });
+  };
+
+  /** Al elegir un contacto de la lista se llenan su correo y teléfono. */
+  const elegirContacto = (nombre: string) => {
+    const c = contactos.find((x) => x.nombre === nombre);
+    if (c) setForm((f) => ({ ...f, contacto_nombre: c.nombre, contacto_correo: c.correo || f.contacto_correo, contacto_telefono: c.telefono || f.contacto_telefono }));
   };
 
   const finInvalido = !!form.fecha_inicio && !!form.fecha_fin && form.fecha_fin < form.fecha_inicio;
@@ -87,7 +134,8 @@ export default function PmNuevoPage() {
       <form onSubmit={guardar} className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <section className="rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-            <h2 className="mb-4 text-base font-bold text-black dark:text-white">{t("sectionCustomer")}</h2>
+            <h2 className="mb-1 text-base font-bold text-black dark:text-white">{t("sectionCustomer")}</h2>
+            <p className="mb-4 text-xs text-sig-muted">{t("autofillHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label={`${t("fieldCustomer")} *`} className="sm:col-span-2">
                 <select required className={campo} value={form.cliente_id} onChange={elegirCliente}>
@@ -96,23 +144,27 @@ export default function PmNuevoPage() {
                 </select>
               </Campo>
               <Campo label={t("fieldPlant")}>
-                <input className={campo} list="pm-plantas" value={form.planta} onChange={set("planta")} />
-                <datalist id="pm-plantas">{plantas.map((p) => <option key={p} value={p} />)}</datalist>
+                <CampoSugerencias value={form.planta} onChange={setValor("planta")} onElegir={elegirPlanta} opciones={plantas} placeholder={cliente && plantas.length ? t("pickOrType") : undefined} />
               </Campo>
-              <Campo label={t("fieldLine")}><input className={campo} value={form.linea} onChange={set("linea")} /></Campo>
-              <Campo label={t("fieldContact")}><input className={campo} value={form.contacto_nombre} onChange={set("contacto_nombre")} /></Campo>
+              <Campo label={t("fieldLine")}>
+                <CampoSugerencias value={form.linea} onChange={setValor("linea")} opciones={maquinas} placeholder={cliente && maquinas.length ? t("pickOrType") : undefined} />
+              </Campo>
+              <Campo label={t("fieldContact")}>
+                <CampoSugerencias value={form.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined }))} />
+              </Campo>
               <Campo label={t("fieldPhone")}><input className={campo} type="tel" value={form.contacto_telefono} onChange={set("contacto_telefono")} /></Campo>
               <Campo label={t("fieldEmail")} className="sm:col-span-2"><input className={campo} type="email" value={form.contacto_correo} onChange={set("contacto_correo")} /></Campo>
             </div>
           </section>
 
           <section className="rounded border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-            <h2 className="mb-4 text-base font-bold text-black dark:text-white">{t("sectionTeam")}</h2>
+            <h2 className="mb-1 text-base font-bold text-black dark:text-white">{t("sectionTeam")}</h2>
+            <p className="mb-4 text-xs text-sig-muted">{previos.length > 0 ? t("teamFromPreviousPm") : t("teamHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Campo label={t("fieldSam")}><input className={campo} value={form.sam} onChange={set("sam")} /></Campo>
+              <Campo label={t("fieldSam")}><CampoSugerencias value={form.sam} onChange={setValor("sam")} opciones={personas.sam} /></Campo>
               <Campo label={t("fieldPo")}><input className={campo} value={form.po_numero} onChange={set("po_numero")} /></Campo>
-              <Campo label={t("fieldFseFiller")}><input className={campo} value={form.fse_filler} onChange={set("fse_filler")} /></Campo>
-              <Campo label={t("fieldFseDownline")}><input className={campo} value={form.fse_downline} onChange={set("fse_downline")} /></Campo>
+              <Campo label={t("fieldFseFiller")}><CampoSugerencias value={form.fse_filler} onChange={setValor("fse_filler")} opciones={personas.fse_filler} /></Campo>
+              <Campo label={t("fieldFseDownline")}><CampoSugerencias value={form.fse_downline} onChange={setValor("fse_downline")} opciones={personas.fse_downline} /></Campo>
             </div>
           </section>
 

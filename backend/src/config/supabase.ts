@@ -13,6 +13,9 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("❌ Faltan variables de entorno de Supabase");
 }
 
+/** Clave pública (anon). Se puede entregar al navegador: no da privilegios por sí sola. */
+export const SUPABASE_ANON_KEY_PUBLICA = SUPABASE_ANON_KEY;
+
 // 1. Cliente para acciones públicas (Login, Registro inicial)
 export const supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
