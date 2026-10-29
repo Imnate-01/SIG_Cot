@@ -3,6 +3,10 @@ import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Onboarding from "./Onboarding";
+import { AccesosProvider } from "@/features/accesos/AccesosProvider";
+import GuardiaArea from "@/features/accesos/GuardiaArea";
+
+const RUTAS_PUBLICAS = ["/login", "/register", "/verificado", "/recuperar", "/restablecer"];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,36 +18,27 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     fetch(`${API_URL}/api/health`, { method: "GET" }).catch(() => {});
   }, []);
 
-  // Rutas públicas donde NO debe salir ni el Menú ni el Onboarding
-  // Soporta rutas con locale prefix: /en/login, /es/register, etc.
-  const esFullPage = pathname === "/" ||
-    pathname.endsWith("/login") ||
-    pathname.endsWith("/register") ||
-    pathname.endsWith("/verificado") ||
-    pathname.endsWith("/recuperar") ||
-    pathname.endsWith("/restablecer") ||
+  // Rutas públicas: sin sesión, sin menú, sin onboarding. Soporta /en/login, /es/register, etc.
+  const esPublica = pathname === "/" ||
+    RUTAS_PUBLICAS.some((r) => pathname.endsWith(r)) ||
     pathname.match(/^\/(en|es)$/) !== null;
+  // Inicio (elegir área) es de pantalla completa: con sesión pero sin menú lateral
+  const esInicio = /^(\/(en|es))?\/inicio$/.test(pathname);
+  const conMenu = !esPublica && !esInicio;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 font-sans text-black dark:text-gray-100">
+    <AccesosProvider activo={!esPublica}>
+      <div className="min-h-screen bg-white dark:bg-zinc-950 font-sans text-black dark:text-gray-100">
+        {/* El componente internamente decide si mostrarse o no (revisando localStorage) */}
+        {conMenu && <Onboarding />}
+        {conMenu && <Sidebar />}
 
-      {/* 2. AQUI VA EL ONBOARDING */}
-      {/* Solo se renderiza si estamos dentro del sistema. */}
-      {/* El componente internamente decide si mostrarse o no (revisando localStorage) */}
-      {!esFullPage && <Onboarding />}
-
-      {/* Menú Lateral */}
-      {!esFullPage && <Sidebar />}
-
-      {/* Contenido Principal */}
-      <main
-        className={`min-h-screen transition-all duration-300 ease-in-out ${!esFullPage ? "lg:pl-60 max-lg:pt-14" : ""
-          }`}
-      >
-        <div className={!esFullPage ? "" : ""}>
-          {children}
-        </div>
-      </main>
-    </div>
+        <main
+          className={`min-h-screen transition-all duration-300 ease-in-out ${conMenu ? "lg:pl-60 max-lg:pt-14" : ""}`}
+        >
+          {esPublica ? children : <GuardiaArea>{children}</GuardiaArea>}
+        </main>
+      </div>
+    </AccesosProvider>
   );
 }

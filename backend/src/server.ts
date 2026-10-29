@@ -22,7 +22,9 @@ import foodSafetyAuditRoutes from './routes/foodSafetyAudit.routes';
 import adminUsuariosRoutes from './routes/admin-usuarios.routes';
 import pmRoutes from './routes/pm.routes';
 import cronRoutes from './routes/cron.routes';
+import accesosRoutes from './routes/accesos.routes';
 import { requireAuth } from './middlewares/requireAuth';
+import { requireArea, requireAreaPorMetodo } from './middlewares/requireArea';
 import { responderError } from './utils/http';
 const app = express();
 
@@ -71,19 +73,34 @@ app.use('/api/health', healthRoutes);
 // Procesos programados (secreto compartido, sin sesión): resumen diario del PM Tracker
 app.use('/api/cron', cronRoutes);
 
-// Protegidas: requireAuth valida el token UNA vez y deja req.user / req.supabase
-app.use('/api/cotizaciones', requireAuth, cotizacionesRoutes);
-app.use('/api/clientes', requireAuth, clientesRoutes);
-app.use('/api/servicios', requireAuth, serviciosRoutes);
-app.use('/api/reportes', requireAuth, reportesRoutes);
+// Protegidas: requireAuth valida el token UNA vez y deja req.user / req.supabase.
+// Después, cada grupo exige su área (tabla usuario_areas; los administradores
+// del sistema entran a todas). Ver la migración 20261029_01.
+const cotizaciones = requireArea('cotizaciones');
+const mantenimiento = requireArea('mantenimiento');
+const foodSafety = requireArea('food_safety');
+// Catálogo de clientes: lo consulta Mantenimiento (PM) pero lo administra Cotizaciones
+const clientes = requireAreaPorMetodo({ lectura: ['cotizaciones', 'mantenimiento'], escritura: ['cotizaciones'] });
+// Mantenimiento solo lee el LISTADO de cotizaciones para ligarlas como evidencia de un PM
+const cotizacionesConEvidenciaPm = requireAreaPorMetodo({
+  lectura: ['cotizaciones', 'mantenimiento'],
+  escritura: ['cotizaciones'],
+  esLectura: (req) => req.method === 'GET' && req.path === '/',
+});
+
+app.use('/api/accesos', requireAuth, accesosRoutes);
+app.use('/api/cotizaciones', requireAuth, cotizacionesConEvidenciaPm, cotizacionesRoutes);
+app.use('/api/clientes', requireAuth, clientes, clientesRoutes);
+app.use('/api/servicios', requireAuth, cotizaciones, serviciosRoutes);
+app.use('/api/reportes', requireAuth, cotizaciones, reportesRoutes);
 app.use('/api/usuarios', requireAuth, usuariosRoutes);
-app.use('/api/ia', requireAuth, iaRoutes);
+app.use('/api/ia', requireAuth, cotizaciones, iaRoutes);
 app.use('/api/reportes-tecnicos', requireAuth, reportesTecnicosRoutes);
-app.use('/api/tarifas-cliente', requireAuth, tarifasClienteRoutes);
-app.use('/api/cotizaciones-us', requireAuth, cotizacionesUsRoutes);
-app.use('/api/food-safety-audit', requireAuth, foodSafetyAuditRoutes);
+app.use('/api/tarifas-cliente', requireAuth, cotizaciones, tarifasClienteRoutes);
+app.use('/api/cotizaciones-us', requireAuth, cotizaciones, cotizacionesUsRoutes);
+app.use('/api/food-safety-audit', requireAuth, foodSafety, foodSafetyAuditRoutes);
 app.use('/api/admin/usuarios', requireAuth, adminUsuariosRoutes);
-app.use('/api/pm', requireAuth, pmRoutes);
+app.use('/api/pm', requireAuth, mantenimiento, pmRoutes);
 
 // Ruta inexistente → JSON (antes respondía una página HTML)
 app.use('/api', (_req, res) => {

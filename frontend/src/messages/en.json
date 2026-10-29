@@ -1,7 +1,7 @@
 {
   "Common": {
-    "appName": "SIG Quotations",
-    "appTagline": "Internal platform • Control and traceability",
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · internal tools",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -55,8 +55,8 @@
     "connectionError": "Connection error",
     "resetPassword": "Reset password",
     "title": "Sign in",
-    "appName": "Quotations",
-    "appTagline": "Technical service",
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · internal tools",
     "moduleQuotes": "MX and US quotations",
     "moduleReports": "Technical service reports",
     "moduleFsa": "Food Safety Audit",
@@ -764,7 +764,12 @@
     "errorDomain": "Only @sig.biz emails are allowed.",
     "errorMinLength": "Password must be at least 8 characters.",
     "noPermissionTitle": "No access",
-    "noPermissionDesc": "Your role is not allowed to manage users."
+    "noPermissionDesc": "Your role is not allowed to manage users.",
+    "colAreas": "Areas",
+    "fieldAreas": "Work areas",
+    "adminAllAreas": "Administrator · all",
+    "adminNote": "System administrator: has every area.",
+    "noAreas": "No areas"
   },
   "PM": {
       "title": "PM Tracker",
@@ -948,5 +953,138 @@
       "shortEnd": "End",
       "openNotesShort": "Open notes",
       "openNotesShortHint": "Unusual items and follow-up actions. Saved when you leave the field."
+  },
+  "Accesos": {
+    "appName": "Service Operations Workspace",
+    "appTagline": "Back Office · internal tools",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "noAccessTitle": "You don't have access to that area",
+    "noAccessDesc": "We took you back Home. You can request access from Administration › Access requests.",
+    "areas": {
+      "cotizaciones": "Quotations",
+      "mantenimiento": "Maintenance",
+      "food_safety": "Food Safety Audit",
+      "administracion": "Administration"
+    },
+    "tags": {
+      "cotizaciones": "Commercial",
+      "mantenimiento": "PM · BOM",
+      "food_safety": "Quality",
+      "administracion": "My account",
+      "administracionAdmin": "System"
+    },
+    "descs": {
+      "cotizaciones": "Create, review, sign and send quotations to customers.",
+      "mantenimiento": "Schedule preventive maintenance and follow up on its tasks.",
+      "food_safety": "Food safety audit reports.",
+      "administracion": "Your profile, your access requests and your activity.",
+      "administracionAdmin": "Users, areas, access requests and activity log."
+    },
+    "items": {
+      "cotizaciones": [
+        "MX and US quotations",
+        "Customers",
+        "Rates and services"
+      ],
+      "mantenimiento": [
+        "PM Tracker",
+        "Alerts",
+        "New PM"
+      ],
+      "food_safety": [
+        "Audit reports",
+        "New report"
+      ],
+      "administracion": [
+        "My profile",
+        "Access requests",
+        "My activity"
+      ],
+      "administracionAdmin": [
+        "Users and areas",
+        "Requests to approve",
+        "My profile and activity"
+      ]
+    },
+    "greeting": "Hi, {nombre}",
+    "homeSubtitle": "Choose the area you are going to work in.",
+    "yourRole": "Your role",
+    "roleAdmin": "System administrator",
+    "assignedAreas": "Assigned areas",
+    "yourAreas": "Your areas",
+    "enter": "Open",
+    "onlyAssigned": "Only the areas assigned to you are shown.",
+    "requestAccess": "Request access to another area",
+    "logout": "Sign out",
+    "noAreasTitle": "You don't have work areas yet",
+    "noAreasDesc": "Request access to the area you work in; a system administrator will approve it.",
+    "pending": "{n, plural, one {# pending} other {# pending}}",
+    "currentArea": "Current area",
+    "change": "Change",
+    "home": "Home",
+    "nav": {
+      "myProfile": "My profile",
+      "requests": "Access requests",
+      "activity": "My activity",
+      "users": "Users and areas",
+      "help": "Help & Support",
+      "account": "My account",
+      "system": "System"
+    },
+    "requestsTitle": "Access requests",
+    "requestsSubtitle": "Request access to another area. A system administrator approves or rejects it.",
+    "requestsSubtitleAdmin": "Approve or reject requests for access to areas.",
+    "newRequest": "New request",
+    "fieldArea": "Area",
+    "fieldReason": "Reason (optional)",
+    "reasonPlaceholder": "What do you need the access for?",
+    "chooseArea": "Choose an area",
+    "send": "Send request",
+    "sent": "Request sent",
+    "errorSend": "Could not send the request",
+    "mine": "My requests",
+    "noRequests": "You haven't requested access to other areas yet.",
+    "nothingToRequest": "You already have every area or your requests are pending.",
+    "status": {
+      "pendiente": "Pending",
+      "aprobada": "Approved",
+      "rechazada": "Rejected"
+    },
+    "colArea": "Area",
+    "colStatus": "Status",
+    "colDate": "Date",
+    "colReason": "Reason",
+    "colNote": "Note",
+    "colUser": "User",
+    "toApprove": "To approve",
+    "noPending": "No pending requests.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Access approved",
+    "rejected": "Request rejected",
+    "errorResolve": "Could not resolve the request",
+    "notePrompt": "Note for {nombre} (optional):",
+    "errorLoad": "Could not load the information",
+    "activityTitle": "My activity",
+    "activitySubtitle": "Sign-ins, changes to your account and to your access.",
+    "noActivity": "No activity recorded yet.",
+    "by": "by {nombre}",
+    "added": "Added: {lista}",
+    "removed": "Removed: {lista}",
+    "events": {
+      "inicio_sesion": "You signed in",
+      "perfil_actualizado": "You updated your profile",
+      "contrasena_cambiada": "You changed your password",
+      "contrasena_restablecida": "Your password was reset",
+      "areas_actualizadas": "Your work areas changed",
+      "cuenta_activada": "Your account was activated",
+      "cuenta_desactivada": "Your account was deactivated",
+      "cuenta_creada": "Your account was created",
+      "solicitud_creada": "You requested access to {area}",
+      "solicitud_aprobada": "You were given access to {area}",
+      "solicitud_rechazada": "Your request for {area} was rejected",
+      "otro": "Event"
+    }
   }
 }

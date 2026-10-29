@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { supabaseAnon, supabaseAdmin } from "../config/supabase";
 import { esErrorDeConexion, traducirErrorAuth, MENSAJE_SIN_CONEXION } from "../utils/authErrores";
+import { registrarBitacora } from '../services/accesos';
 
 const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
 const CONTRASENA_MINIMA = 8;
@@ -155,6 +156,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
       rol = perfil?.rol ?? rol;
       departamento = perfil?.departamento ?? departamento;
     }
+
+    // Sin await: la bitácora no debe retrasar el inicio de sesión
+    void registrarBitacora(data.user.id, data.user.id, 'inicio_sesion');
 
     res.json({
       message:       "Login correcto",

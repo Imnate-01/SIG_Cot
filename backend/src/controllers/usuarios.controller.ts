@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { responderError } from '../utils/http'
 import { supabaseAdmin } from '../config/supabase'
+import { registrarBitacora } from '../services/accesos';
 
 export class UsuariosController {
 
@@ -75,6 +76,7 @@ export class UsuariosController {
         .single()
 
       if (error) throw error
+      await registrarBitacora(user.id, user.id, 'perfil_actualizado')
       res.json({ success: true, data })
     } catch (error: any) {
       responderError(res, error);
@@ -100,6 +102,7 @@ export class UsuariosController {
       })
 
       if (error) throw error
+      await registrarBitacora(user.id, user.id, 'contrasena_cambiada')
 
       res.json({ success: true, message: 'Contraseña actualizada correctamente' })
 

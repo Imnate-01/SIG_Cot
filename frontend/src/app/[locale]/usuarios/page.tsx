@@ -5,11 +5,12 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Copy, KeyRound, Loader2, Pencil, Plus, Search, ShieldAlert, UserCheck, UserX, X } from "lucide-react";
 import api from "@/services/api";
+import { AREAS, type Area } from "@/features/accesos/areas";
 
 /**
  * Administración de usuarios: crear cuentas (ya confirmadas, con contraseña
- * temporal), restablecer contraseñas, cambiar rol/departamento y desactivar.
- * Solo para los roles de ROLES_ADMIN_USUARIOS (backend).
+ * temporal), restablecer contraseñas, cambiar rol/departamento, asignar las
+ * áreas de trabajo y desactivar. Solo administradores del sistema.
  */
 interface UsuarioAdmin {
   id: string;
@@ -20,10 +21,35 @@ interface UsuarioAdmin {
   activo: boolean | null;
   email_confirmado: boolean;
   ultimo_acceso: string | null;
+  es_admin_sistema: boolean;
+  areas: Area[];
 }
 
-interface FormUsuario { nombre: string; email: string; departamento: string; rol: string; password: string }
-const FORM_VACIO: FormUsuario = { nombre: "", email: "", departamento: "", rol: "vendedor", password: "" };
+interface FormUsuario { nombre: string; email: string; departamento: string; rol: string; password: string; areas: Area[] }
+const FORM_VACIO: FormUsuario = { nombre: "", email: "", departamento: "", rol: "vendedor", password: "", areas: [] };
+
+const alternar = (lista: Area[], area: Area) => AREAS.filter((a) => (a === area ? !lista.includes(a) : lista.includes(a)));
+
+/** Casillas de áreas de trabajo (un administrador del sistema las tiene todas). */
+function SelectorAreas({ valor, onChange, esAdmin, t, tA }: { valor: Area[]; onChange: (v: Area[]) => void; esAdmin: boolean; t: (k: string) => string; tA: (k: string) => string }) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 block text-[13px] font-semibold text-black dark:text-white">{t("fieldAreas")}</legend>
+      {esAdmin ? (
+        <p className="rounded bg-sig-sand dark:bg-zinc-800 px-3 py-2 text-sm text-sig-muted">{t("adminNote")}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {AREAS.map((a) => (
+            <label key={a} className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded border px-3 text-sm font-semibold ${valor.includes(a) ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-sig-line-strong text-black dark:text-white"}`}>
+              <input type="checkbox" className="sr-only" checked={valor.includes(a)} onChange={() => onChange(alternar(valor, a))} />
+              {tA(`areas.${a}`)}
+            </label>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  );
+}
 
 const mensajeError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -48,6 +74,7 @@ function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => v
 
 export default function UsuariosPage() {
   const t = useTranslations("Usuarios");
+  const tA = useTranslations("Accesos");
   const [permiso, setPermiso] = useState<"cargando" | "si" | "no">("cargando");
   const [mensajePermiso, setMensajePermiso] = useState("");
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
@@ -57,7 +84,7 @@ export default function UsuariosPage() {
   const [modalNuevo, setModalNuevo] = useState(false);
   const [form, setForm] = useState<FormUsuario>(FORM_VACIO);
   const [editando, setEditando] = useState<UsuarioAdmin | null>(null);
-  const [formEdit, setFormEdit] = useState({ nombre: "", rol: "", departamento: "" });
+  const [formEdit, setFormEdit] = useState<{ nombre: string; rol: string; departamento: string; areas: Area[] }>({ nombre: "", rol: "", departamento: "", areas: [] });
   const [credenciales, setCredenciales] = useState<{ email: string; password: string; nuevo: boolean } | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -139,7 +166,11 @@ export default function UsuariosPage() {
     if (!editando) return;
     try {
       setGuardando(true);
-      await api.patch(`/admin/usuarios/${editando.id}`, formEdit);
+      const { areas, ...perfil } = formEdit;
+      await api.patch(`/admin/usuarios/${editando.id}`, perfil);
+      if (!editando.es_admin_sistema && areas.join() !== editando.areas.join()) {
+        await api.put(`/admin/usuarios/${editando.id}/areas`, { areas });
+      }
       setEditando(null);
       toast.success(t("updated"));
       cargar();
@@ -191,7 +222,7 @@ export default function UsuariosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold text-sig-muted">
-                  {[t("colName"), t("colRole"), t("colDept"), t("colLastAccess"), t("colStatus"), ""].map((h, i) => (
+                  {[t("colName"), t("colRole"), t("colAreas"), t("colDept"), t("colLastAccess"), t("colStatus"), ""].map((h, i) => (
                     <th key={i} className="border-b border-black dark:border-zinc-500 pb-2 pr-4 font-semibold">{h}</th>
                   ))}
                 </tr>
@@ -204,6 +235,15 @@ export default function UsuariosPage() {
                       <div className="text-xs text-sig-muted">{u.email}</div>
                     </td>
                     <td className="py-3 pr-4 text-black dark:text-gray-200">{u.rol || "—"}</td>
+                    <td className="py-3 pr-4">
+                      {u.es_admin_sistema ? (
+                        <span className="whitespace-nowrap rounded-sm bg-black px-2 py-0.5 text-xs font-semibold text-white dark:bg-white dark:text-black">{t("adminAllAreas")}</span>
+                      ) : u.areas.length ? (
+                        <div className="flex flex-wrap gap-1">{u.areas.map((a) => <span key={a} className="whitespace-nowrap rounded-sm bg-sig-sand dark:bg-zinc-800 px-2 py-0.5 text-xs font-semibold text-black dark:text-white">{tA(`areas.${a}`)}</span>)}</div>
+                      ) : (
+                        <span className="text-xs text-sig-muted">{t("noAreas")}</span>
+                      )}
+                    </td>
                     <td className="py-3 pr-4 text-black dark:text-gray-200">{u.departamento || "—"}</td>
                     <td className="py-3 pr-4 text-sig-muted whitespace-nowrap">{fecha(u.ultimo_acceso)}</td>
                     <td className="py-3 pr-4">
@@ -217,7 +257,7 @@ export default function UsuariosPage() {
                     </td>
                     <td className="py-3">
                       <div className="flex justify-end gap-1">
-                        <button title={t("edit")} aria-label={t("edit")} onClick={() => { setEditando(u); setFormEdit({ nombre: u.nombre || "", rol: u.rol || "", departamento: u.departamento || "" }); }} className="rounded p-2 text-sig-muted hover:bg-sig-sand hover:text-black dark:hover:bg-zinc-800"><Pencil size={16} /></button>
+                        <button title={t("edit")} aria-label={t("edit")} onClick={() => { setEditando(u); setFormEdit({ nombre: u.nombre || "", rol: u.rol || "", departamento: u.departamento || "", areas: u.areas || [] }); }} className="rounded p-2 text-sig-muted hover:bg-sig-sand hover:text-black dark:hover:bg-zinc-800"><Pencil size={16} /></button>
                         <button title={t("resetPassword")} aria-label={t("resetPassword")} onClick={() => restablecer(u)} className="rounded p-2 text-sig-muted hover:bg-sig-sand hover:text-black dark:hover:bg-zinc-800"><KeyRound size={16} /></button>
                         <button title={u.activo === false ? t("activate") : t("deactivate")} aria-label={u.activo === false ? t("activate") : t("deactivate")} onClick={() => cambiarActivo(u)} className={`rounded p-2 hover:bg-sig-sand dark:hover:bg-zinc-800 ${u.activo === false ? "text-sig-success" : "text-sig-danger"}`}>{u.activo === false ? <UserCheck size={16} /> : <UserX size={16} />}</button>
                       </div>
@@ -225,7 +265,7 @@ export default function UsuariosPage() {
                   </tr>
                 ))}
                 {filtrados.length === 0 && (
-                  <tr><td colSpan={6} className="py-10 text-center text-sig-muted">{t("empty")}</td></tr>
+                  <tr><td colSpan={7} className="py-10 text-center text-sig-muted">{t("empty")}</td></tr>
                 )}
               </tbody>
             </table>
@@ -252,6 +292,7 @@ export default function UsuariosPage() {
               <label className="mb-1.5 block text-[13px] font-semibold text-black dark:text-white">{t("fieldRole")}</label>
               <input list="roles-existentes" value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })} className={campo} />
             </div>
+            <SelectorAreas valor={form.areas} onChange={(areas) => setForm({ ...form, areas })} esAdmin={false} t={t} tA={tA} />
             <div>
               <label className="mb-1.5 block text-[13px] font-semibold text-black dark:text-white">{t("fieldPassword")}</label>
               <input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={t("fieldPasswordPlaceholder")} className={campo} />
@@ -279,6 +320,7 @@ export default function UsuariosPage() {
               <label className="mb-1.5 block text-[13px] font-semibold text-black dark:text-white">{t("fieldDept")}</label>
               <input value={formEdit.departamento} onChange={(e) => setFormEdit({ ...formEdit, departamento: e.target.value })} className={campo} />
             </div>
+            <SelectorAreas valor={formEdit.areas} onChange={(areas) => setFormEdit({ ...formEdit, areas })} esAdmin={editando.es_admin_sistema} t={t} tA={tA} />
             <div className="flex justify-end gap-2 border-t border-sig-line dark:border-zinc-700 pt-4">
               <button type="button" onClick={() => setEditando(null)} className={btnSecundario}>{t("cancel")}</button>
               <button type="submit" disabled={guardando} className={btnPrimario}>{guardando && <Loader2 size={16} className="animate-spin" />}{t("save")}</button>

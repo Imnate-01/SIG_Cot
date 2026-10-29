@@ -11,30 +11,10 @@ import AuthShell, { campoClase } from "@/components/auth/AuthShell";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 /**
- * Detecta si el usuario pertenece al grupo de Ingeniería Aséptica / Calidad Aséptica.
- * Mismas palabras clave que el Sidebar para mantener consistencia.
+ * Después de iniciar sesión todos llegan a Inicio, donde eligen el área en la
+ * que van a trabajar (solo ven las que tienen asignadas).
  */
-const ASEPTICO_KEYWORDS = [
-  'aseptic', 'aséptic',
-  'calidad',
-  'ingeniero', 'engineer',
-  'intern',
-];
-
-function esRolAseptico(rol?: string, departamento?: string): boolean {
-  const rolLower  = (rol          || '').toLowerCase();
-  const deptLower = (departamento || '').toLowerCase();
-  return ASEPTICO_KEYWORDS.some(
-    (kw) => rolLower.includes(kw) || deptLower.includes(kw)
-  );
-}
-
-/** Devuelve la ruta de inicio según el rol del usuario */
-function rutaInicio(usuario: { rol?: string; departamento?: string }): string {
-  return esRolAseptico(usuario.rol, usuario.departamento)
-    ? '/food-safety-audit'
-    : '/cotizaciones';
-}
+const RUTA_INICIO = "/inicio";
 
 // ─── Componente interno que usa useSearchParams ───────────────────────────────
 // Debe estar separado para que <Suspense> lo pueda envolver correctamente.
@@ -64,17 +44,7 @@ function LoginInner() {
     // Solo la cookie es fuente de verdad (el middleware del servidor la valida)
     const token = Cookies.get("auth_token");
     if (token) {
-      const userJson = localStorage.getItem("user_data");
-      if (userJson) {
-        try {
-          const parsedUser = JSON.parse(userJson);
-          router.push(rutaInicio(parsedUser));
-        } catch {
-          router.push("/cotizaciones");
-        }
-      } else {
-        router.push("/cotizaciones");
-      }
+      router.push(RUTA_INICIO);
       return;
     }
 
@@ -124,7 +94,7 @@ function LoginInner() {
         }
       }
 
-      router.push(rutaInicio(data.usuario));
+      router.push(RUTA_INICIO);
       router.refresh();
 
     } catch (err) {
