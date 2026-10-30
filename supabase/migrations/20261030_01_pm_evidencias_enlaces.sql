@@ -19,12 +19,23 @@
 
 alter table public.pm_evidencias add column if not exists url text;
 
--- Las restricciones de la migración original no tienen nombre propio; Postgres
--- las nombró pm_evidencias_tipo_check y pm_evidencias_check.
-alter table public.pm_evidencias drop constraint if exists pm_evidencias_tipo_check;
-alter table public.pm_evidencias drop constraint if exists pm_evidencias_check;
-alter table public.pm_evidencias drop constraint if exists pm_evidencias_tipo_valido;
-alter table public.pm_evidencias drop constraint if exists pm_evidencias_campos_por_tipo;
+-- Quita las restricciones CHECK anteriores de la tabla (las de la migración
+-- original no tienen nombre propio; normalmente son pm_evidencias_tipo_check y
+-- pm_evidencias_check, pero se buscan por tabla para no depender del nombre).
+do $$
+declare r record;
+begin
+  for r in
+    select conname from pg_constraint
+     where conrelid = 'public.pm_evidencias'::regclass and contype = 'c'
+  loop
+    execute format('alter table public.pm_evidencias drop constraint %I', r.conname);
+  end loop;
+end $$;
+
+-- El loop también quitó la del tamaño: se vuelve a crear igual que antes.
+alter table public.pm_evidencias
+  add constraint pm_evidencias_tamano_valido check (tamano is null or tamano >= 0);
 
 alter table public.pm_evidencias
   add constraint pm_evidencias_tipo_valido check (tipo in ('file', 'link', 'quote'));
@@ -33,7 +44,7 @@ alter table public.pm_evidencias
   add constraint pm_evidencias_campos_por_tipo check (
     (tipo = 'file'  and storage_path is not null and cotizacion_id is null and url is null) or
     (tipo = 'link'  and storage_path is null and cotizacion_id is null
-                    and url ~* '^https?://[^[:space:]]+$' and char_length(url) <= 2000) or
+                    and url is not null and url ~* '^https?://[^[:space:]]+$' and char_length(url) <= 2000) or
     (tipo = 'quote' and storage_path is null and cotizacion_id is not null and url is null)
   );
 
@@ -42,3 +53,6 @@ create unique index if not exists pm_evidencias_url_uq
   on public.pm_evidencias(tarea_id, url) where url is not null;
 
 notify pgrst, 'reload schema';
+
+-- Comprobación: deben salir pm_evidencias_campos_por_tipo, pm_evidencias_tamano_valido y pm_evidencias_tipo_valido
+select conname from pg_constraint where conrelid = 'public.pm_evidencias'::regclass and contype = 'c' order by conname;
