@@ -122,7 +122,9 @@
     "user": "User",
     "logout": "Sign Out",
     "language": "Language",
-    "users": "Users"
+    "users": "Users",
+    "bomSection": "BOM",
+    "compareBoms": "Compare BOMs"
   },
   "Cotizaciones": {
     "title": "My Quotations",
@@ -991,7 +993,7 @@
     },
     "descs": {
       "cotizaciones": "Create, review, sign and send quotations to customers.",
-      "mantenimiento": "Schedule preventive maintenance and follow up on its tasks.",
+      "mantenimiento": "Schedule preventive maintenance, follow up on its tasks and compare BOMs.",
       "food_safety": "Food safety audit reports.",
       "administracion": "Your profile, your access requests and your activity.",
       "administracionAdmin": "Users, areas, access requests and activity log."
@@ -1100,6 +1102,184 @@
       "solicitud_aprobada": "You were given access to {area}",
       "solicitud_rechazada": "Your request for {area} was rejected",
       "otro": "Event"
+    }
+  },
+  "Bom": {
+    "title": "Compare BOMs",
+    "subtitle": "Differences are described per part, grouped by Structural Component. They are not rated.",
+    "base": "Base BOM",
+    "compareWith": "Compare with",
+    "baseShort": "Base",
+    "compareShort": "Compare",
+    "swap": "Swap base and comparison",
+    "dropTitle": "Drop the file or click to choose it",
+    "dropHint": "Excel (.xlsx) or CSV. If it is .xls, save it as .xlsx first.",
+    "reading": "Reading file…",
+    "removeFile": "Remove file",
+    "replaceFile": "Replace file",
+    "sheet": "Sheet",
+    "sheetSummary": "{parts} parts · {scs} SC · headers on row {row}",
+    "intervalFromSheet": "interval {interval} taken from the sheet name",
+    "noHeader": "The header row was not found. Enter the row number and assign the columns.",
+    "missingFields": "Not assigned yet: {fields}.",
+    "duplicateFields": "Assigned to more than one column: {fields}.",
+    "showMapping": "Adjust columns",
+    "hideMapping": "Hide columns",
+    "headerRow": "Header row",
+    "columnInFile": "Column in file",
+    "field": "Field",
+    "doNotUse": "Do not use",
+    "mappingHint": "Columns are recognized by name (Component number, Object description, Qty…). Fix anything that does not match here.",
+    "privacy": "Files are read in your browser: they are not uploaded or stored on the server.",
+    "emptyTitle": "Load two BOMs to compare them",
+    "emptyText": "For example, one machine's BOM against another of the same model, or a new version of the matrix against the previous one.",
+    "viewDifferences": "Differences ({count})",
+    "viewList": "Full BOM ({count})",
+    "exportXlsx": "Export Excel",
+    "exportCsv": "Export CSV",
+    "exporting": "Exporting…",
+    "searchPlaceholder": "Search part number, description or SC",
+    "compareInterval": "Compare interval",
+    "intervalSkipped": "Interval is not compared: in sheet {sheet} the interval belongs to the sheet, not to each part. Turn it on to see it.",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "noSc": "No Structural Component",
+    "differencesCount": "{count, plural, one {# difference} other {# differences}}",
+    "posShort": "Pos.",
+    "difference": "Difference",
+    "rowIn": "{side}: row {row}",
+    "match": "Match",
+    "noResults": "No parts match the filter.",
+    "identical": "Both BOMs are identical: there are no differences.",
+    "matchesHidden": "{count, plural, one {# matching part is hidden} other {# matching parts are hidden}}. They are in the full BOM.",
+    "totals": "Base: {a} parts · Compare: {b} parts",
+    "noPosition": "no position",
+    "repeated": "{count, plural, one {# key appears} other {# keys appear}} more than once in the same file (e.g. {example}). They were not removed: they were paired in order.",
+    "chips": {
+      "coinciden": "Match",
+      "cantidad": "Quantity changed",
+      "nueva": "New parts",
+      "retirada": "Removed parts",
+      "intervalo": "Interval changed",
+      "descripcion": "Description changed",
+      "pn": "Part number changed",
+      "posicion": "Position changed",
+      "unidad": "Unit changed",
+      "nuevoPn": "New part # changed"
+    },
+    "types": {
+      "cantidad": "Quantity",
+      "nueva": "New part",
+      "retirada": "Removed part",
+      "intervalo": "Interval",
+      "descripcion": "Description",
+      "pn": "Part number",
+      "posicion": "Position",
+      "unidad": "Unit",
+      "nuevoPn": "New part #"
+    },
+    "fields": {
+      "sc": "Structural Component (SC)",
+      "seccion": "SC name",
+      "posicion": "Position",
+      "pn": "Part number",
+      "nuevoPn": "New part #",
+      "descripcion": "Description",
+      "cantidad": "Quantity",
+      "unidad": "Unit",
+      "intervalo": "Interval",
+      "comentario": "Comment"
+    },
+    "error": {
+      "formato": "Unsupported format. Use .xlsx or .csv.",
+      "vacio": "The file has no data.",
+      "lectura": "The file could not be read. If it is protected or .xls, open it in Excel and save it as .xlsx.",
+      "demasiados": "Drop one or two files at a time."
+    },
+    "export": {
+      "scName": "SC name",
+      "pnBase": "Base part number",
+      "pnCompare": "Compared part number",
+      "valueBase": "Base value",
+      "valueCompare": "Compared value",
+      "rowBase": "Base row",
+      "rowCompare": "Compared row",
+      "status": "Status",
+      "sheetDifferences": "Differences",
+      "sheetList": "Full BOM",
+      "sheetSummary": "Summary",
+      "generated": "Generated",
+      "partsBase": "Parts in base",
+      "partsCompare": "Parts in comparison",
+      "withDifferences": "Parts with differences",
+      "qtyBase": "Base qty",
+      "qtyCompare": "Compared qty",
+      "priority": "Priority",
+      "recommendation": "Recommendation",
+      "detail": "Detail",
+      "examples": "Examples",
+      "sheetRecommendations": "Recommendations"
+    },
+    "viewRecommendations": "Recommendations ({count})",
+    "highBanner": "{count, plural, one {There is # high-priority recommendation} other {There are # high-priority recommendations}} before approving this BOM.",
+    "seeRecommendations": "See recommendations",
+    "dropBoth": "You can drop both files at once.",
+    "rec": {
+      "intro": "What to review before approving the compared BOM. None of this is applied automatically: Engineering decides each point.",
+      "more": "and {count} more (in the exported Excel)",
+      "priority": {
+        "alta": "High priority",
+        "media": "Review",
+        "info": "Info"
+      },
+      "pnCambiado": {
+        "title": "Confirm {count, plural, one {# part number substitution} other {# part number substitutions}}",
+        "text": "The part number changed in the same position. Check in the Part Master that the new part replaces the old one and since when."
+      },
+      "sustitucion": {
+        "title": "{count, plural, one {# possible substitution} other {# possible substitutions}}",
+        "text": "In the same SC one part left and another with the same description came in. The BOM has no positions, so this cannot be confirmed: check with Engineering whether it is a replacement or two different parts."
+      },
+      "cambioSc": {
+        "title": "{count, plural, one {# part moved} other {# parts moved}} to another SC",
+        "text": "The same part number left one Structural Component and appears in another. Confirm it is a reassignment and not a data-entry error."
+      },
+      "retiradas": {
+        "title": "Confirm {count, plural, one {# part} other {# parts}} removed",
+        "text": "They are in the base and not in the compared BOM. Matrices are not purely cumulative, so confirm with Engineering that it is a removal and not an omission."
+      },
+      "unidad": {
+        "title": "Check the unit of {count, plural, one {# part} other {# parts}}",
+        "text": "The same part changed its unit of measure. If not fixed, the ordered quantity may be wrong (for example, PC vs SET)."
+      },
+      "cantidad": {
+        "title": "Verify {count, plural, one {# part} other {# parts}} with another quantity",
+        "text": "Compare them with what is installed on the machine before accepting the change."
+      },
+      "descripcion": {
+        "title": "Unify the description of {count, plural, one {# part} other {# parts}}",
+        "text": "The same part number has another description. Decide the canonical one in the Part Master. Differences only in case, spaces or punctuation are not counted."
+      },
+      "nuevas": {
+        "title": "Complete {count, plural, one {# part} other {# parts}} added",
+        "text": "Assign their base interval and check that they have a price and are in the catalog."
+      },
+      "duplicados": {
+        "title": "{count, plural, one {# repeated key} other {# repeated keys}} in the compared BOM",
+        "text": "The same SC and part number appears more than once. Nothing was removed: check whether they are different applications or an error. Keys not repeated in the base come first."
+      },
+      "sinPosicion": {
+        "title": "The BOM has no positions",
+        "text": "Parts were paired by SC + part number. Without positions, a substitution shows as a removed part and a new part, so they are listed as possible substitutions."
+      },
+      "aleman": {
+        "title": "{count, plural, one {# description} other {# descriptions}} with German terms",
+        "text": "For example FUER, KLEMMRING or VENTIL. Translate them when defining the canonical description."
+      },
+      "sinCambios": {
+        "title": "No changes",
+        "text": "Both BOMs have the same parts, quantities and descriptions."
+      }
     }
   }
 }

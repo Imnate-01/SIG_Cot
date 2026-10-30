@@ -23,6 +23,7 @@ import {
   ShieldPlus,
   History,
   Home,
+  GitCompareArrows,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuthMigration } from "@/hooks/useAuthMigration";
@@ -46,6 +47,7 @@ const RUTAS_MENU = [
   "/pm/alertas",
   "/pm/nuevo",
   "/pm",
+  "/bom",
   "/usuarios",
   "/configuracion",
   "/cuenta/solicitudes",
@@ -219,6 +221,7 @@ export default function Sidebar() {
               <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
               <NavItem href="/pm/alertas" icon={Bell} badge={alertasPm?.total} badgeUrgente={(alertasPm?.overdue ?? 0) > 0}>{t("pmAlerts")}</NavItem>
               <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
+              <NavItem href="/bom" icon={GitCompareArrows}>{t("compareBoms")}</NavItem>
             </Seccion>
           )}
 

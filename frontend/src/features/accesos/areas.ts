@@ -15,7 +15,7 @@ export interface Accesos {
 
 export const RUTAS_SECCION: Record<Seccion, readonly string[]> = {
   cotizaciones: ["/cotizaciones", "/cotizaciones-us", "/clientes", "/servicios", "/reportes"],
-  mantenimiento: ["/pm"],
+  mantenimiento: ["/pm", "/bom"],
   food_safety: ["/food-safety-audit"],
   administracion: ["/configuracion", "/cuenta", "/usuarios", "/ayuda"],
 };

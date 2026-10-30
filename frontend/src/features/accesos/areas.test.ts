@@ -11,6 +11,7 @@ describe("seccionDeRuta", () => {
     expect(seccionDeRuta("/en/cotizaciones-us")).toBe("cotizaciones");
     expect(seccionDeRuta("/clientes")).toBe("cotizaciones");
     expect(seccionDeRuta("/pm/123")).toBe("mantenimiento");
+    expect(seccionDeRuta("/en/bom")).toBe("mantenimiento");
     expect(seccionDeRuta("/food-safety-audit/nuevo")).toBe("food_safety");
     expect(seccionDeRuta("/cuenta/solicitudes")).toBe("administracion");
     expect(seccionDeRuta("/configuracion")).toBe("administracion");
@@ -27,12 +28,14 @@ describe("puedeVerRuta", () => {
   it("Geovanni solo entra a Cotizaciones y a su Administración personal", () => {
     expect(puedeVerRuta(geovanni, "/cotizaciones")).toBe(true);
     expect(puedeVerRuta(geovanni, "/pm")).toBe(false);
+    expect(puedeVerRuta(geovanni, "/bom")).toBe(false);
     expect(puedeVerRuta(geovanni, "/food-safety-audit")).toBe(false);
     expect(puedeVerRuta(geovanni, "/cuenta/actividad")).toBe(true);
     expect(puedeVerRuta(geovanni, "/usuarios")).toBe(false);
   });
   it("Julio entra a Cotizaciones y Mantenimiento", () => {
     expect(puedeVerRuta(julio, "/pm/nuevo")).toBe(true);
+    expect(puedeVerRuta(julio, "/bom")).toBe(true);
     expect(puedeVerRuta(julio, "/en/clientes")).toBe(true);
     expect(puedeVerRuta(julio, "/food-safety-audit")).toBe(false);
   });

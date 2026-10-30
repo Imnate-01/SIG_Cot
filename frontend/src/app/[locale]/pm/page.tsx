@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Bell, ChevronRight, ClipboardCheck, Loader2, Plus, Search } from "lucide-react";
+import { Bell, ChevronRight, ClipboardCheck, GitCompareArrows, Loader2, Plus, Search } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import api from "@/services/api";
 import { cuentaRegresiva, formatearFecha, hoyISO, semaforoPm, type PmResumen } from "@/features/pm/pm";
@@ -14,6 +14,7 @@ type Filtro = "active" | "attention" | "completed" | "cancelled" | "all";
 /** Lista de PMs: pestañas por estado (con conteo), búsqueda y una fila por PM con su cuenta regresiva. */
 export default function PmListaPage() {
   const t = useTranslations("PM");
+  const tNav = useTranslations("Sidebar");
   const [pms, setPms] = useState<PmResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
@@ -81,6 +82,7 @@ export default function PmListaPage() {
               <span className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-5 text-white ${alertas.overdue > 0 ? "bg-sig-danger" : "bg-sig-blue"}`}>{alertas.total}</span>
             )}
           </Link>
+          <Link href="/bom" className={btnSecundario}><GitCompareArrows size={15} /> {tNav("compareBoms")}</Link>
           <Link href="/pm/nuevo" className={btnPrimario}><Plus size={16} /> {t("newPm")}</Link>
         </div>
       </header>
