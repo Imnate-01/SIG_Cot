@@ -14,7 +14,8 @@ import {
   agruparPorEtapa, cuentaRegresiva, estadoEtapa, estadoEvidencia, etapaActual, etiquetaSemana, formatearFecha, hoyISO, moverFin, nombreUsuario, progreso, puedeCompletar, semaforoTarea,
   type PmDetalle, type PmTarea, type UsuarioPm,
 } from "@/features/pm/pm";
-import { Avatar, BarraEtapas, Campo, CampoSugerencias, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { Avatar, BarraEtapas, Campo, EstadoBadge, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { CampoSugerencias } from "@/features/pm/Desplegable";
 import {
   contactoSugerido, contactosDe, opcionesMaquina, opcionesPersona, opcionesPlanta, type ClienteAutollenado, type PmPrevio,
 } from "@/features/pm/autollenado";
@@ -582,7 +583,7 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label={t("fieldPlant")}><CampoSugerencias value={f.planta} onChange={setValor("planta")} onElegir={elegirPlanta} opciones={opcionesPlanta(cliente)} /></Campo>
         <Campo label={t("fieldLine")}><CampoSugerencias value={f.linea} onChange={setValor("linea")} opciones={opcionesMaquina(cliente, f.planta)} /></Campo>
-        <Campo label={t("fieldContact")}><CampoSugerencias value={f.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined }))} /></Campo>
+        <Campo label={t("fieldContact")}><CampoSugerencias value={f.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined, icono: "contacto" as const }))} /></Campo>
         <Campo label={t("fieldPhone")}><input className={campo} value={f.contacto_telefono} onChange={set("contacto_telefono")} /></Campo>
         <Campo label={t("fieldEmail")} className="sm:col-span-2"><input className={campo} type="email" value={f.contacto_correo} onChange={set("contacto_correo")} /></Campo>
         <Campo label={t("fieldSam")}><CampoSugerencias value={f.sam} onChange={setValor("sam")} opciones={opcionesPersona(previos, "sam", usuarios)} /></Campo>

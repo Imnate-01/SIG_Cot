@@ -860,6 +860,8 @@
       "action_collaborator_added": "Collaborator added",
       "action_collaborator_removed": "Collaborator removed",
       "action_due_date_changed": "Due date changed",
+      "searchCustomer": "Search by name or city…",
+      "noCustomersFound": "No US customers match",
       "action_completed_by_changed": "Completed by changed",
       "completedByChange": "Completed on behalf of",
       "pickOrType": "Pick from the list or type",

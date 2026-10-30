@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { Link, useRouter } from "@/i18n/routing";
 import api from "@/services/api";
 import { ETAPAS_ESTANDAR, etiquetaSemana, formatearFecha, sumarDias } from "@/features/pm/pm";
-import { Campo, CampoSugerencias, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { Campo, btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
+import { CampoSugerencias, SelectorBuscable } from "@/features/pm/Desplegable";
 import {
-  aplicarSugerencias, contactoSugerido, contactosDe, equipoAnterior, opcionesMaquina, opcionesPersona, opcionesPlanta,
+  aplicarSugerencias, contactoSugerido, contactosDe, equipoAnterior, opcionesCliente, opcionesMaquina, opcionesPersona, opcionesPlanta,
   type ClienteAutollenado, type PmPrevio,
 } from "@/features/pm/autollenado";
 
@@ -45,6 +46,8 @@ export default function PmNuevoPage() {
   }, [t]);
 
   const cliente = useMemo(() => clientes.find((c) => String(c.id) === form.cliente_id), [clientes, form.cliente_id]);
+  // Solo el catálogo de clientes de Estados Unidos
+  const opcionesClientes = useMemo(() => opcionesCliente(clientes), [clientes]);
   const plantas = useMemo(() => opcionesPlanta(cliente), [cliente]);
   const maquinas = useMemo(() => opcionesMaquina(cliente, form.planta), [cliente, form.planta]);
   const contactos = useMemo(() => contactosDe(cliente, form.planta), [cliente, form.planta]);
@@ -68,8 +71,7 @@ export default function PmNuevoPage() {
    * Al elegir cliente (comentario 1): planta (si solo hay una), contacto de la planta
    * y SAM/FSE del último PM de ese cliente. Todo queda editable.
    */
-  const elegirCliente = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
+  const elegirCliente = async (id: string) => {
     const c = clientes.find((x) => String(x.id) === id);
     setForm((f) => ({ ...f, cliente_id: id }));
     setPrevios([]);
@@ -138,10 +140,10 @@ export default function PmNuevoPage() {
             <p className="mb-4 text-xs text-sig-muted">{t("autofillHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label={`${t("fieldCustomer")} *`} className="sm:col-span-2">
-                <select required className={campo} value={form.cliente_id} onChange={elegirCliente}>
-                  <option value="">{t("selectCustomer")}</option>
-                  {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.empresa && c.empresa !== c.nombre ? ` — ${c.empresa}` : ""}</option>)}
-                </select>
+                <SelectorBuscable
+                  value={form.cliente_id} onChange={elegirCliente} opciones={opcionesClientes} icono="cliente"
+                  placeholder={t("selectCustomer")} buscarPlaceholder={t("searchCustomer")} vacio={t("noCustomersFound")} ariaLabel={t("fieldCustomer")}
+                />
               </Campo>
               <Campo label={t("fieldPlant")}>
                 <CampoSugerencias value={form.planta} onChange={setValor("planta")} onElegir={elegirPlanta} opciones={plantas} placeholder={cliente && plantas.length ? t("pickOrType") : undefined} />
@@ -150,7 +152,7 @@ export default function PmNuevoPage() {
                 <CampoSugerencias value={form.linea} onChange={setValor("linea")} opciones={maquinas} placeholder={cliente && maquinas.length ? t("pickOrType") : undefined} />
               </Campo>
               <Campo label={t("fieldContact")}>
-                <CampoSugerencias value={form.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined }))} />
+                <CampoSugerencias value={form.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined, icono: "contacto" as const }))} />
               </Campo>
               <Campo label={t("fieldPhone")}><input className={campo} type="tel" value={form.contacto_telefono} onChange={set("contacto_telefono")} /></Campo>
               <Campo label={t("fieldEmail")} className="sm:col-span-2"><input className={campo} type="email" value={form.contacto_correo} onChange={set("contacto_correo")} /></Campo>
