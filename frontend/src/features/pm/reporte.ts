@@ -11,14 +11,14 @@ export interface FilaReporte {
   responsable: string;    // quién la completó, o el responsable asignado si sigue pendiente
   cuando: string;         // fecha en que se completó
   colaboradores: string;
-  evidencias: string;     // "2 files, 1 quote" / "Required — missing" / ""
+  evidencias: string;     // "2 files, 1 link" / "Required — missing" / ""
   notas: string;
 }
 
 export interface EtapaReporte { nombre: string; fecha: string; completadas: number; total: number; filas: FilaReporte[] }
 
 export interface Reporte {
-  resumen: { total: number; completadas: number; porcentaje: number; restantes: number; vencidas: number; archivos: number; cotizaciones: number; faltaEvidencia: number };
+  resumen: { total: number; completadas: number; porcentaje: number; restantes: number; vencidas: number; archivos: number; enlaces: number; cotizaciones: number; faltaEvidencia: number };
   etapas: EtapaReporte[];
 }
 
@@ -27,9 +27,11 @@ const ESTADO: Record<string, EstadoReporte> = { done: "Completed", overdue: "Ove
 function textoEvidencias(t: PmDetalle["tareas"][number]): string {
   const ev = t.evidencias ?? [];
   const archivos = ev.filter((e) => e.tipo === "file").length;
+  const enlaces = ev.filter((e) => e.tipo === "link").length;
   const cot = ev.filter((e) => e.tipo === "quote").length;
   const partes = [
     archivos ? `${archivos} file${archivos === 1 ? "" : "s"}` : "",
+    enlaces ? `${enlaces} link${enlaces === 1 ? "" : "s"}` : "",
     cot ? `${cot} quote${cot === 1 ? "" : "s"}` : "",
   ].filter(Boolean);
   if (partes.length) return partes.join(", ");
@@ -66,6 +68,7 @@ export function prepararReporte(pm: PmDetalle, hoy: string): Reporte {
       restantes: avance.restantes,
       vencidas: pm.tareas.filter((t) => semaforoTarea(t, hoy) === "overdue").length,
       archivos: todas.filter((e) => e.tipo === "file").length,
+      enlaces: todas.filter((e) => e.tipo === "link").length,
       cotizaciones: todas.filter((e) => e.tipo === "quote").length,
       faltaEvidencia: pm.tareas.filter((t) => t.evidencia === "required" && !(t.evidencias?.length)).length,
     },

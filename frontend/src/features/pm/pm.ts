@@ -10,8 +10,10 @@ export type EstadoPm = "active" | "completed" | "cancelled";
 
 export interface PmEvidencia {
   id: string;
-  tipo: "file" | "quote";
+  /** file: archivo o foto · link: enlace externo · quote: cotización ligada (solo las anteriores) */
+  tipo: "file" | "link" | "quote";
   nombre: string;
+  url?: string | null;
   mime: string | null;
   tamano: number | null;
   cotizacion_id: number | null;

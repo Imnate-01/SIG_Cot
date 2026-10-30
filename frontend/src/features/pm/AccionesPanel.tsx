@@ -92,7 +92,7 @@ export default function AccionesPanel({
                       onChange={(ev) => ejecutar(() => api.patch(`/pm/${pmId}/acciones/${a.id}`, { asignado_a: ev.target.value || null }))}
                     >
                       <option value="">{t("unassigned")}</option>
-                      {a.asignado_a && !usuariosLista.some((u) => u.id === a.asignado_a) && <option value={a.asignado_a}>{nombreUsuario(usuarios, a.asignado_a)}</option>}
+                      {a.asignado_a && !usuariosLista.some((u) => u.id === a.asignado_a) && <option value={a.asignado_a} disabled>{usuariosLista.length ? t("noLongerHasAccess", { name: nombreUsuario(usuarios, a.asignado_a) }) : nombreUsuario(usuarios, a.asignado_a)}</option>}
                       {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
                     </select>
                     {a.fecha_limite && (

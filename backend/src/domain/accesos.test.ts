@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { AREAS, accesosEfectivos, puedeEntrar, leerAreas, cambiosDeAreas, textoOpcional } from './accesos'
+import { AREAS, accesosEfectivos, puedeEntrar, leerAreas, cambiosDeAreas, textoOpcional, separarPorArea } from './accesos'
 
 describe('accesosEfectivos', () => {
   it('un administrador tiene todas las áreas aunque no tenga filas', () => {
@@ -59,5 +59,24 @@ describe('textoOpcional', () => {
     expect(textoOpcional('   ')).toBeNull()
     expect(textoOpcional(undefined)).toBeNull()
     expect(textoOpcional('x'.repeat(600))).toHaveLength(500)
+  })
+})
+
+describe('separarPorArea', () => {
+  const u = (id: string, extra: Record<string, unknown> = {}) => ({ id, nombre: id.toUpperCase(), activo: true, es_admin_sistema: false, ...extra })
+  const usuarios = [u('ana'), u('beto'), u('caro', { es_admin_sistema: true }), u('dani', { activo: false }), u('eli')]
+  const filas = [
+    { usuario_id: 'ana', area: 'mantenimiento' },
+    { usuario_id: 'beto', area: 'cotizaciones' },   // le quitaron Mantenimiento: solo Cotizaciones
+    { usuario_id: 'dani', area: 'mantenimiento' },  // cuenta desactivada
+  ]
+  it('dentro: con el área o administradores, solo activos', () => {
+    expect(separarPorArea(usuarios, filas, 'mantenimiento').dentro.map((x) => x.id)).toEqual(['ana', 'caro'])
+  })
+  it('fuera: activos sin el área (incluye a quien se la quitaron)', () => {
+    expect(separarPorArea(usuarios, filas, 'mantenimiento').fuera.map((x) => x.id)).toEqual(['beto', 'eli'])
+  })
+  it('las filas de otras áreas no cuentan', () => {
+    expect(separarPorArea(usuarios, filas, 'food_safety').dentro.map((x) => x.id)).toEqual(['caro'])
   })
 })

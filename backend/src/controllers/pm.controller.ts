@@ -4,6 +4,7 @@ import { contextoAuth } from '../middlewares/requireAuth'
 import { ErrorHttp, responderError } from '../utils/http'
 import { pickFields } from '../utils/pickFields'
 import { ordenGuardadoFechas } from '../domain/pmFechas'
+import { exigirUsuarioDelArea } from '../services/accesos'
 
 /**
  * Módulo PM (Preventive Maintenance): checklist de actividades por cliente.
@@ -157,14 +158,22 @@ export class PmController {
 
       // Con las evidencias (migración 20261023_02). Si esa migración aún no está
       // aplicada, el detalle sigue funcionando sin ellas: el orden de despliegue no importa.
+      // Igual con los enlaces (migración 20261030_01, columna `url`).
       const BASE = '*, pm_tarea_colaboradores(usuario_id)'
-      const CON_EVIDENCIAS = `${BASE}, pm_evidencias(id, tipo, nombre, mime, tamano, cotizacion_id, subido_por, created_at)`
-      let { data: tareas, error: errTareas } = await supabase
-        .from('pm_tareas').select(CON_EVIDENCIAS).eq('expediente_id', id).order('orden', { ascending: true })
-      if (errTareas && /pm_evidencias/.test(`${errTareas.message} ${errTareas.details ?? ''}`)) {
-        console.warn('[migración pendiente] pm_evidencias: aplica 20261023_02_pm_evidencias.sql')
+      const CAMPOS_EV = 'id, tipo, nombre, mime, tamano, cotizacion_id, subido_por, created_at'
+      const intentos: Array<[string, string | null]> = [
+        [`${BASE}, pm_evidencias(${CAMPOS_EV}, url)`, '20261030_01_pm_evidencias_enlaces.sql'],
+        [`${BASE}, pm_evidencias(${CAMPOS_EV})`, '20261023_02_pm_evidencias.sql'],
+        [BASE, null],
+      ]
+      let tareas: any[] | null = null
+      let errTareas: { message?: string; details?: string } | null = null
+      for (const [select, migracion] of intentos) {
         ;({ data: tareas, error: errTareas } = await supabase
-          .from('pm_tareas').select(BASE).eq('expediente_id', id).order('orden', { ascending: true }))
+          .from('pm_tareas').select(select).eq('expediente_id', id).order('orden', { ascending: true }))
+        const falta = !!errTareas && !!migracion && /pm_evidencias|\burl\b/.test(`${errTareas.message} ${errTareas.details ?? ''}`)
+        if (!falta) break
+        console.warn(`[migración pendiente] aplica ${migracion}`)
       }
       if (errTareas) throw errTareas
 
@@ -275,6 +284,8 @@ export class PmController {
       const cambios: Record<string, unknown> = { updated_by: user.id, updated_at: ahora }
       const bitacora: Array<[string, unknown]> = []
       const porSolicitado = req.body?.completada_por ? uuid(req.body.completada_por, 'completada_por') : null
+      // Solo se puede poner a nombre de alguien que hoy tiene Mantenimiento
+      if (porSolicitado && porSolicitado !== actual.completada_por) await exigirUsuarioDelArea(porSolicitado, 'mantenimiento')
 
       if (req.body?.completada !== undefined) {
         const completada = req.body.completada === true
@@ -314,6 +325,7 @@ export class PmController {
       if (req.body?.asignado_a !== undefined) {
         const asignado = req.body.asignado_a === null ? null : uuid(req.body.asignado_a, 'asignado_a')
         if (asignado !== actual.asignado_a) {
+          if (asignado) await exigirUsuarioDelArea(asignado, 'mantenimiento')
           cambios.asignado_a = asignado
           bitacora.push(['assigned', { usuario_id: asignado }])
         }
@@ -339,6 +351,7 @@ export class PmController {
       const expedienteId = uuid(req.params.id, 'id')
       const tareaId = uuid(req.params.tareaId, 'tareaId')
       const usuarioId = uuid(req.body?.usuario_id, 'usuario_id')
+      await exigirUsuarioDelArea(usuarioId, 'mantenimiento')
 
       const { error: errTarea } = await supabase
         .from('pm_tareas').select('id').eq('id', tareaId).eq('expediente_id', expedienteId).single()

@@ -130,6 +130,9 @@ function Panel({ id, opciones, total, q, activo, seleccionado, pos, onElegir, on
       className="fixed z-[200] flex flex-col overflow-hidden rounded-md border border-sig-line dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.25),0_2px_6px_rgba(0,0,0,0.08)] animate-fadeIn"
       style={{ left: pos.left, width: Math.max(pos.width, 260), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
       onMouseDown={(e) => e.preventDefault()}
+      // Los campos van dentro de un <label> (Campo). Sin esto, el clic en una opción
+      // "activa" el label, que manda otro clic al input y vuelve a abrir la lista.
+      onClick={(e) => e.preventDefault()}
     >
       {filtrando && opciones.length > 0 && (
         <div className="flex items-center gap-1.5 border-b border-sig-line dark:border-zinc-700 bg-sig-sand/60 dark:bg-zinc-800/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sig-muted">

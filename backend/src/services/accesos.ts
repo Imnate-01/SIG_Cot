@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { supabaseAdmin } from '../config/supabase';
-import { accesosEfectivos, type Accesos } from '../domain/accesos';
+import { accesosEfectivos, separarPorArea, type Accesos, type Area, type UsuarioParaLista } from '../domain/accesos';
+import { ErrorHttp } from '../utils/http';
 
 /**
  * Lee los accesos del usuario con la clave de servicio (las tablas de accesos
@@ -17,6 +18,30 @@ export async function obtenerAccesos(usuarioId: string): Promise<Accesos> {
   // Una cuenta desactivada no conserva permisos aunque su token siga vigente
   if (!perfil.data || perfil.data.activo === false) return accesosEfectivos(false, []);
   return accesosEfectivos(!!perfil.data.es_admin_sistema, (areas.data || []).map((r) => r.area));
+}
+
+/** Usuarios activos del área (con ella asignada o administradores) y los activos que no la tienen. */
+export async function usuariosPorArea(area: Area): Promise<{ dentro: UsuarioParaLista[]; fuera: UsuarioParaLista[] }> {
+  const [usuarios, areas] = await Promise.all([
+    supabaseAdmin.from('usuarios').select('id, nombre, email, departamento, rol, activo, es_admin_sistema').eq('activo', true).order('nombre'),
+    supabaseAdmin.from('usuario_areas').select('usuario_id, area').eq('area', area),
+  ]);
+  if (usuarios.error) throw usuarios.error;
+  if (areas.error) throw areas.error;
+  return separarPorArea(usuarios.data || [], areas.data || [], area);
+}
+
+const NOMBRE_AREA: Record<Area, string> = { cotizaciones: 'Quotations', mantenimiento: 'Maintenance', food_safety: 'Food Safety' };
+
+/**
+ * Al asignar a alguien (responsable, colaborador, "completada por"), esa persona
+ * debe seguir teniendo el área. Si un administrador se la quitó, se rechaza.
+ */
+export async function exigirUsuarioDelArea(usuarioId: string, area: Area): Promise<void> {
+  const { dentro } = await usuariosPorArea(area);
+  if (!dentro.some((u) => u.id === usuarioId)) {
+    throw new ErrorHttp(400, `That person no longer has access to ${NOMBRE_AREA[area]}. Pick someone from the list.`);
+  }
 }
 
 export async function accesosDeRequest(req: Request): Promise<Accesos> {

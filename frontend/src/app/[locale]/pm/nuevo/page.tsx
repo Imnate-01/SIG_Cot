@@ -33,6 +33,7 @@ export default function PmNuevoPage() {
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
   const [usuarios, setUsuarios] = useState<UsuarioOpcion[]>([]);
+  const [sinAcceso, setSinAcceso] = useState<string[]>([]);
   const [previos, setPrevios] = useState<PmPrevio[]>([]);
   // Lo que se llenó solo: si el usuario no lo cambió, se puede reemplazar al cambiar cliente/planta
   const auto = useRef<Partial<Record<keyof typeof VACIO, string>>>({});
@@ -42,7 +43,10 @@ export default function PmNuevoPage() {
     api.get("/clientes")
       .then(({ data }) => setClientes(data.data || []))
       .catch(() => toast.error(t("customersLoadError")));
-    api.get("/usuarios").then(({ data }) => setUsuarios(data.data || [])).catch(() => {});
+    // Solo quien hoy tiene Mantenimiento (o es administrador)
+    api.get("/usuarios", { params: { area: "mantenimiento" } })
+      .then(({ data }) => { setUsuarios(data.data || []); setSinAcceso(data.fuera || []); })
+      .catch(() => {});
   }, [t]);
 
   const cliente = useMemo(() => clientes.find((c) => String(c.id) === form.cliente_id), [clientes, form.cliente_id]);
@@ -52,10 +56,10 @@ export default function PmNuevoPage() {
   const maquinas = useMemo(() => opcionesMaquina(cliente, form.planta), [cliente, form.planta]);
   const contactos = useMemo(() => contactosDe(cliente, form.planta), [cliente, form.planta]);
   const personas = useMemo(() => ({
-    sam: opcionesPersona(previos, "sam", usuarios),
-    fse_filler: opcionesPersona(previos, "fse_filler", usuarios),
-    fse_downline: opcionesPersona(previos, "fse_downline", usuarios),
-  }), [previos, usuarios]);
+    sam: opcionesPersona(previos, "sam", usuarios, sinAcceso),
+    fse_filler: opcionesPersona(previos, "fse_filler", usuarios, sinAcceso),
+    fse_downline: opcionesPersona(previos, "fse_downline", usuarios, sinAcceso),
+  }), [previos, usuarios, sinAcceso]);
 
   const set = (k: keyof typeof VACIO) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -90,7 +94,7 @@ export default function PmNuevoPage() {
       if (clientePedido.current !== id) return; // ya eligió otro cliente
       const pms: PmPrevio[] = data.data || [];
       setPrevios(pms);
-      sugerir(equipoAnterior(pms));
+      sugerir(equipoAnterior(pms, sinAcceso));
     } catch { /* sin historial: no se sugiere equipo */ }
   };
 
