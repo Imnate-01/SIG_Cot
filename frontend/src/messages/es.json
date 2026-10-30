@@ -993,7 +993,7 @@
     },
     "descs": {
       "cotizaciones": "Crea, revisa, firma y envía cotizaciones a clientes.",
-      "mantenimiento": "Programa mantenimientos preventivos y da seguimiento a sus tareas.",
+      "mantenimiento": "Programa mantenimientos preventivos, da seguimiento a sus tareas y compara BOMs.",
       "food_safety": "Reportes de auditoría de inocuidad alimentaria.",
       "administracion": "Tu perfil, tus solicitudes de acceso y tu actividad.",
       "administracionAdmin": "Usuarios, áreas, solicitudes de acceso y bitácora."
@@ -1134,7 +1134,7 @@
     "emptyTitle": "Carga dos BOMs para compararlas",
     "emptyText": "Por ejemplo, la BOM de una máquina contra otra del mismo modelo, o una versión nueva de la matriz contra la anterior.",
     "viewDifferences": "Diferencias ({count})",
-    "viewList": "Lista completa ({count})",
+    "viewList": "BOM completa ({count})",
     "exportXlsx": "Exportar Excel",
     "exportCsv": "Exportar CSV",
     "exporting": "Exportando…",
@@ -1151,7 +1151,7 @@
     "match": "Coincide",
     "noResults": "Ninguna pieza coincide con el filtro.",
     "identical": "Las dos BOMs son iguales: no hay diferencias.",
-    "matchesHidden": "{count, plural, one {# pieza coincide y no se muestra} other {# piezas coinciden y no se muestran}}. Están en la lista completa.",
+    "matchesHidden": "{count, plural, one {# pieza coincide y no se muestra} other {# piezas coinciden y no se muestran}}. Están en la BOM completa.",
     "totals": "Base: {a} piezas · Comparar: {b} piezas",
     "noPosition": "sin posición",
     "repeated": "{count, plural, one {# clave aparece} other {# claves aparecen}} más de una vez en el mismo archivo (p. ej. {example}). No se eliminaron: se emparejaron en orden.",
@@ -1193,7 +1193,8 @@
     "error": {
       "formato": "Formato no compatible. Usa .xlsx o .csv.",
       "vacio": "El archivo no tiene datos.",
-      "lectura": "No se pudo leer el archivo. Si está protegido o es .xls, ábrelo en Excel y guárdalo como .xlsx."
+      "lectura": "No se pudo leer el archivo. Si está protegido o es .xls, ábrelo en Excel y guárdalo como .xlsx.",
+      "demasiados": "Suelta uno o dos archivos a la vez."
     },
     "export": {
       "scName": "Nombre SC",
@@ -1205,12 +1206,80 @@
       "rowCompare": "Fila comparar",
       "status": "Estado",
       "sheetDifferences": "Diferencias",
-      "sheetList": "Lista completa",
+      "sheetList": "BOM completa",
       "sheetSummary": "Resumen",
       "generated": "Generado",
       "partsBase": "Piezas en la base",
       "partsCompare": "Piezas en la comparación",
-      "withDifferences": "Piezas con diferencias"
+      "withDifferences": "Piezas con diferencias",
+      "qtyBase": "Cantidad base",
+      "qtyCompare": "Cantidad comparar",
+      "priority": "Prioridad",
+      "recommendation": "Recomendación",
+      "detail": "Detalle",
+      "examples": "Ejemplos",
+      "sheetRecommendations": "Recomendaciones"
+    },
+    "viewRecommendations": "Recomendaciones ({count})",
+    "highBanner": "{count, plural, one {Hay # recomendación de prioridad alta} other {Hay # recomendaciones de prioridad alta}} antes de aprobar esta BOM.",
+    "seeRecommendations": "Ver recomendaciones",
+    "dropBoth": "Puedes soltar los dos archivos a la vez.",
+    "rec": {
+      "intro": "Lo que conviene revisar antes de aprobar la BOM comparada. Nada de esto se aplica solo: cada punto lo decide Ingeniería.",
+      "more": "y {count} más (en el Excel exportado)",
+      "priority": {
+        "alta": "Prioridad alta",
+        "media": "Revisar",
+        "info": "Información"
+      },
+      "pnCambiado": {
+        "title": "Confirmar {count, plural, one {# sustitución} other {# sustituciones}} de número de parte",
+        "text": "En la misma posición cambió el número de parte. Verifica en el Part Master que la pieza nueva reemplaza a la anterior y desde cuándo."
+      },
+      "sustitucion": {
+        "title": "{count, plural, one {# posible sustitución} other {# posibles sustituciones}}",
+        "text": "En el mismo SC salió una pieza y entró otra con la misma descripción. Como la BOM no trae posición, el sistema no puede confirmarlo: valida con Ingeniería si es un reemplazo o si son piezas distintas."
+      },
+      "cambioSc": {
+        "title": "{count, plural, one {# pieza cambió} other {# piezas cambiaron}} de SC",
+        "text": "El mismo número de parte salió de un Structural Component y aparece en otro. Confirma que es una reasignación y no un error de captura."
+      },
+      "retiradas": {
+        "title": "Confirmar {count, plural, one {# pieza} other {# piezas}} retiradas",
+        "text": "Están en la base y no en la BOM comparada. Las matrices no son acumulativas puras, así que confirma con Ingeniería que es un retiro y no una omisión."
+      },
+      "unidad": {
+        "title": "Revisar la unidad de {count, plural, one {# pieza} other {# piezas}}",
+        "text": "La misma pieza cambió de unidad de medida. Si no se corrige, la cantidad pedida puede no corresponder (por ejemplo, PC contra SET)."
+      },
+      "cantidad": {
+        "title": "Verificar {count, plural, one {# pieza} other {# piezas}} con otra cantidad",
+        "text": "Compáralas con lo instalado en la máquina antes de aceptar el cambio."
+      },
+      "descripcion": {
+        "title": "Unificar la descripción de {count, plural, one {# pieza} other {# piezas}}",
+        "text": "El mismo número de parte tiene otra descripción. Define cuál será la canónica en el Part Master. Las diferencias solo de mayúsculas, espacios o signos no se cuentan."
+      },
+      "nuevas": {
+        "title": "Completar {count, plural, one {# pieza} other {# piezas}} nuevas",
+        "text": "Asigna su intervalo base y revisa que tengan precio y que estén en el catálogo."
+      },
+      "duplicados": {
+        "title": "{count, plural, one {# clave repetida} other {# claves repetidas}} en la BOM comparada",
+        "text": "El mismo SC y número de parte aparece más de una vez. No se eliminó nada: revisa si son aplicaciones distintas o un error. Primero van las que no estaban repetidas en la base."
+      },
+      "sinPosicion": {
+        "title": "La BOM no trae posición",
+        "text": "Las piezas se emparejaron por SC + número de parte. Sin posición, una sustitución aparece como pieza retirada y pieza nueva; por eso se listan como posibles sustituciones."
+      },
+      "aleman": {
+        "title": "{count, plural, one {# descripción} other {# descripciones}} con términos en alemán",
+        "text": "Por ejemplo FUER, KLEMMRING o VENTIL. Conviene traducirlas al definir la descripción canónica."
+      },
+      "sinCambios": {
+        "title": "Sin cambios",
+        "text": "Las dos BOMs tienen las mismas piezas, cantidades y descripciones."
+      }
     }
   }
 }

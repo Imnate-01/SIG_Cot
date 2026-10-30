@@ -143,8 +143,8 @@ describe("exportación", () => {
   const e: Etiquetas = {
     tipos: { cantidad: "Cantidad", intervalo: "Intervalo", descripcion: "Descripción", unidad: "Unidad", pn: "Número de parte", nuevoPn: "Nuevo PN", posicion: "Posición", nueva: "Pieza nueva", retirada: "Pieza retirada" },
     coincide: "Coincide",
-    columnas: { sc: "SC", nombreSc: "Nombre SC", posicion: "Pos.", pnBase: "PN base", pnComparar: "PN comparar", pn: "PN", descripcion: "Descripción", diferencia: "Diferencia", valorBase: "Base", valorComparar: "Comparar", filaBase: "Fila base", filaComparar: "Fila comparar", base: "Base", comparar: "Comparar", estado: "Estado" },
-    hojas: { diferencias: "Diferencias", lista: "Lista", resumen: "Resumen" },
+    columnas: { sc: "SC", nombreSc: "Nombre SC", posicion: "Pos.", pnBase: "PN base", pnComparar: "PN comparar", pn: "PN", descripcion: "Descripción", diferencia: "Diferencia", valorBase: "Base", valorComparar: "Comparar", filaBase: "Fila base", filaComparar: "Fila comparar", base: "Base", comparar: "Comparar", estado: "Estado", cantidadBase: "Qty base", cantidadComparar: "Qty comparar", unidad: "Unidad", intervalo: "Intervalo", prioridad: "Prioridad", recomendacion: "Recomendación", detalle: "Detalle", ejemplos: "Ejemplos" },
+    hojas: { diferencias: "Diferencias", lista: "Lista", resumen: "Resumen", recomendaciones: "Recomendaciones" },
     resumen: { base: "Base", comparar: "Comparar", generado: "Generado", piezasBase: "Piezas base", piezasComparar: "Piezas comparar", coinciden: "Coinciden", conDiferencias: "Con diferencias" },
   };
   const r = compararBoms(
@@ -157,8 +157,13 @@ describe("exportación", () => {
     expect(f[1]).toEqual(["SC04", "", "110", "860504028", "860504028", "SUCTION CUP", "Cantidad", "16", "24", "10", "20"]);
     expect(f[3].slice(6)).toEqual(["Pieza retirada", "Qty 24 · PC · 4K", "—", "11", "—"]);
   });
-  it("lista completa con estado", () => {
-    expect(filasLista(r, e).slice(1).map((f) => f[6])).toEqual(["Cantidad, Intervalo", "Pieza retirada"]);
+  it("BOM completa: ambas cantidades, unidad, intervalo y estado", () => {
+    const l = filasLista(r, e);
+    expect(l[0]).toEqual(["SC", "Pos.", "PN", "Descripción", "Qty base", "Qty comparar", "Unidad", "Intervalo", "Estado"]);
+    expect(l.slice(1)).toEqual([
+      ["SC04", "110", "860504028", "SUCTION CUP", 16, 24, "PC", "8K", "Cantidad, Intervalo"],
+      ["SC12", "050", "860512017", "Level probe", 24, "—", "PC", "4K", "Pieza retirada"],
+    ]);
   });
   it("CSV con ; y comillas", () => {
     expect(aCsv([["a;b", 'di"jo', "ok"]])).toBe('﻿"a;b";"di""jo";ok');

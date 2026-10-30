@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, FileSpreadsheet, Loader2, SlidersHorizontal, Upload, X } from "lucide-react";
 import { abrirArchivoBom, ErrorArchivoBom, type ArchivoBom } from "./archivoBom";
@@ -31,35 +31,55 @@ export function configurarHoja(archivo: ArchivoBom, hoja: number): BomCargada {
   return { archivo, hoja, filaEncabezado, mapeo: filaEncabezado >= 0 ? mapearEncabezados(filas[filaEncabezado]) : {} };
 }
 
-/** Al abrir: la hoja con más piezas reconocidas (en la matriz Nestlé, la consolidada o la del intervalo). */
-function mejorHoja(archivo: ArchivoBom): BomCargada {
-  let mejor = configurarHoja(archivo, 0);
-  let n = partesDe(mejor).length;
-  for (let i = 1; i < archivo.hojas.length; i++) {
-    const c = configurarHoja(archivo, i);
-    const m = partesDe(c).length;
-    if (m > n) { mejor = c; n = m; }
+/**
+ * Hoja con la que abre un archivo: la que más piezas reconoce. Si el otro lado ya
+ * tiene este mismo libro abierto en esa hoja (comparar PM_8K contra PM_16K del
+ * mismo archivo), se elige la hoja con piezas más cercana a la del otro lado.
+ */
+export function elegirHoja(archivo: ArchivoBom, otro?: BomCargada | null): BomCargada {
+  const opciones = archivo.hojas.map((_, i) => configurarHoja(archivo, i)).map((c) => ({ c, n: partesDe(c).length }));
+  let mejor = opciones.reduce((a, b) => (b.n > a.n ? b : a));
+  if (otro && otro.archivo.nombre === archivo.nombre && otro.hoja === mejor.c.hoja) {
+    const resto = opciones.filter((o) => o.n > 0 && o.c.hoja !== otro.hoja);
+    if (resto.length) mejor = resto.reduce((a, b) => (Math.abs(b.c.hoja - otro.hoja) < Math.abs(a.c.hoja - otro.hoja) ? b : a));
   }
-  return mejor;
+  return mejor.c;
+}
+
+/** Abre un archivo y lo deja listo (hoja elegida, columnas mapeadas). Lanza ErrorArchivoBom. */
+export async function cargarBom(f: File, otro?: BomCargada | null): Promise<BomCargada> {
+  return elegirHoja(await abrirArchivoBom(f), otro);
 }
 
 const campoSel =
   "h-9 w-full rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 text-sm text-black dark:text-white outline-none focus:border-sig-blue focus:shadow-[0_0_0_2px_var(--sig-blue-focus)]";
 
-export function PanelArchivo({ titulo, valor, onCambio }: { titulo: string; valor: BomCargada | null; onCambio: (b: BomCargada | null) => void }) {
+export function PanelArchivo({ titulo, valor, otro, onCambio, onSegundoArchivo }: {
+  titulo: string;
+  valor: BomCargada | null;
+  /** Lo cargado del otro lado, para no abrir la misma hoja del mismo libro. */
+  otro?: BomCargada | null;
+  onCambio: (b: BomCargada | null) => void;
+  /** Si se sueltan dos archivos a la vez, el segundo va al otro lado. */
+  onSegundoArchivo?: (f: File) => void;
+}) {
   const t = useTranslations("Bom");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verMapeo, setVerMapeo] = useState(false);
 
-  const onDrop = useCallback(async (archivos: File[]) => {
+  const onDrop = useCallback(async (archivos: File[], rechazados: FileRejection[]) => {
     const f = archivos[0];
-    if (!f) return;
+    if (!f) {
+      if (rechazados.length) setError(t(rechazados[0].errors[0]?.code === "too-many-files" ? "error.demasiados" : "error.formato"));
+      return;
+    }
+    if (archivos[1]) onSegundoArchivo?.(archivos[1]);
     setCargando(true);
     setError(null);
     try {
       const archivo = await abrirArchivoBom(f);
-      const b = mejorHoja(archivo);
+      const b = elegirHoja(archivo, otro);
       onCambio(b);
       setVerMapeo(b.filaEncabezado < 0 || faltantes(b.mapeo).length > 0);
     } catch (e) {
@@ -68,11 +88,12 @@ export function PanelArchivo({ titulo, valor, onCambio }: { titulo: string; valo
     } finally {
       setCargando(false);
     }
-  }, [onCambio, t]);
+  }, [onCambio, onSegundoArchivo, otro, t]);
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
-    multiple: false,
+    multiple: true,
+    maxFiles: 2,
     noClick: !!valor,
     noKeyboard: !!valor,
     accept: {
@@ -94,6 +115,7 @@ export function PanelArchivo({ titulo, valor, onCambio }: { titulo: string; valo
           {cargando ? <Loader2 className="animate-spin text-sig-blue" size={22} /> : <Upload size={22} className="text-sig-muted" />}
           <span className="text-sm font-semibold text-black dark:text-white">{cargando ? t("reading") : t("dropTitle")}</span>
           <span className="text-xs text-sig-muted">{t("dropHint")}</span>
+          {onSegundoArchivo && <span className="text-xs text-sig-muted">{t("dropBoth")}</span>}
         </div>
         {error && <p role="alert" className="flex items-center gap-1.5 text-sm text-sig-danger"><AlertTriangle size={14} />{error}</p>}
       </div>
@@ -138,6 +160,7 @@ export function PanelArchivo({ titulo, valor, onCambio }: { titulo: string; valo
         </label>
       )}
 
+      {error && <p role="alert" className="flex items-center gap-1.5 text-sm text-sig-danger"><AlertTriangle size={14} />{error}</p>}
       {problema ? (
         <p role="alert" className="flex items-start gap-1.5 text-sm font-semibold text-sig-danger"><AlertTriangle size={15} className="mt-0.5 shrink-0" />{problema}</p>
       ) : (

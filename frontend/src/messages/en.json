@@ -993,7 +993,7 @@
     },
     "descs": {
       "cotizaciones": "Create, review, sign and send quotations to customers.",
-      "mantenimiento": "Schedule preventive maintenance and follow up on its tasks.",
+      "mantenimiento": "Schedule preventive maintenance, follow up on its tasks and compare BOMs.",
       "food_safety": "Food safety audit reports.",
       "administracion": "Your profile, your access requests and your activity.",
       "administracionAdmin": "Users, areas, access requests and activity log."
@@ -1134,7 +1134,7 @@
     "emptyTitle": "Load two BOMs to compare them",
     "emptyText": "For example, one machine's BOM against another of the same model, or a new version of the matrix against the previous one.",
     "viewDifferences": "Differences ({count})",
-    "viewList": "Full list ({count})",
+    "viewList": "Full BOM ({count})",
     "exportXlsx": "Export Excel",
     "exportCsv": "Export CSV",
     "exporting": "Exporting…",
@@ -1151,7 +1151,7 @@
     "match": "Match",
     "noResults": "No parts match the filter.",
     "identical": "Both BOMs are identical: there are no differences.",
-    "matchesHidden": "{count, plural, one {# matching part is hidden} other {# matching parts are hidden}}. They are in the full list.",
+    "matchesHidden": "{count, plural, one {# matching part is hidden} other {# matching parts are hidden}}. They are in the full BOM.",
     "totals": "Base: {a} parts · Compare: {b} parts",
     "noPosition": "no position",
     "repeated": "{count, plural, one {# key appears} other {# keys appear}} more than once in the same file (e.g. {example}). They were not removed: they were paired in order.",
@@ -1193,7 +1193,8 @@
     "error": {
       "formato": "Unsupported format. Use .xlsx or .csv.",
       "vacio": "The file has no data.",
-      "lectura": "The file could not be read. If it is protected or .xls, open it in Excel and save it as .xlsx."
+      "lectura": "The file could not be read. If it is protected or .xls, open it in Excel and save it as .xlsx.",
+      "demasiados": "Drop one or two files at a time."
     },
     "export": {
       "scName": "SC name",
@@ -1205,12 +1206,80 @@
       "rowCompare": "Compared row",
       "status": "Status",
       "sheetDifferences": "Differences",
-      "sheetList": "Full list",
+      "sheetList": "Full BOM",
       "sheetSummary": "Summary",
       "generated": "Generated",
       "partsBase": "Parts in base",
       "partsCompare": "Parts in comparison",
-      "withDifferences": "Parts with differences"
+      "withDifferences": "Parts with differences",
+      "qtyBase": "Base qty",
+      "qtyCompare": "Compared qty",
+      "priority": "Priority",
+      "recommendation": "Recommendation",
+      "detail": "Detail",
+      "examples": "Examples",
+      "sheetRecommendations": "Recommendations"
+    },
+    "viewRecommendations": "Recommendations ({count})",
+    "highBanner": "{count, plural, one {There is # high-priority recommendation} other {There are # high-priority recommendations}} before approving this BOM.",
+    "seeRecommendations": "See recommendations",
+    "dropBoth": "You can drop both files at once.",
+    "rec": {
+      "intro": "What to review before approving the compared BOM. None of this is applied automatically: Engineering decides each point.",
+      "more": "and {count} more (in the exported Excel)",
+      "priority": {
+        "alta": "High priority",
+        "media": "Review",
+        "info": "Info"
+      },
+      "pnCambiado": {
+        "title": "Confirm {count, plural, one {# part number substitution} other {# part number substitutions}}",
+        "text": "The part number changed in the same position. Check in the Part Master that the new part replaces the old one and since when."
+      },
+      "sustitucion": {
+        "title": "{count, plural, one {# possible substitution} other {# possible substitutions}}",
+        "text": "In the same SC one part left and another with the same description came in. The BOM has no positions, so this cannot be confirmed: check with Engineering whether it is a replacement or two different parts."
+      },
+      "cambioSc": {
+        "title": "{count, plural, one {# part moved} other {# parts moved}} to another SC",
+        "text": "The same part number left one Structural Component and appears in another. Confirm it is a reassignment and not a data-entry error."
+      },
+      "retiradas": {
+        "title": "Confirm {count, plural, one {# part} other {# parts}} removed",
+        "text": "They are in the base and not in the compared BOM. Matrices are not purely cumulative, so confirm with Engineering that it is a removal and not an omission."
+      },
+      "unidad": {
+        "title": "Check the unit of {count, plural, one {# part} other {# parts}}",
+        "text": "The same part changed its unit of measure. If not fixed, the ordered quantity may be wrong (for example, PC vs SET)."
+      },
+      "cantidad": {
+        "title": "Verify {count, plural, one {# part} other {# parts}} with another quantity",
+        "text": "Compare them with what is installed on the machine before accepting the change."
+      },
+      "descripcion": {
+        "title": "Unify the description of {count, plural, one {# part} other {# parts}}",
+        "text": "The same part number has another description. Decide the canonical one in the Part Master. Differences only in case, spaces or punctuation are not counted."
+      },
+      "nuevas": {
+        "title": "Complete {count, plural, one {# part} other {# parts}} added",
+        "text": "Assign their base interval and check that they have a price and are in the catalog."
+      },
+      "duplicados": {
+        "title": "{count, plural, one {# repeated key} other {# repeated keys}} in the compared BOM",
+        "text": "The same SC and part number appears more than once. Nothing was removed: check whether they are different applications or an error. Keys not repeated in the base come first."
+      },
+      "sinPosicion": {
+        "title": "The BOM has no positions",
+        "text": "Parts were paired by SC + part number. Without positions, a substitution shows as a removed part and a new part, so they are listed as possible substitutions."
+      },
+      "aleman": {
+        "title": "{count, plural, one {# description} other {# descriptions}} with German terms",
+        "text": "For example FUER, KLEMMRING or VENTIL. Translate them when defining the canonical description."
+      },
+      "sinCambios": {
+        "title": "No changes",
+        "text": "Both BOMs have the same parts, quantities and descriptions."
+      }
     }
   }
 }

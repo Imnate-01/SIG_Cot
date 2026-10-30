@@ -2,13 +2,16 @@
 
 import React, { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeftRight, ChevronRight, Download, FileText, Info, Lock, Search } from "lucide-react";
-import { PanelArchivo, partesDe, type BomCargada } from "@/features/bom/PanelArchivo";
+import { AlertTriangle, ArrowLeftRight, ChevronRight, Download, FileText, Info, Lightbulb, Lock, Search } from "lucide-react";
+import { toast } from "sonner";
+import { cargarBom, PanelArchivo, partesDe, type BomCargada } from "@/features/bom/PanelArchivo";
+import { ErrorArchivoBom } from "@/features/bom/archivoBom";
+import { generarRecomendaciones, type Prioridad, type Recomendacion } from "@/features/bom/recomendaciones";
 import { compararBoms, filtrarGrupos, normalizarDescripcion, resumenParte, TIPOS_DIFERENCIA, type FilaComparacion, type TipoDiferencia } from "@/features/bom/comparar";
 import { exportarCsv, exportarXlsx, type Etiquetas, type Origen } from "@/features/bom/exportar";
 import { btnPrimario, btnSecundario, campo } from "@/features/pm/ui";
 
-type Vista = "diferencias" | "lista";
+type Vista = "diferencias" | "lista" | "recomendaciones";
 
 /** Orden de los filtros, como en el prototipo: primero lo que más se revisa. */
 const ORDEN_CHIPS: TipoDiferencia[] = ["cantidad", "nueva", "retirada", "intervalo", "descripcion", "pn", "posicion", "unidad", "nuevoPn"];
@@ -48,6 +51,14 @@ export default function CompararBomsPage() {
     [partesA, partesB, compararIntervalo],
   );
 
+  const recomendaciones = useMemo(() => (resultado ? generarRecomendaciones(resultado, partesA, partesB) : []), [resultado, partesA, partesB]);
+  const altas = recomendaciones.filter((r) => r.prioridad === "alta").length;
+  const textoRec = (r: Recomendacion) => ({
+    prioridad: t(`rec.priority.${r.prioridad}`),
+    titulo: t(`rec.${r.id}.title`, { count: r.conteo }),
+    detalle: t(`rec.${r.id}.text`, { count: r.conteo }),
+  });
+
   const q = normalizarDescripcion(busqueda);
   const coincideBusqueda = (f: FilaComparacion) => {
     if (!q) return true;
@@ -71,8 +82,10 @@ export default function CompararBomsPage() {
       sc: "SC", nombreSc: t("export.scName"), posicion: t("fields.posicion"), pnBase: t("export.pnBase"), pnComparar: t("export.pnCompare"), pn: t("fields.pn"),
       descripcion: t("fields.descripcion"), diferencia: t("difference"), valorBase: t("export.valueBase"), valorComparar: t("export.valueCompare"),
       filaBase: t("export.rowBase"), filaComparar: t("export.rowCompare"), base: t("baseShort"), comparar: t("compareShort"), estado: t("export.status"),
+      cantidadBase: t("export.qtyBase"), cantidadComparar: t("export.qtyCompare"), unidad: t("fields.unidad"), intervalo: t("fields.intervalo"),
+      prioridad: t("export.priority"), recomendacion: t("export.recommendation"), detalle: t("export.detail"), ejemplos: t("export.examples"),
     },
-    hojas: { diferencias: t("export.sheetDifferences"), lista: t("export.sheetList"), resumen: t("export.sheetSummary") },
+    hojas: { diferencias: t("export.sheetDifferences"), lista: t("export.sheetList"), resumen: t("export.sheetSummary"), recomendaciones: t("export.sheetRecommendations") },
     resumen: {
       base: t("base"), comparar: t("compareWith"), generado: t("export.generated"), piezasBase: t("export.partsBase"),
       piezasComparar: t("export.partsCompare"), coinciden: t("chips.coinciden"), conDiferencias: t("export.withDifferences"),
@@ -83,10 +96,21 @@ export default function CompararBomsPage() {
     if (!resultado || !base || !comparar) return;
     setExportando(formato);
     try {
-      const f = formato === "xlsx" ? exportarXlsx : exportarCsv;
-      await f(resultado, etiquetas(), origen(base), origen(comparar), hoyIso());
+      if (formato === "xlsx") await exportarXlsx(resultado, etiquetas(), origen(base), origen(comparar), hoyIso(), recomendaciones, textoRec);
+      else await exportarCsv(resultado, etiquetas(), origen(base), origen(comparar), hoyIso());
     } finally {
       setExportando(null);
+    }
+  };
+
+  // Dos archivos soltados a la vez: el primero queda donde se soltó y el segundo va al otro lado.
+  const cargarEn = (lado: "base" | "comparar") => async (f: File) => {
+    try {
+      const b = await cargarBom(f, lado === "base" ? comparar : base);
+      if (lado === "base") setBase(b); else setComparar(b);
+      setIntervaloManual(null);
+    } catch (e) {
+      toast.error(t(`error.${e instanceof ErrorArchivoBom ? e.codigo : "lectura"}`), { description: f.name });
     }
   };
 
@@ -103,14 +127,14 @@ export default function CompararBomsPage() {
 
       {/* Base · intercambiar · comparar */}
       <section className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)]">
-        <PanelArchivo titulo={t("base")} valor={base} onCambio={(b) => { setBase(b); setIntervaloManual(null); }} />
+        <PanelArchivo titulo={t("base")} valor={base} otro={comparar} onCambio={(b) => { setBase(b); setIntervaloManual(null); }} onSegundoArchivo={cargarEn("comparar")} />
         <button
           type="button" onClick={intercambiar} disabled={!base && !comparar} title={t("swap")} aria-label={t("swap")}
           className="flex h-10 w-12 items-center justify-center self-center justify-self-center rounded border border-sig-line-strong dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-white hover:bg-sig-sand dark:hover:bg-zinc-700 disabled:opacity-40"
         >
           <ArrowLeftRight size={18} className="lg:rotate-0 rotate-90" />
         </button>
-        <PanelArchivo titulo={t("compareWith")} valor={comparar} onCambio={(b) => { setComparar(b); setIntervaloManual(null); }} />
+        <PanelArchivo titulo={t("compareWith")} valor={comparar} otro={base} onCambio={(b) => { setComparar(b); setIntervaloManual(null); }} onSegundoArchivo={cargarEn("base")} />
       </section>
       <p className="-mt-3 flex items-center gap-1.5 text-xs text-sig-muted"><Lock size={12} aria-hidden /> {t("privacy")}</p>
 
@@ -126,12 +150,12 @@ export default function CompararBomsPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex rounded bg-sig-sand dark:bg-zinc-800 p-[3px]" role="tablist">
-              {(["diferencias", "lista"] as Vista[]).map((v) => (
+              {(["diferencias", "lista", "recomendaciones"] as Vista[]).map((v) => (
                 <button
                   key={v} type="button" role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
                   className={`h-8 rounded-[3px] px-3 text-sm font-semibold ${vista === v ? "bg-white dark:bg-zinc-900 text-black dark:text-white shadow-sm" : "text-sig-muted hover:text-black dark:hover:text-white"}`}
                 >
-                  {v === "diferencias" ? t("viewDifferences", { count: resultado.conDiferencias }) : t("viewList", { count: resultado.filas.length })}
+                  {v === "diferencias" ? t("viewDifferences", { count: resultado.conDiferencias }) : v === "lista" ? t("viewList", { count: resultado.filas.length }) : t("viewRecommendations", { count: recomendaciones.length })}
                 </button>
               ))}
             </div>
@@ -161,6 +185,15 @@ export default function CompararBomsPage() {
             })}
           </div>
 
+          {altas > 0 && vista !== "recomendaciones" && (
+            <button type="button" onClick={() => setVista("recomendaciones")} className="flex items-center gap-2 rounded border border-sig-warning bg-sig-warning-soft dark:bg-zinc-800 px-4 py-2.5 text-left text-sm text-black dark:text-white hover:brightness-95">
+              <AlertTriangle size={16} className="shrink-0 text-sig-warning" />
+              <span className="flex-1">{t("highBanner", { count: altas })}</span>
+              <span className="font-semibold text-sig-blue">{t("seeRecommendations")}</span>
+            </button>
+          )}
+
+          {vista !== "recomendaciones" && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <div className="relative w-full max-w-sm">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sig-muted" />
@@ -176,11 +209,14 @@ export default function CompararBomsPage() {
               </button>
             )}
           </div>
+          )}
           {intervaloSoloDeHoja && !compararIntervalo && (
             <p className="-mt-3 flex items-start gap-1.5 text-xs text-sig-muted"><Info size={13} className="mt-px shrink-0" />{t("intervalSkipped", { sheet: (hA ?? hB)! })}</p>
           )}
 
-          {vista === "diferencias" ? (
+          {vista === "recomendaciones" ? (
+            <ListaRecomendaciones recs={recomendaciones} texto={textoRec} />
+          ) : vista === "diferencias" ? (
             <div className="flex flex-col gap-3">
               {grupos.map((g) => {
                 const abierto = !cerrados.has(g.sc);
@@ -291,6 +327,41 @@ export default function CompararBomsPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+const ESTILO_PRIORIDAD: Record<Prioridad, { borde: string; chip: string }> = {
+  alta: { borde: "border-l-sig-danger", chip: "bg-sig-danger-soft text-sig-danger" },
+  media: { borde: "border-l-sig-warning", chip: "bg-sig-warning-soft text-black" },
+  info: { borde: "border-l-sig-blue", chip: "bg-sig-blue-soft text-sig-blue" },
+};
+
+/** Recomendaciones: qué revisar y con quién, con ejemplos del archivo. Más urgentes primero. */
+function ListaRecomendaciones({ recs, texto }: { recs: Recomendacion[]; texto: (r: Recomendacion) => { prioridad: string; titulo: string; detalle: string } }) {
+  const t = useTranslations("Bom");
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="flex items-center gap-1.5 text-sm text-sig-muted"><Lightbulb size={15} aria-hidden /> {t("rec.intro")}</p>
+      {recs.map((r) => {
+        const x = texto(r);
+        const e = ESTILO_PRIORIDAD[r.prioridad];
+        return (
+          <article key={r.id} className={`rounded border border-sig-line dark:border-zinc-700 border-l-4 ${e.borde} px-4 py-3.5`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${e.chip} dark:bg-zinc-700 dark:text-white`}>{x.prioridad}</span>
+              <h3 className="text-base font-bold text-black dark:text-white">{x.titulo}</h3>
+            </div>
+            <p className="mt-1 text-sm text-black dark:text-gray-200">{x.detalle}</p>
+            {r.ejemplos.length > 0 && (
+              <ul className="mt-2 flex flex-col gap-1">
+                {r.ejemplos.map((ej, i) => <li key={i} className="text-[13px] tabular-nums text-sig-muted">{ej}</li>)}
+                {r.conteo > r.ejemplos.length && <li className="text-[13px] text-sig-muted">{t("rec.more", { count: r.conteo - r.ejemplos.length })}</li>}
+              </ul>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 }

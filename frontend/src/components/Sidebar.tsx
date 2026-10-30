@@ -221,11 +221,6 @@ export default function Sidebar() {
               <NavItem href="/pm" icon={ClipboardCheck}>{t("pmTracker")}</NavItem>
               <NavItem href="/pm/alertas" icon={Bell} badge={alertasPm?.total} badgeUrgente={(alertasPm?.overdue ?? 0) > 0}>{t("pmAlerts")}</NavItem>
               <NavItem href="/pm/nuevo" icon={FilePlus}>{t("newPm")}</NavItem>
-            </Seccion>
-          )}
-
-          {seccion === "mantenimiento" && (
-            <Seccion titulo={t("bomSection")}>
               <NavItem href="/bom" icon={GitCompareArrows}>{t("compareBoms")}</NavItem>
             </Seccion>
           )}

@@ -28,6 +28,7 @@ function valorCelda(v: unknown): Celda {
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
     if ("result" in o) return valorCelda(o.result);
+    if ("formula" in o || "sharedFormula" in o) return null; // fórmula sin valor calculado
     if (Array.isArray(o.richText)) return (o.richText as Array<{ text?: string }>).map((r) => r.text ?? "").join("");
     if ("text" in o) return valorCelda(o.text);
     if ("error" in o) return null;
