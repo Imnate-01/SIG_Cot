@@ -6,7 +6,7 @@ import { routing } from './i18n/routing';
 
 // Rutas protegidas (sin prefijo de locale)
 // '/cotizaciones' cubre también '/cotizaciones-us'
-const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda', '/food-safety-audit', '/usuarios', '/pm', '/inicio', '/cuenta'];
+const protectedPaths = ['/cotizaciones', '/dashboard', '/perfil', '/clientes', '/servicios', '/reportes', '/reportestec', '/configuracion', '/ayuda', '/food-safety-audit', '/usuarios', '/pm', '/bom', '/inicio', '/cuenta'];
 
 const SUPABASE_JWT_SECRET = new TextEncoder().encode(
   process.env.SUPABASE_JWT_SECRET || ''
