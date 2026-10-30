@@ -23,8 +23,8 @@ const cliente: ClienteAutollenado = {
 describe("plantas y máquinas del cliente", () => {
   it("una planta por nombre, prefiere ship_to y omite inactivas", () => {
     expect(opcionesPlanta(cliente)).toEqual([
-      { valor: "INDUSTRIALIZADORA DE LECHE DE DELICIAS", detalle: "Delicias" },
-      { valor: "GANADEROS PRODUCTORES", detalle: undefined },
+      { valor: "INDUSTRIALIZADORA DE LECHE DE DELICIAS", detalle: "Delicias", icono: "planta" },
+      { valor: "GANADEROS PRODUCTORES", detalle: undefined, icono: "planta" },
     ]);
   });
   it("con planta: sus máquinas + las sin planta; sin planta: todas las activas", () => {
@@ -76,5 +76,56 @@ describe("moverFin (comentario 2)", () => {
   it("sin fin o con inicio incompleto no cambia nada", () => {
     expect(moverFin("2026-11-26", "2026-12-10", "")).toBe("");
     expect(moverFin("", "2026-12-10", "2026-12-10")).toBe("2026-12-10");
+  });
+});
+
+import { nombreMaquina, opcionesCliente } from "./autollenado";
+import { calcularPosicion, filtrarOpciones } from "./Desplegable";
+
+describe("catálogo de EE. UU. para el PM", () => {
+  const clientes: ClienteAutollenado[] = [
+    { id: 67, nombre: "Lala", pais: "MX" },
+    { id: 1, nombre: "Sin país" },
+    { id: 80, nombre: "Steuben Foods Inc.", empresa: "Steuben Foods Inc.", pais: "US", direccion: "1150 Maple Road", ciudad: "Elma, NY 14059" },
+    { id: 77, nombre: "Cardiff Products", pais: "CA", ciudad: "London, ON  N6M 0C6" },
+    { id: 88, nombre: "Kerry Ingredients & Flavours", pais: "US", ciudad: "Beloit, WI 53511" },
+  ];
+  it("no muestra clientes de México ni sin país; EE. UU. primero y por nombre", () => {
+    const o = opcionesCliente(clientes);
+    expect(o.map((x) => x.valor)).toEqual(["88", "80", "77"]);
+    expect(o[1]).toMatchObject({ etiqueta: "Steuben Foods Inc.", detalle: "1150 Maple Road, Elma, NY 14059", grupo: "United States" });
+    expect(o[2].grupo).toBe("Canada");
+  });
+  it("cliente sin plantas: su dirección es el sitio y salen todas sus máquinas", () => {
+    const steuben: ClienteAutollenado = {
+      ...clientes[2],
+      cliente_maquinas: [
+        { id: 1, modelo_maquina: "CFA 312-35", serie: "869351072", machine_id: "869351072", direccion_id: null },
+        { id: 2, modelo_maquina: "CDA 1012-36", serie: "890151006", machine_id: "890151006", direccion_id: null },
+      ],
+    };
+    expect(opcionesPlanta(steuben)).toEqual([{ valor: "Elma, NY 14059", detalle: "1150 Maple Road", icono: "planta" }]);
+    expect(opcionesMaquina(steuben, "Elma, NY 14059").map((o) => o.valor)).toEqual(["CFA 312-35 869351072", "CDA 1012-36 890151006"]);
+  });
+  it("nombre de máquina: México conserva machine_id; EE. UU. antepone el modelo", () => {
+    expect(nombreMaquina({ id: 1, machine_id: "CFA 612-35 8696 51 007", modelo_maquina: "612-35" })).toBe("CFA 612-35 8696 51 007");
+    expect(nombreMaquina({ id: 2, machine_id: "8224N032", modelo_maquina: "CFA 405-21", serie: "8224N032" })).toBe("CFA 405-21 8224N032");
+    expect(nombreMaquina({ id: 3, modelo_maquina: "812-35", serie: "8698 51 040" })).toBe("812-35 8698 51 040");
+  });
+});
+
+describe("lista desplegable", () => {
+  const ops = [{ valor: "Querétaro", detalle: "Planta 1" }, { valor: "Delicias", detalle: "Chihuahua" }, { valor: "CFA 405-21 8224N032" }];
+  it("busca sin acentos, por varias palabras y en el detalle", () => {
+    expect(filtrarOpciones(ops, "queretaro").map((o) => o.valor)).toEqual(["Querétaro"]);
+    expect(filtrarOpciones(ops, "405 8224").map((o) => o.valor)).toEqual(["CFA 405-21 8224N032"]);
+    expect(filtrarOpciones(ops, "chihua").map((o) => o.valor)).toEqual(["Delicias"]);
+    expect(filtrarOpciones(ops, "  ")).toHaveLength(3);
+  });
+  it("se abre hacia arriba solo si abajo no cabe y arriba hay más espacio", () => {
+    expect(calcularPosicion({ left: 10, width: 300, top: 100, bottom: 140 }, 900)).toMatchObject({ top: 146, maxHeight: 320 });
+    const arriba = calcularPosicion({ left: 10, width: 300, top: 800, bottom: 840 }, 900);
+    expect(arriba).toMatchObject({ bottom: 106, maxHeight: 320 });
+    expect(arriba.top).toBeUndefined();
   });
 });

@@ -1,6 +1,9 @@
 /**
  * Autollenado del encabezado de un PM a partir del cliente elegido (comentario 1):
- *   Planta     ← direcciones del cliente (cliente_direcciones)
+ *   Cliente    ← solo el catálogo de Estados Unidos (país US, y CA que la app agrupa con US)
+ *   Planta     ← direcciones del cliente (cliente_direcciones); si no tiene (caso de
+ *                los clientes de EE. UU.), su propia dirección
+ *   Máquina    ← "modelo serie" (los de EE. UU. traen solo la serie en machine_id)
  *   Máquina    ← máquinas del cliente (cliente_maquinas), filtradas por planta
  *   Contacto   ← contacto de la planta; si no tiene, el del cliente
  *   SAM / FSE  ← el último PM de ese cliente; se sugieren también los usuarios
@@ -8,6 +11,8 @@
  * Todo sigue siendo editable. Un valor que el usuario escribió a mano nunca se
  * sobrescribe: solo se reemplazan campos vacíos o que se llenaron solos antes.
  */
+
+import { formatearFecha } from "./pm";
 
 export interface DireccionCliente {
   id: number;
@@ -33,6 +38,10 @@ export interface ClienteAutollenado {
   id: number;
   nombre: string;
   empresa?: string | null;
+  pais?: string | null;
+  direccion?: string | null;
+  ciudad?: string | null;
+  cp?: string | null;
   contacto_nombre?: string | null;
   correo?: string | null;
   telefono?: string | null;
@@ -49,18 +58,58 @@ export interface PmPrevio {
   linea?: string | null;
 }
 
+/** Misma forma que OpcionLista de Desplegable.tsx (sin importar React aquí). */
 export interface Opcion {
   valor: string;
+  etiqueta?: string;
   detalle?: string;
+  grupo?: string;
+  icono?: "planta" | "maquina" | "persona" | "contacto" | "cliente" | "historial";
+}
+
+/** Catálogo de EE. UU.: país US o CA (igual que Cotizaciones US y la pantalla de Clientes). */
+export const esClienteUS = (c: Pick<ClienteAutollenado, "pais">) => c.pais === "US" || c.pais === "CA";
+
+const NOMBRE_PAIS: Record<string, string> = { US: "United States", CA: "Canada" };
+
+/** Clientes para el PM: solo EE. UU. (y Canadá), por país y en orden alfabético. */
+export function opcionesCliente(clientes: ClienteAutollenado[]): Opcion[] {
+  return clientes
+    .filter(esClienteUS)
+    .sort((a, b) => (a.pais === b.pais ? a.nombre.localeCompare(b.nombre) : a.pais === "US" ? -1 : 1))
+    .map((c) => ({
+      valor: String(c.id),
+      etiqueta: c.empresa && c.empresa !== c.nombre ? `${c.nombre} — ${c.empresa}` : c.nombre,
+      detalle: [c.direccion, c.ciudad].map((x) => (x || "").trim()).filter(Boolean).join(", ") || undefined,
+      grupo: NOMBRE_PAIS[c.pais || ""] ?? c.pais ?? undefined,
+      icono: "cliente" as const,
+    }));
 }
 
 const limpio = (s: string | null | undefined) => (s || "").trim();
 const igual = (a: string | null | undefined, b: string | null | undefined) => limpio(a).toLowerCase() === limpio(b).toLowerCase();
 const activa = (x: { activo?: boolean | null }) => x.activo !== false;
 
+/**
+ * Planta que sale de la dirección propia del cliente (los de EE. UU. no tienen
+ * cliente_direcciones): "Ciudad, Estado CP"; id -1 para no chocar con direcciones reales.
+ */
+function sitioPropio(c: ClienteAutollenado): (DireccionCliente & { nombre: string }) | null {
+  const nombre = limpio(c.ciudad) || limpio(c.direccion);
+  if (!nombre) return null;
+  return {
+    id: -1, tipo: "ship_to", nombre, empresa_planta_nombre: nombre, ciudad: limpio(c.direccion) || undefined,
+    contacto_nombre: c.contacto_nombre, contacto_correo: c.correo, contacto_telefono: c.telefono,
+  };
+}
+
 /** Plantas del cliente (sin repetir nombre). Se prefieren las de entrega (ship_to). */
 export function plantasDe(c: ClienteAutollenado | undefined): Array<DireccionCliente & { nombre: string }> {
   const dirs = (c?.cliente_direcciones || []).filter(activa).filter((d) => limpio(d.empresa_planta_nombre));
+  if (c && dirs.length === 0) {
+    const propio = sitioPropio(c);
+    return propio ? [propio] : [];
+  }
   const orden = [...dirs].sort((a, b) => Number(b.tipo === "ship_to") - Number(a.tipo === "ship_to"));
   const vistas = new Set<string>();
   const res: Array<DireccionCliente & { nombre: string }> = [];
@@ -74,13 +123,17 @@ export function plantasDe(c: ClienteAutollenado | undefined): Array<DireccionCli
 }
 
 export function opcionesPlanta(c: ClienteAutollenado | undefined): Opcion[] {
-  return plantasDe(c).map((p) => ({ valor: p.nombre, detalle: limpio(p.ciudad) || undefined }));
+  return plantasDe(c).map((p) => ({ valor: p.nombre, detalle: limpio(p.ciudad) || undefined, icono: "planta" as const }));
 }
 
 /** Texto que identifica a una máquina en el campo "Machine / Line". */
 export function nombreMaquina(m: MaquinaCliente): string {
-  return limpio(m.machine_id) || [limpio(m.modelo_maquina), limpio(m.serie)].filter(Boolean).join(" ");
+  const id = limpio(m.machine_id), modelo = limpio(m.modelo_maquina), serie = limpio(m.serie);
+  // México: machine_id ya trae "CFA 612-35 8696 51 007". EE. UU.: machine_id = solo la serie.
+  if (id && (!modelo || normal(id).includes(normal(modelo)))) return id;
+  return [modelo, id || serie].filter(Boolean).join(" ");
 }
+const normal = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
 /**
  * Máquinas del cliente. Si se eligió una planta conocida, primero las de esa
@@ -99,8 +152,10 @@ export function opcionesMaquina(c: ClienteAutollenado | undefined, planta: strin
     const valor = nombreMaquina(m);
     if (vistas.has(valor)) return [];
     vistas.add(valor);
-    const detalle = limpio(m.serie) ? `S/N ${limpio(m.serie)}` : undefined;
-    return [{ valor, detalle }];
+    // Se guarda el texto completo (valor); en la lista se ve el modelo y abajo la serie
+    const serie = limpio(m.serie);
+    const etiqueta = limpio(m.modelo_maquina) && serie ? limpio(m.modelo_maquina) : undefined;
+    return [{ valor, etiqueta, detalle: serie ? `S/N ${serie}` : undefined, icono: "maquina" as const }];
   });
 }
 
@@ -142,14 +197,15 @@ export function equipoAnterior(previos: PmPrevio[]): { sam: string; fse_filler: 
 export function opcionesPersona(previos: PmPrevio[], campo: "sam" | "fse_filler" | "fse_downline", usuarios: Array<{ nombre?: string | null; departamento?: string | null }>): Opcion[] {
   const vistas = new Set<string>();
   const res: Opcion[] = [];
-  const agregar = (valor: string, detalle?: string) => {
+  const agregar = (valor: string, o: Omit<Opcion, "valor">) => {
     const v = limpio(valor);
     if (!v || vistas.has(v.toLowerCase())) return;
     vistas.add(v.toLowerCase());
-    res.push({ valor: v, detalle });
+    res.push({ valor: v, ...o });
   };
-  [...previos].sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio)).forEach((p) => agregar(p[campo] || "", "Previous PM"));
-  usuarios.forEach((u) => agregar(u.nombre || "", limpio(u.departamento) || undefined));
+  [...previos].sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio))
+    .forEach((p) => agregar(p[campo] || "", { detalle: `PM · ${formatearFecha(p.fecha_inicio)}`, grupo: "Used with this customer", icono: "historial" }));
+  usuarios.forEach((u) => agregar(u.nombre || "", { detalle: limpio(u.departamento) || undefined, grupo: "Team", icono: "persona" }));
   return res;
 }
 
