@@ -31,8 +31,8 @@ Fuente: `US_Customer_List_Complete.xlsx`
 | US | Lyons Magnus Kentucky | 95 Richwood Rd. | Walton, KY 41094 | CFA 405-32 FP | 854451002 |
 | US | Lyons Magnus Kentucky | 95 Richwood Rd. | Walton, KY 41094 | CFA 406-32 | 850451027 |
 | US | Johanna Beverage | 5625 W Thorpe Rd | Spokane, WA 99224 | CFA 112-32 | 870151177 |
-| US | Leahy / IFP | 2232 Meridian Blvd., Ste. K | Minden, NV 89423 | CFA 406-32 | 850451014 |
-| US | Leahy / IFP | 2232 Meridian Blvd., Ste. K | Minden, NV 89423 | CFA 406-32 | 850451015 |
+| US | Finlays Solutions, Inc. (antes Leahy / IFP) | 2232 Meridian Blvd., Ste. K | Minden, NV 89423 | CFA 406-32 | 850451014 |
+| US | Finlays Solutions, Inc. (antes Leahy / IFP) | 2232 Meridian Blvd., Ste. K | Minden, NV 89423 | CFA 406-32 | 850451015 |
 | US | Kerry Ingredients & Flavours | 3400 Millington Road | Beloit, WI 53511 | CFA 405-21 | 8224N032 |
 | US | Kerry Ingredients & Flavours | 3400 Millington Road | Beloit, WI 53511 | CFA 405-21 | 8224EA024 |
 | US | Kerry Ingredients & Flavours | 3400 Millington Road | Beloit, WI 53511 | CFA 112-32 | 870151040 |
@@ -40,9 +40,9 @@ Fuente: `US_Customer_List_Complete.xlsx`
 | US | Kerry Ingredients & Flavours | 3400 Millington Road | Beloit, WI 53511 | CFA 312-35 | 869351129 |
 | US | Kerry Ingredients & Flavours | 3400 Millington Road | Beloit, WI 53511 | CFA 406-32 | 850451028 |
 | US | KROGER - DENVER | 10241 E 51st Ave | Denver, CO 80239 | CFA 312-35 | 869351113 |
-| US | Leahy / IFP, Inc. | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 406-32 | 850451021 |
-| US | Leahy / IFP, Inc. | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 406-32 | 850451024 |
-| US | Leahy / IFP, Inc. | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 312-37 | 869351151 |
+| US | Finlays Solutions, Inc. (antes Leahy / IFP, Inc.) | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 406-32 | 850451021 |
+| US | Finlays Solutions, Inc. (antes Leahy / IFP, Inc.) | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 406-32 | 850451024 |
+| US | Finlays Solutions, Inc. (antes Leahy / IFP, Inc.) | 2101 W Haven Avenue | New Lenox, IL 60451 | CFA 312-37 | 869351151 |
 | US | Baldwin Richardson Foods | 1550 John Tipton Blvd. | Pennsauken, NJ 08110 | CFA 406-32 | 850451026 |
 | US | Sun Orchard, LLC | 8600 N.W. 36th Street, Ste 250 | Doral, FL 33166 | CFA 406-32 | 850451020 |
 | US | Sun Orchard, LLC | 8600 N.W. 36th Street, Ste 250 | Doral, FL 33166 | CFA 312-37 | 869351168 |

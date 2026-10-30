@@ -83,7 +83,8 @@ export default function PmDetallePage() {
 
   useEffect(() => { cargar(true); }, [cargar]);
   useEffect(() => {
-    api.get("/usuarios").then(({ data }) => setUsuariosLista(data.data || [])).catch(() => {});
+    // Solo quien hoy tiene Mantenimiento (o es administrador)
+    api.get("/usuarios", { params: { area: "mantenimiento" } }).then(({ data }) => setUsuariosLista(data.data || [])).catch(() => {});
   }, []);
 
   const etapas = useMemo(() => (pm ? agruparPorEtapa(pm.tareas) : []), [pm]);
@@ -402,7 +403,7 @@ export default function PmDetallePage() {
                                             onChange={(ev) => ev.target.value && enviarTarea(tarea, { completada_por: ev.target.value }, { completada_por: ev.target.value })}
                                           >
                                             {!usuariosLista.some((u) => u.id === tarea.completada_por) && tarea.completada_por && (
-                                              <option value={tarea.completada_por}>{nombreUsuario(pm.usuarios, tarea.completada_por)}</option>
+                                              <option value={tarea.completada_por} disabled>{usuariosLista.length ? t("noLongerHasAccess", { name: nombreUsuario(pm.usuarios, tarea.completada_por) }) : nombreUsuario(pm.usuarios, tarea.completada_por)}</option>
                                             )}
                                             {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
                                           </select>
@@ -416,6 +417,9 @@ export default function PmDetallePage() {
                                           onChange={(ev) => enviarTarea(tarea, { asignado_a: ev.target.value || null }, { asignado_a: ev.target.value || null })}
                                         >
                                           <option value="">{t("unassigned")}</option>
+                                          {tarea.asignado_a && usuariosLista.length > 0 && !usuariosLista.some((u) => u.id === tarea.asignado_a) && (
+                                            <option value={tarea.asignado_a} disabled>{t("noLongerHasAccess", { name: nombreUsuario(pm.usuarios, tarea.asignado_a) })}</option>
+                                          )}
                                           {usuariosLista.map((u) => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
                                         </select>
                                         <span className="mt-1 block text-xs text-sig-muted">{t("responsibleHint")}</span>
@@ -546,10 +550,13 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
   const [cliente, setCliente] = useState<ClienteAutollenado | undefined>();
   const [previos, setPrevios] = useState<PmPrevio[]>([]);
   const [usuarios, setUsuarios] = useState<Array<{ nombre: string | null; departamento?: string | null }>>([]);
+  const [sinAcceso, setSinAcceso] = useState<string[]>([]);
   useEffect(() => {
     api.get("/clientes").then(({ data }) => setCliente((data.data || []).find((c: ClienteAutollenado) => c.id === pm.cliente_id))).catch(() => {});
     api.get("/pm", { params: { cliente_id: pm.cliente_id } }).then(({ data }) => setPrevios((data.data || []).filter((x: { id: string }) => x.id !== pm.id))).catch(() => {});
-    api.get("/usuarios").then(({ data }) => setUsuarios(data.data || [])).catch(() => {});
+    api.get("/usuarios", { params: { area: "mantenimiento" } })
+      .then(({ data }) => { setUsuarios(data.data || []); setSinAcceso(data.fuera || []); })
+      .catch(() => {});
   }, [pm.cliente_id, pm.id]);
   const contactos = useMemo(() => contactosDe(cliente, f.planta), [cliente, f.planta]);
   const elegirPlanta = (planta: string) => {
@@ -586,10 +593,10 @@ function EditarModal({ pm, onClose, onSaved }: { pm: PmDetalle; onClose: () => v
         <Campo label={t("fieldContact")}><CampoSugerencias value={f.contacto_nombre} onChange={setValor("contacto_nombre")} onElegir={elegirContacto} opciones={contactos.map((c) => ({ valor: c.nombre, detalle: c.correo || c.telefono || undefined, icono: "contacto" as const }))} /></Campo>
         <Campo label={t("fieldPhone")}><input className={campo} value={f.contacto_telefono} onChange={set("contacto_telefono")} /></Campo>
         <Campo label={t("fieldEmail")} className="sm:col-span-2"><input className={campo} type="email" value={f.contacto_correo} onChange={set("contacto_correo")} /></Campo>
-        <Campo label={t("fieldSam")}><CampoSugerencias value={f.sam} onChange={setValor("sam")} opciones={opcionesPersona(previos, "sam", usuarios)} /></Campo>
+        <Campo label={t("fieldSam")}><CampoSugerencias value={f.sam} onChange={setValor("sam")} opciones={opcionesPersona(previos, "sam", usuarios, sinAcceso)} /></Campo>
         <Campo label={t("fieldPo")}><input className={campo} value={f.po_numero} onChange={set("po_numero")} /></Campo>
-        <Campo label={t("fieldFseFiller")}><CampoSugerencias value={f.fse_filler} onChange={setValor("fse_filler")} opciones={opcionesPersona(previos, "fse_filler", usuarios)} /></Campo>
-        <Campo label={t("fieldFseDownline")}><CampoSugerencias value={f.fse_downline} onChange={setValor("fse_downline")} opciones={opcionesPersona(previos, "fse_downline", usuarios)} /></Campo>
+        <Campo label={t("fieldFseFiller")}><CampoSugerencias value={f.fse_filler} onChange={setValor("fse_filler")} opciones={opcionesPersona(previos, "fse_filler", usuarios, sinAcceso)} /></Campo>
+        <Campo label={t("fieldFseDownline")}><CampoSugerencias value={f.fse_downline} onChange={setValor("fse_downline")} opciones={opcionesPersona(previos, "fse_downline", usuarios, sinAcceso)} /></Campo>
         <Campo label={t("fieldStart")}>
           <input
             type="date" required className={campo} value={f.fecha_inicio}

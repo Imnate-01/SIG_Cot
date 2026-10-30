@@ -81,15 +81,9 @@ const mantenimiento = requireArea('mantenimiento');
 const foodSafety = requireArea('food_safety');
 // Catálogo de clientes: lo consulta Mantenimiento (PM) pero lo administra Cotizaciones
 const clientes = requireAreaPorMetodo({ lectura: ['cotizaciones', 'mantenimiento'], escritura: ['cotizaciones'] });
-// Mantenimiento solo lee el LISTADO de cotizaciones para ligarlas como evidencia de un PM
-const cotizacionesConEvidenciaPm = requireAreaPorMetodo({
-  lectura: ['cotizaciones', 'mantenimiento'],
-  escritura: ['cotizaciones'],
-  esLectura: (req) => req.method === 'GET' && req.path === '/',
-});
 
 app.use('/api/accesos', requireAuth, accesosRoutes);
-app.use('/api/cotizaciones', requireAuth, cotizacionesConEvidenciaPm, cotizacionesRoutes);
+app.use('/api/cotizaciones', requireAuth, cotizaciones, cotizacionesRoutes);
 app.use('/api/clientes', requireAuth, clientes, clientesRoutes);
 app.use('/api/servicios', requireAuth, cotizaciones, serviciosRoutes);
 app.use('/api/reportes', requireAuth, cotizaciones, reportesRoutes);

@@ -77,6 +77,34 @@ export function carpetaEvidencia(expedienteId: string, tareaId: string): string 
   return `pm/${expedienteId}/${tareaId}/`;
 }
 
+export const MAX_LARGO_ENLACE = 2000;
+
+export type ResultadoEnlace =
+  | { ok: true; url: string; nombre: string }
+  | { ok: false; motivo: "vacio" | "invalido" | "protocolo" | "muy_largo" };
+
+/**
+ * Evidencia por enlace (SharePoint, OneDrive, Drive, Teams, portal del cliente…).
+ * Acepta lo que se pega del navegador, con o sin "https://", y solo http(s):
+ * nada de javascript:, file: ni mailto:. Si no se da nombre se usa el dominio.
+ */
+export function validarEnlace(entrada: string, nombre?: string | null): ResultadoEnlace {
+  const texto = (entrada || "").trim();
+  if (!texto) return { ok: false, motivo: "vacio" };
+  if (/\s/.test(texto)) return { ok: false, motivo: "invalido" };
+  const esquema = /^([a-z][a-z0-9+.-]*):/i.exec(texto);
+  if (esquema && !/^https?$/i.test(esquema[1]) && !/^[^:/]+:\d+/.test(texto)) return { ok: false, motivo: "protocolo" };
+  const conEsquema = esquema && /^https?$/i.test(esquema[1]) ? texto : `https://${texto.replace(/^\/+/, "")}`;
+  let u: URL;
+  try { u = new URL(conEsquema); } catch { return { ok: false, motivo: "invalido" }; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return { ok: false, motivo: "protocolo" };
+  if (!u.hostname.includes(".") && u.hostname !== "localhost") return { ok: false, motivo: "invalido" };
+  const url = u.toString();
+  if (url.length > MAX_LARGO_ENLACE) return { ok: false, motivo: "muy_largo" };
+  const propio = (nombre || "").trim().replace(/\s+/g, " ").slice(0, 200);
+  return { ok: true, url, nombre: propio || u.hostname.replace(/^www\./, "") };
+}
+
 export const esImagen = (mime: string | null | undefined) => !!mime && mime.startsWith("image/");
 
 export function formatearTamano(bytes: number | null | undefined): string {

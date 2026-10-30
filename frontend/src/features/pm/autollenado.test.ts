@@ -129,3 +129,17 @@ describe("lista desplegable", () => {
     expect(arriba.top).toBeUndefined();
   });
 });
+
+describe("personas sin acceso a Mantenimiento", () => {
+  const previos = [
+    { id: "a", fecha_inicio: "2026-09-01", sam: "Beto Ruiz", fse_filler: "Ana López", fse_downline: null },
+  ] as unknown as Parameters<typeof equipoAnterior>[0];
+  it("no se sugieren desde PMs anteriores ni se autollenan", () => {
+    const op = opcionesPersona(previos, "sam", [{ nombre: "Ana López" }], ["Beto Ruiz"]);
+    expect(op.map((o) => o.valor)).toEqual(["Ana López"]);
+    expect(equipoAnterior(previos, ["beto ruiz"])).toEqual({ sam: "", fse_filler: "Ana López", fse_downline: "" });
+  });
+  it("un nombre externo (no es usuario del sistema) se sigue sugiriendo", () => {
+    expect(opcionesPersona(previos, "sam", [], ["Otra Persona"]).map((o) => o.valor)).toEqual(["Beto Ruiz"]);
+  });
+});

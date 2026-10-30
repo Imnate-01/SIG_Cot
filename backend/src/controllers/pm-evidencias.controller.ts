@@ -4,14 +4,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY_PUBLICA, supabaseAdmin } from '../config/supabase'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { ErrorHttp, responderError } from '../utils/http'
-import { formatearFolio } from './cotizaciones.controller'
 import {
-  BUCKET_EVIDENCIAS, MAX_BYTES_EVIDENCIA, MIMES_PERMITIDOS, carpetaEvidencia, rutaEvidencia, validarArchivo,
+  BUCKET_EVIDENCIAS, MAX_BYTES_EVIDENCIA, MAX_LARGO_ENLACE, MIMES_PERMITIDOS, carpetaEvidencia, rutaEvidencia, validarArchivo, validarEnlace,
 } from '../domain/pmEvidencias'
 
 /**
  * Evidencias del módulo PM: archivos/fotos (bucket privado `pm-evidencias`) y
- * cotizaciones ligadas a una tarea. Migración: 20261023_02_pm_evidencias.sql.
+ * enlaces externos (SharePoint, Drive, portal del cliente…). Las cotizaciones
+ * ligadas antes siguen visibles, pero ya no se crean nuevas.
+ * Migraciones: 20261023_02_pm_evidencias.sql y 20261030_01_pm_evidencias_enlaces.sql.
  *
  * Subida en dos pasos, directo del navegador a Storage (el archivo no pasa por
  * este servidor):
@@ -62,6 +63,13 @@ async function exigirTarea(supabase: SupabaseClient, expedienteId: string, tarea
 async function historial(supabase: SupabaseClient, tareaId: string, usuarioId: string, accion: string, detalle: unknown) {
   const { error } = await supabase.from('pm_tarea_historial').insert({ tarea_id: tareaId, usuario_id: usuarioId, accion, detalle })
   if (error) throw error
+}
+
+const MOTIVOS_ENLACE: Record<string, string> = {
+  vacio: 'Paste the link.',
+  invalido: 'That does not look like a link. Paste the full address, e.g. https://…',
+  protocolo: 'Only web links (http or https) can be attached.',
+  muy_largo: `The link is too long (maximum ${MAX_LARGO_ENLACE} characters).`,
 }
 
 export class PmEvidenciasController {
@@ -128,33 +136,30 @@ export class PmEvidenciasController {
     }
   }
 
-  // POST /api/pm/:id/tareas/:tareaId/evidencias/cotizacion   { cotizacion_id }
-  async ligarCotizacion(req: Request, res: Response) {
+  // POST /api/pm/:id/tareas/:tareaId/evidencias/enlace   { url, nombre? }
+  async agregarEnlace(req: Request, res: Response) {
     try {
       const { supabase, user } = contextoAuth(req)
       const expedienteId = uuid(req.params.id, 'id')
       const tareaId = uuid(req.params.tareaId, 'tareaId')
-      const cotizacionId = Number(req.body?.cotizacion_id)
-      if (!Number.isInteger(cotizacionId) || cotizacionId <= 0) throw new ErrorHttp(400, 'Select a quotation')
+      const v = validarEnlace(String(req.body?.url ?? ''), typeof req.body?.nombre === 'string' ? req.body.nombre : null)
+      if (!v.ok) throw new ErrorHttp(400, MOTIVOS_ENLACE[v.motivo])
       await exigirTarea(supabase, expedienteId, tareaId)
-
-      const { data: cot, error: errCot } = await supabase
-        // La tabla no guarda el folio: se arma igual que en el resto de la app (SIG-<entidad>-<id>)
-        .from('cotizaciones').select('id, condiciones').eq('id', cotizacionId).single()
-      if (errCot) throw errCot
 
       const { data, error } = await supabase
         .from('pm_evidencias')
-        .insert({
-          tarea_id: tareaId, expediente_id: expedienteId, tipo: 'quote',
-          nombre: formatearFolio(cot), cotizacion_id: cot.id, subido_por: user.id,
-        })
+        .insert({ tarea_id: tareaId, expediente_id: expedienteId, tipo: 'link', nombre: v.nombre, url: v.url, subido_por: user.id })
         .select().single()
       if (error) {
-        if ((error as { code?: string }).code === '23505') throw new ErrorHttp(409, 'That quotation is already linked to this task.')
+        const e = error as { code?: string; message?: string }
+        if (e.code === '23505') throw new ErrorHttp(409, 'That link is already attached to this task.')
+        // Sin la migración: no existe la columna url o el tipo 'link' no pasa el CHECK
+        if (e.code === '42703' || e.code === 'PGRST204' || (e.code === '23514' && /tipo|pm_evidencias_check/.test(e.message || ''))) {
+          throw new ErrorHttp(503, 'Links are not enabled yet: apply the migration 20261030_01_pm_evidencias_enlaces.sql in Supabase.')
+        }
         throw error
       }
-      await historial(supabase, tareaId, user.id, 'evidence_added', { nombre: data.nombre })
+      await historial(supabase, tareaId, user.id, 'evidence_added', { nombre: data.nombre, url: data.url })
       res.status(201).json({ success: true, data })
     } catch (error) {
       responderError(res, error)
@@ -171,6 +176,7 @@ export class PmEvidenciasController {
         .from('pm_evidencias').select('*').eq('id', evId).eq('expediente_id', expedienteId).single()
       if (error) throw error
       if (ev.tipo === 'quote') return res.json({ success: true, data: { tipo: 'quote', cotizacion_id: ev.cotizacion_id } })
+      if (ev.tipo === 'link') return res.json({ success: true, data: { tipo: 'link', url: ev.url, nombre: ev.nombre } })
 
       const { data, error: errUrl } = await supabaseAdmin.storage
         .from(BUCKET_EVIDENCIAS).createSignedUrl(ev.storage_path, SEGUNDOS_ENLACE)

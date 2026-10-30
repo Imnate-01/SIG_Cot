@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  validarEnlace,
   MAX_BYTES_EVIDENCIA, carpetaEvidencia, formatearTamano, nombreSeguro, rutaEvidencia, validarArchivo,
 } from "./evidencias";
 
@@ -59,5 +60,23 @@ describe.skipIf(!existsSync(resolve(__dirname, "../../../../backend/src/domain/p
     const n = (s: string) => s.replace(/\r\n/g, "\n");
     expect(n(readFileSync(resolve(__dirname, "../../../../backend/src/domain/pmEvidencias.ts"), "utf8")))
       .toBe(n(readFileSync(resolve(__dirname, "evidencias.ts"), "utf8")));
+  });
+});
+
+describe("validarEnlace", () => {
+  it("acepta enlaces http(s) y completa https:// si falta", () => {
+    expect(validarEnlace("https://sig.sharepoint.com/sites/PM/Shared%20Documents/foto.jpg")).toEqual({ ok: true, url: "https://sig.sharepoint.com/sites/PM/Shared%20Documents/foto.jpg", nombre: "sig.sharepoint.com" });
+    expect(validarEnlace("  drive.google.com/file/d/abc/view  ", "Fotos del PM")).toEqual({ ok: true, url: "https://drive.google.com/file/d/abc/view", nombre: "Fotos del PM" });
+    expect(validarEnlace("www.finlays.net/portal")).toMatchObject({ ok: true, nombre: "finlays.net" });
+    expect(validarEnlace("http://intranet.sig.biz:8080/doc")).toMatchObject({ ok: true, url: "http://intranet.sig.biz:8080/doc" });
+  });
+  it("rechaza vacíos, otros protocolos y texto que no es un enlace", () => {
+    expect(validarEnlace("   ")).toEqual({ ok: false, motivo: "vacio" });
+    expect(validarEnlace("javascript:alert(1)")).toEqual({ ok: false, motivo: "protocolo" });
+    expect(validarEnlace("file:///C:/fotos/pm.jpg")).toEqual({ ok: false, motivo: "protocolo" });
+    expect(validarEnlace("mailto:geo@sig.biz")).toEqual({ ok: false, motivo: "protocolo" });
+    expect(validarEnlace("fotos del pm")).toEqual({ ok: false, motivo: "invalido" });
+    expect(validarEnlace("solotexto")).toEqual({ ok: false, motivo: "invalido" });
+    expect(validarEnlace("https://a.com/" + "x".repeat(2100))).toEqual({ ok: false, motivo: "muy_largo" });
   });
 });

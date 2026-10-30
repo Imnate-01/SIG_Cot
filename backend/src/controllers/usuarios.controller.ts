@@ -2,7 +2,8 @@ import { Request, Response } from 'express'
 import { contextoAuth } from '../middlewares/requireAuth'
 import { responderError } from '../utils/http'
 import { supabaseAdmin } from '../config/supabase'
-import { registrarBitacora } from '../services/accesos';
+import { registrarBitacora, usuariosPorArea } from '../services/accesos';
+import { esArea } from '../domain/accesos';
 
 export class UsuariosController {
 
@@ -12,6 +13,17 @@ export class UsuariosController {
   async getAll(req: Request, res: Response) {
     try {
       const supabaseUser = contextoAuth(req).supabase;
+
+      // ?area=mantenimiento → solo quien hoy tiene esa área (o es administrador).
+      // `fuera` son los activos sin el área: el frontend los quita de las sugerencias.
+      const area = req.query.area
+      if (area !== undefined) {
+        if (!esArea(area)) return res.status(400).json({ success: false, message: 'Invalid area' })
+        const { dentro, fuera } = await usuariosPorArea(area)
+        const publico = (u: { id: string; nombre: string | null; email?: string | null; departamento?: string | null; rol?: string | null }) =>
+          ({ id: u.id, nombre: u.nombre, email: u.email ?? null, departamento: u.departamento ?? null, rol: u.rol ?? null })
+        return res.json({ success: true, data: dentro.map(publico), fuera: fuera.map((u) => u.nombre).filter(Boolean) })
+      }
 
       // Traemos los datos necesarios para el selector
       const { data, error } = await supabaseUser

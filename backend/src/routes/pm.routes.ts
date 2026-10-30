@@ -19,7 +19,7 @@ router.get('/:id/tareas/:tareaId/historial', pmController.historial);
 router.post('/:id/tareas/:tareaId/colaboradores', pmController.agregarColaborador);
 router.delete('/:id/tareas/:tareaId/colaboradores/:usuarioId', pmController.quitarColaborador);
 router.post('/:id/tareas/:tareaId/evidencias/subida', evidencias.prepararSubida);
-router.post('/:id/tareas/:tareaId/evidencias/cotizacion', evidencias.ligarCotizacion);
+router.post('/:id/tareas/:tareaId/evidencias/enlace', evidencias.agregarEnlace);
 router.post('/:id/tareas/:tareaId/evidencias', evidencias.registrar);
 router.get('/:id/evidencias/:evId/url', evidencias.enlace);
 router.delete('/:id/evidencias/:evId', evidencias.eliminar);

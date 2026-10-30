@@ -12,6 +12,7 @@ import { ErrorHttp, responderError } from '../utils/http'
  */
 
 import { leerAccion, uuid } from '../domain/pmAcciones'
+import { exigirUsuarioDelArea } from '../services/accesos'
 
 /** Sin la migración la tabla no existe: mensaje claro en vez de un 500. */
 function migracionPendiente(error: { message?: string; code?: string } | null) {
@@ -26,6 +27,7 @@ export class PmAccionesController {
       const { supabase, user } = contextoAuth(req)
       const expedienteId = uuid(req.params.id, 'id')
       const datos = leerAccion(req.body, false)
+      if (datos.asignado_a) await exigirUsuarioDelArea(String(datos.asignado_a), 'mantenimiento')
       const { error: errPm } = await supabase.from('pm_expedientes').select('id').eq('id', expedienteId).single()
       if (errPm) throw errPm
       const { data, error } = await supabase
@@ -48,6 +50,11 @@ export class PmAccionesController {
       const expedienteId = uuid(req.params.id, 'id')
       const accionId = uuid(req.params.accionId, 'accionId')
       const cambios = leerAccion(req.body, true)
+      if (cambios.asignado_a) {
+        // Solo se valida si cambia: una acción ya asignada a alguien sin acceso se puede seguir editando
+        const { data: actual } = await supabase.from('pm_acciones').select('asignado_a').eq('id', accionId).eq('expediente_id', expedienteId).maybeSingle()
+        if (actual?.asignado_a !== cambios.asignado_a) await exigirUsuarioDelArea(String(cambios.asignado_a), 'mantenimiento')
+      }
       if (req.body?.completada !== undefined) {
         const hecha = req.body.completada === true
         cambios.completada = hecha

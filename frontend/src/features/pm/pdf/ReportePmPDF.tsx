@@ -62,7 +62,7 @@ export default function ReportePmPDF({ pm, reporte, generado, logoUrl }: { pm: P
     [`${r.completadas}/${r.total}`, `Tasks completed (${r.porcentaje}%)`],
     [String(r.restantes), "Remaining"],
     [String(r.vencidas), "Overdue", r.vencidas ? C.rojo : undefined],
-    [String(r.archivos + r.cotizaciones), "Evidence attached"],
+    [String(r.archivos + r.enlaces + r.cotizaciones), "Evidence attached"],
     [String(r.faltaEvidencia), "Required evidence missing", r.faltaEvidencia ? C.rojo : undefined],
   ];
   return (

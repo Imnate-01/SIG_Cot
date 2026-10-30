@@ -188,14 +188,22 @@ export function contactoSugerido(c: ClienteAutollenado | undefined, planta: stri
 }
 
 /** Equipo del último PM del cliente (el de fecha de inicio más reciente). */
-export function equipoAnterior(previos: PmPrevio[]): { sam: string; fse_filler: string; fse_downline: string } {
+export function equipoAnterior(previos: PmPrevio[], sinAcceso: readonly string[] = []): { sam: string; fse_filler: string; fse_downline: string } {
   const ultimo = [...previos].sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio))[0];
-  return { sam: limpio(ultimo?.sam), fse_filler: limpio(ultimo?.fse_filler), fse_downline: limpio(ultimo?.fse_downline) };
+  const fuera = new Set(sinAcceso.map((n) => limpio(n).toLowerCase()));
+  // Quien ya no tiene Mantenimiento no se vuelve a proponer
+  const vigente = (v: string | null | undefined) => (fuera.has(limpio(v).toLowerCase()) ? "" : limpio(v));
+  return { sam: vigente(ultimo?.sam), fse_filler: vigente(ultimo?.fse_filler), fse_downline: vigente(ultimo?.fse_downline) };
 }
 
 /** Sugerencias para SAM/FSE: lo usado antes con este cliente y luego los usuarios. */
-export function opcionesPersona(previos: PmPrevio[], campo: "sam" | "fse_filler" | "fse_downline", usuarios: Array<{ nombre?: string | null; departamento?: string | null }>): Opcion[] {
-  const vistas = new Set<string>();
+export function opcionesPersona(
+  previos: PmPrevio[], campo: "sam" | "fse_filler" | "fse_downline",
+  usuarios: Array<{ nombre?: string | null; departamento?: string | null }>,
+  /** Usuarios del sistema que ya no tienen Mantenimiento: no se sugieren aunque estén en PMs anteriores. */
+  sinAcceso: readonly string[] = [],
+): Opcion[] {
+  const vistas = new Set<string>(sinAcceso.map((n) => limpio(n).toLowerCase()).filter(Boolean));
   const res: Opcion[] = [];
   const agregar = (valor: string, o: Omit<Opcion, "valor">) => {
     const v = limpio(valor);

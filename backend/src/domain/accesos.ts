@@ -63,3 +63,31 @@ export function textoOpcional(valor: unknown, max = 500): string | null {
   if (!t) return null;
   return t.slice(0, max);
 }
+
+export interface UsuarioParaLista {
+  id: string;
+  nombre: string | null;
+  email?: string | null;
+  departamento?: string | null;
+  rol?: string | null;
+  activo?: boolean | null;
+  es_admin_sistema?: boolean | null;
+}
+
+/**
+ * Quién puede aparecer en las listas de un área (responsable, colaboradores,
+ * SAM/FSE…): usuarios activos con esa área asignada, más los administradores
+ * del sistema (que tienen todas). Devuelve también los activos que NO la
+ * tienen, para que las sugerencias por historial no los vuelvan a ofrecer.
+ */
+export function separarPorArea(
+  usuarios: readonly UsuarioParaLista[],
+  filasAreas: ReadonlyArray<{ usuario_id: string; area: string }>,
+  area: Area,
+): { dentro: UsuarioParaLista[]; fuera: UsuarioParaLista[] } {
+  const conArea = new Set(filasAreas.filter((f) => f.area === area).map((f) => f.usuario_id));
+  const activos = usuarios.filter((u) => u.activo !== false);
+  const dentro = activos.filter((u) => u.es_admin_sistema || conArea.has(u.id));
+  const fuera = activos.filter((u) => !u.es_admin_sistema && !conArea.has(u.id));
+  return { dentro, fuera };
+}

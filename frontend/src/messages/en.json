@@ -774,6 +774,16 @@
     "noAreas": "No areas"
   },
   "PM": {
+      "addLink": "Add link",
+      "linkUrl": "Link",
+      "linkName": "Name (optional)",
+      "linkNamePlaceholder": "e.g. PM photos on SharePoint",
+      "externalLink": "External link",
+      "linkEmpty": "Paste the link.",
+      "linkInvalid": "That does not look like a link. Paste the full address, e.g. https://…",
+      "linkProtocol": "Only web links (http or https) can be added.",
+      "linkTooLong": "The link is too long (maximum 2000 characters).",
+      "noLongerHasAccess": "{name} (no longer has Maintenance access)",
       "title": "PM Tracker",
       "subtitle": "Preventive maintenance checklists by customer",
       "newPm": "New PM",
